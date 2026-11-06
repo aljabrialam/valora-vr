@@ -15,6 +15,7 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  MeshPhysicalMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
   SphereGeometry,
@@ -32,7 +33,7 @@ import type {Box} from './sim/geom.ts';
 export const SCALE = 1 / 18;
 /** The site point that sits over the middle of the desk, in site metres. */
 export const SITE_CENTRE = new Vector3(3.2, 0, -1.4);
-export const DESK = {y: 0.72, z: -0.56, w: 1.5, d: 0.92};
+export const DESK = {y: 0.75, z: -0.56, w: 1.5, d: 0.92}; // y matches the baked room's table top
 
 let seed = 7;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -106,24 +107,25 @@ function buildMaterials() {
   return {
     T,
     concrete: std({map: T.concrete, roughness: 0.92}),
-    plaster: std({color: new Color('#e9e1d3'), roughness: 0.95}),
+    plaster: std({color: new Color('#d9cfbf'), roughness: 0.95}),
     roofGhost: std({map: T.roof, transparent: true, opacity: 0.18, depthWrite: false}),
     deck: std({map: T.deck, roughness: 0.75}),
     stone: std({map: T.stone, roughness: 0.8}),
     grass: std({map: T.grass, roughness: 1}),
     oak: std({map: T.oak, roughness: 0.6}),
     slate: std({map: T.slate, roughness: 0.7}),
-    teak: std({color: '#9c6a3f', roughness: 0.55}),
+    teak: new MeshPhysicalMaterial({color: '#9c6a3f', roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.4}),
     fabric: std({color: '#d9d2c3', roughness: 0.95}),
     frame: std({color: '#2b2a28', roughness: 0.5, metalness: 0.3}),
-    glass: std({color: '#cfe0e3', roughness: 0.05, transparent: true, opacity: 0.22, depthWrite: false}),
-    water: std({color: '#2e5a5c', roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.88}),
+    glass: new MeshPhysicalMaterial({color: '#dbe8ea', roughness: 0.02, metalness: 0, transparent: true, opacity: 0.2, depthWrite: false, clearcoat: 1, envMapIntensity: 1.6}),
+    water: new MeshPhysicalMaterial({color: '#24494b', roughness: 0.03, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, transparent: true, opacity: 0.9, envMapIntensity: 1.8}),
     poolIn: std({color: '#2f4a4a', roughness: 0.5}),
-    window: std({color: '#f7dfae', emissive: new Color('#f0c674'), emissiveIntensity: 0.8, roughness: 0.4}),
+    window: std({color: '#f7dfae', emissive: new Color('#f0c674'), emissiveIntensity: 1.4, roughness: 0.4}),
     pot: std({color: '#b9784f', roughness: 0.8}),
     trunk: std({color: '#7a6c5c', roughness: 0.95}),
-    walnut: std({color: '#3e2a1f', roughness: 0.5}),
-    plinth: std({color: '#1f1f21', roughness: 0.6}),
+    walnut: new MeshPhysicalMaterial({color: '#3a271c', roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.25}),
+    plinth: std({map: T.slate, color: new Color('#5a5a5e'), roughness: 0.55}),
+    floor: std({color: '#17130f', roughness: 0.95}),
   };
 }
 
@@ -145,13 +147,17 @@ export function buildModel(): Model {
   desk.position.set(0, DESK.y, DESK.z);
 
   // desk and a dark stone plinth the diorama sits on
-  const top = new Mesh(new BoxGeometry(DESK.w, 0.04, DESK.d), M.walnut);
-  top.position.y = -0.045;
-  top.receiveShadow = true;
   const plinth = new Mesh(new BoxGeometry(DESK.w - 0.12, 0.025, DESK.d - 0.1), M.plinth);
   plinth.position.y = -0.0125;
   plinth.receiveShadow = true;
-  desk.add(top, plinth);
+  plinth.castShadow = true;
+  desk.add(plinth);
+  // a soft contact shadow where the plinth meets the desk (cheap, always on)
+  const contact = new Mesh(new PlaneGeometry(DESK.w - 0.02, DESK.d), new MeshBasicMaterial({map: radial(), transparent: true, depthWrite: false, opacity: 0.55, toneMapped: false}));
+  contact.rotation.x = -Math.PI / 2;
+  contact.position.y = -0.0245;
+  desk.add(contact);
+  // the desk itself, the floor and the walls come from Meta's baked room (src/look/assets.ts)
 
   const site = new Group();
   site.name = 'site';
@@ -227,11 +233,6 @@ export function buildModel(): Model {
 
   // the courtyard plant in a terracotta pot
   const plant = new Group();
-  const potG = new CylinderGeometry(0.3, 0.22, 0.42, 20);
-  potG.translate(0, 0.21, 0);
-  const pot = new Mesh(potG, M.pot);
-  pot.castShadow = true;
-  plant.add(pot);
   plant.position.set(LAYOUT.plant[0], 0.06, LAYOUT.plant[2]);
   site.add(plant);
 
@@ -263,7 +264,7 @@ export function buildModel(): Model {
   screen.add(hinge);
   const lever = new Group();
   lever.name = 'lever';
-  const bronze = std({color: '#a8835a', roughness: 0.35, metalness: 0.6});
+  const bronze = std({color: '#b08a5c', roughness: 0.28, metalness: 0.85});
   const armStart = new Vector3(s.len, s.h, 0);
   const armEnd = new Vector3(s.len + LEVER.reach, s.h + LEVER.rise, 0);
   const arm = new Mesh(new CylinderGeometry(0.05, 0.05, armStart.distanceTo(armEnd), 10), bronze);
@@ -283,6 +284,41 @@ export function buildModel(): Model {
 
   plantGarden(site, M);
   return {desk, site, screen, screenPanel: panel, lever, overhang, roof, marks: {seat: seatMark, plant, window: win}};
+}
+
+/** A radial gradient, dark in the middle, for contact shadows. */
+function radial(): CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(128, 128, 20, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(0,0,0,0.85)');
+  grad.addColorStop(0.7, 'rgba(0,0,0,0.35)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  return new CanvasTexture(c);
+}
+
+/** Shared clock for the breeze in the planting; the game advances it every frame. */
+export const WIND = {value: 0};
+
+function addWind(m: MeshStandardMaterial, amount: number): MeshStandardMaterial {
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uWind = WIND;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uWind;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        float h = max(position.y - 0.6, 0.0);
+        float ph = position.x * 0.35 + position.z * 0.27;
+        transformed.x += sin(uWind * 1.3 + ph) * ${amount.toFixed(3)} * h;
+        transformed.z += cos(uWind * 1.1 + ph * 1.3) * ${(amount * 0.7).toFixed(3)} * h;`,
+      );
+  };
+  m.customProgramCacheKey = () => `wind-${amount}`;
+  return m;
 }
 
 /** How far the lever's grip sits beyond the screen's free end, in site metres. */
@@ -369,8 +405,6 @@ function plantGarden(site: Group, M: Mats) {
     }
   };
 
-  // the courtyard plant itself (bushy, on top of its pot)
-  shrub(LAYOUT.plant[0], LAYOUT.plant[2], 0.42, 'broad', [85, 110], [0.22, 0.3], 0.42);
 
   // courtyard: palms in the west corners, a planted strip along the south wall
   palm(-4.2, 3.2, 5.2);
@@ -387,12 +421,12 @@ function plantGarden(site: Group, M: Mats) {
   for (const [x, z, rad] of [[-8, -2, 1.0], [-3, -7.8, 0.9], [6.5, -7.9, 1.0], [13.8, -7.6, 0.9], [2, 5.0, 0.7], [-8.2, 1.5, 0.8]] as const)
     shrub(x, z, rad, 'broad', [80, 115], [0.18, 0.28], 0.0);
 
-  const leafMat = (map: CanvasTexture) => {
+  const leafMat = (map: CanvasTexture, sway = 0.018) => {
     map.colorSpace = SRGBColorSpace;
-    return new MeshStandardMaterial({map, alphaTest: 0.45, side: DoubleSide, vertexColors: true, roughness: 0.85});
+    return addWind(new MeshStandardMaterial({map, alphaTest: 0.45, side: DoubleSide, vertexColors: true, roughness: 0.7}), sway);
   };
   const T = M.T;
-  addMerged(site, leafMat(T.frond), cards.frond, true, false);
+  addMerged(site, leafMat(T.frond, 0.03), cards.frond, true, false);
   addMerged(site, leafMat(T.broad), [...cards.broad, ...cards.red], true, false);
   addMerged(site, leafMat(T.mid), cards.mid, true, false);
   addMerged(site, leafMat(T.fine), cards.fine, true, false);

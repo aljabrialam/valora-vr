@@ -22,7 +22,9 @@ import {
   type Entity,
 } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
-import {buildModel, DESK, LEVER, SCALE, setOverhang} from './model.ts';
+import {buildModel, DESK, LEVER, SCALE, setOverhang, WIND} from './model.ts';
+import {Motes} from './motes.ts';
+import {loadPlant, loadRoom} from './look/assets.ts';
 import {Beam, Label} from './feedback.ts';
 import {LevelCard} from './panel.ts';
 import {Gecko} from './mascot.ts';
@@ -46,15 +48,23 @@ const world = await World.create(document.getElementById('scene-container') as H
 // ---------- the model ----------
 const model = buildModel();
 const deskEntity = world.createTransformEntity(model.desk);
+// authored art: Meta's baked room around the desk, and a modelled snake plant in the courtyard
+loadRoom(DESK.z).then((room) => world.createTransformEntity(room)).catch((e) => console.warn('[VR] room', e));
+loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
 setOverhang(model, design.overhang);
 
 // ---------- the sun: one light, a tight shadow over the model ----------
-const sunLight = new DirectionalLight(new Color(0xfff1dc), 2.8);
+const sunLight = new DirectionalLight(new Color(0xffe6c2), 2.6);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.set(2048, 2048);
 Object.assign(sunLight.shadow.camera, {left: -0.75, right: 0.75, top: 0.75, bottom: -0.75, near: 0.1, far: 5});
 sunLight.shadow.bias = -0.0004;
 sunLight.shadow.normalBias = 0.012;
+sunLight.shadow.radius = 4;
+// a cool rim light from behind, no shadow: separates the model from the dark room
+const rim = new DirectionalLight(new Color(0xbfd2ff), 0.9);
+rim.position.set(-1.4, DESK.y + 1.2, DESK.z - 2.2);
+world.createTransformEntity(rim);
 world.createTransformEntity(sunLight);
 world.createTransformEntity(sunLight.target);
 sunLight.target.position.set(0, DESK.y, DESK.z);
@@ -78,6 +88,10 @@ card.mesh.position.set(0, 0.36, -0.5);
 card.mesh.rotation.x = -10 * D;
 model.desk.add(card.mesh);
 
+// dust drifting in the sunlight over the model
+const motes = new Motes(140);
+model.desk.add(motes.points);
+
 // ---------- Tiki, the guide ----------
 const tiki = new Gecko();
 const TIKI_HOME = new Vector3(-0.38, 0.002, 0.3);
@@ -88,7 +102,7 @@ const tikiEntity = world.createTransformEntity(tiki.group, deskEntity);
 tikiEntity.addComponent(RayInteractable);
 
 // ---------- handles you pinch ----------
-const handleMat = new MeshStandardMaterial({color: 0xa8835a, roughness: 0.35, metalness: 0.6, emissive: new Color(0x6b4a24), emissiveIntensity: 0.4});
+const handleMat = new MeshStandardMaterial({color: 0xb08a5c, roughness: 0.25, metalness: 0.85, emissive: new Color(0x6b4a24), emissiveIntensity: 0.4});
 function makeHandle(): {mesh: Mesh; entity: Entity} {
   const mesh = new Mesh(new SphereGeometry(0.024, 24, 16), handleMat);
   const ring = new Mesh(new TorusGeometry(0.036, 0.0035, 8, 40), handleMat);
@@ -341,6 +355,8 @@ class PlaySystem extends createSystem({}) {
     if (!oGrab) overhangHandle.mesh.position.copy(overhangHandleHome(shownOverhang));
     handleMat.emissiveIntensity = sGrab || oGrab ? 1.2 : 0.4 + 0.25 * Math.sin(time * 2.5);
 
+    WIND.value = time;
+    motes.update(delta, time);
     neighbourBeam.pulse(time, !solved);
     for (const b of sunBeams.values()) b.pulse(time, false);
 
