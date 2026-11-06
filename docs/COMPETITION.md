@@ -37,9 +37,10 @@ Everything is inside the window, so we intend to enter **New Experience**. The V
 
 ## Eligibility questions for the team (not decided here)
 
-- Start program membership in good standing by the deadline for at least one team member
-- Age of majority and eligible country of residence (Singapore) under the official rules
-- Active Meta account with developer access
-- Team member names, emails and roles for the form
+- [x] Start program membership: **accepted 6 Nov 2026** (welcome email from the Start Program Team; Meta developer organization "alamazing")
+- [ ] Age of majority and eligible country of residence (Singapore) under the official rules
+- [x] Active Meta developer account (organization "alamazing")
+- [ ] Team member names, emails and roles for the form
+- [x] Registered for the competition on Devpost
 
 No accounts were registered and no terms were accepted on the team's behalf.
