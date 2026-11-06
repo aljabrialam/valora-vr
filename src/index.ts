@@ -15,7 +15,9 @@ import {
   MovementMode,
   Pressed,
   RayInteractable,
+  Plane,
   Raycaster,
+  Vector2,
   type Object3D,
   SphereGeometry,
   TorusGeometry,
@@ -228,7 +230,7 @@ class Tutorial {
     this.enteredAt = now;
     console.info('[VR] step', st?.id ?? 'end');
     if (!st) return tiki.hide();
-    tiki.say(st.say, st.hint ?? (st.until === 'tap' ? 'Pinch Tiki to continue' : ''), now);
+    tiki.say(forDevice(st.say), forDevice(st.hint ?? (st.until === 'tap' ? 'Pinch Tiki to continue' : '')), now);
     tiki.look(lookAt(st.look));
     if (st.celebrate) tiki.celebrate();
     if (st.hop) tiki.hopTo(st.hop === 'home' ? TIKI_HOME : new Vector3(st.hop[0], st.hop[1], st.hop[2]));
@@ -283,7 +285,6 @@ function goToLevel(i: number, now = 0) {
 }
 
 (window as any).VR = {
-  /** Draw calls, triangles and GPU resources of the last frame (performance budget checks). */
   /** Debug: what a ray from `from` towards `to` hits first (names up the parent chain). */
   pick(from: number[], to: number[]) {
     const o = new Vector3(...(from as [number, number, number]));
@@ -295,6 +296,7 @@ function goToLevel(i: number, now = 0) {
       return `${h.distance.toFixed(3)} ${path.slice(0, 3).join('<')}`;
     });
   },
+  /** Draw calls, triangles and GPU resources of the last frame (performance budget checks). */
   stats() {
     const i = world.renderer.info;
     return {calls: i.render.calls, triangles: i.render.triangles, textures: i.memory.textures, geometries: i.memory.geometries};
@@ -315,6 +317,15 @@ function goToLevel(i: number, now = 0) {
     const v = screenHandle.mesh.getWorldPosition(new Vector3()).project(world.camera);
     return {x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight};
   },
+  /** Screen pixels of a point given in site metres (desktop mouse tests). */
+  siteToScreen(p: number[]) {
+    const v = model.site.localToWorld(new Vector3(p[0], p[1], p[2])).project(world.camera);
+    return {x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight};
+  },
+  worldToScreen(p: number[]) {
+    const v = new Vector3(p[0], p[1], p[2]).project(world.camera);
+    return {x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight};
+  },
   worldPos(name: 'screenHandle' | 'overhangHandle' | 'tiki') {
     const o = name === 'tiki' ? tiki.hit : name === 'screenHandle' ? screenHandle.mesh : overhangHandle.mesh;
     return o.getWorldPosition(new Vector3()).toArray();
@@ -324,6 +335,108 @@ let pendingTap = false;
 refresh();
 tutorial.start(levelIndex);
 
+// ---------- hand or mouse position -> snapped design ----------
+/** `local` is a point in site metres; its angle about the hinge becomes the nearest allowed screen angle. */
+function setScreenFrom(local: Vector3) {
+  const piv = LAYOUT.screen.pivot;
+  const deg = Math.atan2(-(local.z - piv[2]), local.x - piv[0]) / D;
+  let best = Infinity;
+  let snapped = design.screenDeg;
+  for (const a of screenAngles()) {
+    const diff = Math.abs(((deg - a + 540) % 360) - 180);
+    if (diff < best) {
+      best = diff;
+      snapped = a;
+    }
+  }
+  if (snapped !== design.screenDeg) {
+    design.screenDeg = snapped;
+    clickSound();
+    refresh();
+  }
+}
+/** `local` is a point in site metres; its distance out from the glass becomes a snapped overhang depth. */
+function setOverhangFrom(local: Vector3) {
+  if (!level.tools.includes('overhang')) return;
+  const {min, max, step} = LAYOUT.overhang;
+  const raw = local.z - LAYOUT.room.z1 - OVERHANG_GRIP.z;
+  const snapped = +Math.min(max, Math.max(min, Math.round(raw / step) * step)).toFixed(2);
+  if (snapped !== design.overhang) {
+    design.overhang = snapped;
+    clickSound();
+    refresh();
+  }
+}
+
+// ---------- play on a screen, no headset: click Tiki, drag the bronze handles ----------
+// Outside an immersive session the hand-ray system has nothing to drive, so the page's own mouse
+// or touch pointer does the same jobs. In a headset this handler stands aside.
+const canvas = world.renderer.domElement;
+const flat = {ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(), hit: new Vector3(), up: new Vector3(0, 1, 0), drag: '' as '' | 'screen' | 'overhang'};
+function inXR() {
+  return world.renderer.xr.isPresenting;
+}
+const within = (o: Object3D | null, root: Object3D) => {
+  for (; o; o = o.parent) if (o === root) return true;
+  return false;
+};
+function aimFlat(e: PointerEvent) {
+  const r = canvas.getBoundingClientRect();
+  flat.ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  flat.ray.setFromCamera(flat.ndc, world.camera);
+}
+// Listen on the window in the capture phase: IWSDK's own input layer stops pointer events before
+// they reach the canvas, so a canvas listener never fires.
+const onCanvas = (e: PointerEvent) => e.target === canvas && !inXR();
+window.addEventListener('pointerdown', (e) => {
+  if (!onCanvas(e)) return;
+  aimFlat(e);
+  const targets: Object3D[] = [tiki.hit, screenHandle.mesh];
+  if (level.tools.includes('overhang')) targets.push(overhangHandle.mesh);
+  const h = flat.ray.intersectObjects(targets, true)[0];
+  if (!h) return;
+  if (within(h.object, tiki.hit)) {
+    pendingTap = true;
+    return;
+  }
+  flat.drag = within(h.object, screenHandle.mesh) ? 'screen' : 'overhang';
+  // drag across a level plane at the handle's height
+  flat.plane.setFromNormalAndCoplanarPoint(flat.up, h.point);
+  canvas.setPointerCapture(e.pointerId);
+  canvas.style.cursor = 'grabbing';
+  e.preventDefault();
+}, true);
+window.addEventListener('pointermove', (e) => {
+  if (inXR() || (e.target !== canvas && !flat.drag)) return;
+  aimFlat(e);
+  if (!flat.drag) {
+    const over = flat.ray.intersectObjects([tiki.hit, screenHandle.mesh, ...(level.tools.includes('overhang') ? [overhangHandle.mesh] : [])], true).length > 0;
+    canvas.style.cursor = over ? 'pointer' : '';
+    return;
+  }
+  if (!flat.ray.ray.intersectPlane(flat.plane, flat.hit)) return;
+  const local = model.site.worldToLocal(flat.hit);
+  if (flat.drag === 'screen') setScreenFrom(local);
+  else setOverhangFrom(local);
+}, true);
+const endFlat = () => {
+  flat.drag = '';
+  canvas.style.cursor = '';
+};
+window.addEventListener('pointerup', endFlat, true);
+window.addEventListener('pointercancel', endFlat, true);
+
+/** Tiki's words for the device in use: pinch in a headset, click or drag on a screen. */
+function forDevice(text: string): string {
+  if (inXR()) return text;
+  return text
+    .replace('Look at the handle, pinch, and move your hand', 'Drag the bronze handle')
+    .replace('Pinch the bronze handle and swing', 'Drag the bronze handle to swing')
+    .replace('Pinch the second handle and pull it towards you', 'Drag the second handle towards you')
+    .replace(/Pinch/g, 'Click')
+    .replace(/pinch/g, 'click');
+}
+
 // ---------- per-frame: drags, springs, Tiki ----------
 class PlaySystem extends createSystem({}) {
   private wasPressed = false;
@@ -331,38 +444,17 @@ class PlaySystem extends createSystem({}) {
   private tmp = new Vector3();
   update(delta: number, time: number) {
     // screen: the handle position becomes a snapped angle about the hinge
-    const sGrab = screenHandle.entity.hasComponent(Grabbed);
+    // on a flat screen the mouse drag owns the handles (see 'play on a screen'); IWSDK's desktop
+    // pointer may also tag them Grabbed without moving them, which would pull the screen back
+    const xr = inXR();
+    const sGrab = xr && screenHandle.entity.hasComponent(Grabbed);
     if (sGrab) {
-      const local = model.site.worldToLocal(screenHandle.mesh.getWorldPosition(this.tmp));
-      const piv = LAYOUT.screen.pivot;
-      const deg = Math.atan2(-(local.z - piv[2]), local.x - piv[0]) / D;
-      let best = Infinity;
-      let snapped = design.screenDeg;
-      for (const a of screenAngles()) {
-        const diff = Math.abs(((deg - a + 540) % 360) - 180);
-        if (diff < best) {
-          best = diff;
-          snapped = a;
-        }
-      }
-      if (snapped !== design.screenDeg) {
-        design.screenDeg = snapped;
-        clickSound();
-        refresh();
-      }
+      setScreenFrom(model.site.worldToLocal(screenHandle.mesh.getWorldPosition(this.tmp)));
     }
     // overhang: the handle's distance out from the glass becomes a snapped depth
-    const oGrab = overhangHandle.entity.hasComponent(Grabbed);
+    const oGrab = xr && overhangHandle.entity.hasComponent(Grabbed);
     if (oGrab && level.tools.includes('overhang')) {
-      const local = model.site.worldToLocal(overhangHandle.mesh.getWorldPosition(this.tmp));
-      const {min, max, step} = LAYOUT.overhang;
-      const raw = local.z - LAYOUT.room.z1 - OVERHANG_GRIP.z;
-      const snapped = +Math.min(max, Math.max(min, Math.round(raw / step) * step)).toFixed(2);
-      if (snapped !== design.overhang) {
-        design.overhang = snapped;
-        clickSound();
-        refresh();
-      }
+      setOverhangFrom(model.site.worldToLocal(overhangHandle.mesh.getWorldPosition(this.tmp)));
     }
     // springs towards the snapped values
     const k = 1 - Math.exp(-delta * 14);

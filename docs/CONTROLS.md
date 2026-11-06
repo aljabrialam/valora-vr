@@ -12,6 +12,18 @@
 | See through a watcher's eyes | Pinch and hold the neighbour's window or the sun (*planned*) |
 | Undo, reset, pause | Turn your left palm up to open the wrist menu, pinch a button (*planned*) |
 
+## On a computer or phone, no headset
+
+Open the page and play straight away. No need to select Enter XR.
+
+| To | Do this |
+|---|---|
+| Continue, next level | Click (or tap) Tiki the gecko |
+| Swing the privacy screen | Drag the bronze ball on the end of the wooden screen |
+| Slide the overhang (Level 3) | Drag the second bronze handle above the glass towards you |
+
+Tiki's words switch between "pinch" in a headset and "click" or "drag" on a screen.
+
 ## In the emulator (IWER)
 
 Open the dev URL, select **Enter XR**, then in the IWER toolbar choose **Select input mode → Gaze + Hands**.
