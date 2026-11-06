@@ -1,0 +1,7 @@
+{"device":"hand-right","idleHand":"rest","body":"fixed","steps":[
+ {"label":"aim at handle","anchor":"target-ray","position":[-0.024,1.0,-0.256],"orientation":{"pitch":-39.3,"yaw":0,"roll":0},"duration":0.8},
+ {"label":"pinch","pinch":1,"duration":0.3},
+ {"label":"swing","position":[0.052,1.0,-0.388],"orientation":{"pitch":-39.3,"yaw":0,"roll":0},"duration":1.5},
+ {"label":"hold","duration":0.6},
+ {"label":"release","pinch":0,"duration":0.2}
+]}
