@@ -55,3 +55,29 @@ export async function loadPlant(height: number): Promise<Group> {
   g.scale.setScalar(height / 0.48);
   return g;
 }
+
+/**
+ * The VaLora house, modelled and baked in Blender (art/blender/house.py). Site metres, so it goes
+ * straight into the site group. Colour and ambient occlusion are baked; the sun stays real-time
+ * because it moves between levels and the screen and overhang move with the player's hands.
+ */
+export async function loadHouse(): Promise<Group> {
+  const gltf = await loader.loadAsync(`${base}models/valora-house.glb`);
+  gltf.scene.traverse((o) => {
+    const m = o as Mesh;
+    if (!m.isMesh) return;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    // Scenery only: the watcher checks use src/sim geometry, and the house must never catch a
+    // pinch ray meant for Tiki or a handle (Tiki sits right by the south-west wall).
+    m.raycast = () => {};
+    const mat = m.material as MeshStandardMaterial;
+    if (mat.map) mat.map.colorSpace = SRGBColorSpace;
+    mat.aoMapIntensity = 1.0;
+    mat.envMapIntensity = 0.9;
+  });
+  const g = new Group();
+  g.name = 'house';
+  g.add(gltf.scene);
+  return g;
+}

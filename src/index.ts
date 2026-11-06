@@ -15,6 +15,8 @@ import {
   MovementMode,
   Pressed,
   RayInteractable,
+  Raycaster,
+  type Object3D,
   SphereGeometry,
   TorusGeometry,
   Vector3,
@@ -24,7 +26,7 @@ import {
 import projectOptions from 'virtual:iwsdk-project';
 import {buildModel, DESK, LEVER, SCALE, setOverhang, WIND} from './model.ts';
 import {Motes} from './motes.ts';
-import {loadPlant, loadRoom} from './look/assets.ts';
+import {loadHouse, loadPlant, loadRoom} from './look/assets.ts';
 import {Beam, Label} from './feedback.ts';
 import {LevelCard} from './panel.ts';
 import {Gecko} from './mascot.ts';
@@ -51,6 +53,7 @@ const deskEntity = world.createTransformEntity(model.desk);
 // authored art: Meta's baked room around the desk, and a modelled snake plant in the courtyard
 loadRoom(DESK.z).then((room) => world.createTransformEntity(room)).catch((e) => console.warn('[VR] room', e));
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
+loadHouse().then((h) => model.site.add(h)).catch((e) => console.warn('[VR] house', e));
 setOverhang(model, design.overhang);
 
 // ---------- the sun: one light, a tight shadow over the model ----------
@@ -280,6 +283,22 @@ function goToLevel(i: number, now = 0) {
 }
 
 (window as any).VR = {
+  /** Draw calls, triangles and GPU resources of the last frame (performance budget checks). */
+  /** Debug: what a ray from `from` towards `to` hits first (names up the parent chain). */
+  pick(from: number[], to: number[]) {
+    const o = new Vector3(...(from as [number, number, number]));
+    const d = new Vector3(...(to as [number, number, number])).sub(o).normalize();
+    const hits = new Raycaster(o, d).intersectObjects(world.scene.children, true).filter((h) => (h.object as Mesh).isMesh);
+    return hits.slice(0, 4).map((h) => {
+      const path: string[] = [];
+      for (let x: Object3D | null = h.object; x; x = x.parent) if (x.name) path.push(x.name);
+      return `${h.distance.toFixed(3)} ${path.slice(0, 3).join('<')}`;
+    });
+  },
+  stats() {
+    const i = world.renderer.info;
+    return {calls: i.render.calls, triangles: i.render.triangles, textures: i.memory.textures, geometries: i.memory.geometries};
+  },
   state: {},
   setDesign(d: Partial<Design>) {
     Object.assign(design, d);

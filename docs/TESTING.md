@@ -49,7 +49,28 @@ screenDeg -90 → -75 → -60 → -30 → 30   solved true
 
 The labels and Tiki's speech card are three.js sprites. IWSDK's hand ray pointer raycasts every object, and a sprite throws ("Raycaster.camera needs to be set") without a camera, which stopped input processing and blanked the XR view. Sprites are display only, so their `raycast` is now a no-op; Tiki's pinch goes to an invisible hit sphere. The playthrough passed after the fix.
 
-## 4. Not tested yet
+## 4. Full hands-only playthrough after the Blender house (7 November 2026)
+
+`npm run e2e:play` (scripts/e2e-play.mjs) pinches Tiki through the Level 1 tutorial, then grabs the bronze handle and carries the hand along the arc to 30°.
+
+```text
+[VR] step hello → watchers → beam → swing
+[VR] design screenDeg -90 → -75 → -60 → -45 → -30 → 30   solved true
+[VR] step l1-done
+PASS: Tiki tutorial and screen swing solved Level 1 with hands only
+```
+
+Three things the heavier scene exposed, all fixed:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Only the first Tiki pinch counted | The baked house mesh sat between the hand ray and Tiki (Tiki stands at the south-west wall corner), so presses after it loaded went to scenery | The house is scenery: its meshes do not take rays (`raycast` no-op in `src/look/assets.ts`). Watcher checks never used it: they use `src/sim` geometry |
+| Tiki kept the `Pressed` tag | A `pinch: 0` sequence step did not release the emulated hand under software GL | The script releases with `xr set-select-value` |
+| The swing stopped near -30° | Software GL runs the emulator well below real time, and each emulator command must finish within the dev server's 27 s limit | Short pose commands, waits in wall-clock time |
+
+These are emulator and test-script limits. Frame rate on a real Quest 3 still needs the headset test. Desktop budget from `VR.stats()`: 142 draw calls, about 128,000 triangles, 26 textures.
+
+## 5. Not tested yet
 
 - Real hand tracking: pinch reliability on the handle, drift, jitter at detents.
 - Seated reach and arm fatigue at the desk height and distance.

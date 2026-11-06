@@ -3,3 +3,4 @@ dist
 .iwsdk
 *.log
 .DS_Store
+art/build

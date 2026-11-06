@@ -168,85 +168,42 @@ export function buildModel(): Model {
   const {room: r, court: c, neighbour: n} = LAYOUT;
   const ground = {x0: -9.0, x1: 15.4, z0: -8.6, z1: 5.8}; // fits the plinth at 1:18
 
-  // ground: lawn around the house, paving and deck inside the courtyard, oak inside the room
+  // The static house (room, deck, paving, pool coping, walls, furniture, neighbour) is modelled and
+  // baked in Blender (art/blender/house.py) and loaded by src/look/assets.ts into this group.
+  // Code keeps only what moves, glows, is see-through, or is tiled: lawn, water, glass, ghost roof.
   addMerged(site, M.grass, [slab(ground.x0, ground.x1, -0.06, 0, ground.z0, ground.z1)], false);
-  addMerged(site, M.oak, [slab(r.x0, r.x1, 0, 0.04, r.z0, r.z1)], false);
-  addMerged(site, M.deck, [slab(c.x0, c.x1, 0, 0.06, c.z0, c.z0 + 1.5)], false);
   const pool = {x0: -4.3, x1: -1.6, z0: 0.3, z1: 2.9};
-  const paving: BufferGeometry[] = [];
-  paving.push(slab(c.x0, c.x1, 0, 0.05, c.z0 + 1.5, pool.z0));
-  paving.push(slab(pool.x1, c.x1, 0, 0.05, pool.z0, c.z1 - 1.0));
-  paving.push(slab(c.x0, pool.x0, 0, 0.05, pool.z0, c.z1 - 1.0));
-  addMerged(site, M.stone, paving, false);
-  addMerged(site, M.grass, [slab(c.x0, c.x1, 0, 0.07, c.z1 - 1.0, c.z1)], false);
-
-  // reflecting pool with stone coping
-  addMerged(site, M.poolIn, [slab(pool.x0, pool.x1, -0.3, 0.0, pool.z0, pool.z1)], false);
   const water = new Mesh(new PlaneGeometry(pool.x1 - pool.x0, pool.z1 - pool.z0), M.water);
   water.rotation.x = -Math.PI / 2;
-  water.position.set((pool.x0 + pool.x1) / 2, 0.03, (pool.z0 + pool.z1) / 2);
+  water.position.set((pool.x0 + pool.x1) / 2, 0.0, (pool.z0 + pool.z1) / 2);
   water.receiveShadow = true;
   site.add(water);
-  addMerged(site, M.stone, [
-    slab(pool.x0 - 0.25, pool.x1 + 0.25, 0, 0.1, pool.z0 - 0.25, pool.z0),
-    slab(pool.x0 - 0.25, pool.x1 + 0.25, 0, 0.1, pool.z1, pool.z1 + 0.25),
-    slab(pool.x0 - 0.25, pool.x0, 0, 0.1, pool.z0, pool.z1),
-    slab(pool.x1, pool.x1 + 0.25, 0, 0.1, pool.z0, pool.z1),
-  ]);
-
-  // walls and roofs: the same boxes the watchers test against
   let roof: Mesh | null = null;
-  const concrete: BufferGeometry[] = [];
-  const plaster: BufferGeometry[] = [];
   for (const b of fixedBoxes()) {
-    if (b.id === 'roof') {
-      roof = new Mesh(boxGeo(b), M.roofGhost);
-      roof.renderOrder = 2;
-      site.add(roof);
-    } else if (b.id === 'neighbour house') plaster.push(boxGeo(b));
-    else concrete.push(boxGeo(b));
+    if (b.id !== 'roof') continue;
+    roof = new Mesh(boxGeo(b), M.roofGhost);
+    roof.renderOrder = 2;
+    site.add(roof);
   }
-  addMerged(site, M.concrete, concrete);
-  addMerged(site, M.plaster, plaster);
-
-  // courtyard glass along the room's south face, with slim dark mullions (glass does not block the watchers)
-  const glass = new Mesh(new PlaneGeometry(r.x1 - r.x0 - 0.3, r.h - 0.05), M.glass);
+  const glass = new Mesh(new PlaneGeometry(r.x1 - r.x0 - 0.3, r.h - 0.15), M.glass);
   glass.position.set((r.x0 + r.x1) / 2, r.h / 2, r.z1);
   glass.renderOrder = 3;
   site.add(glass);
-  const mullions: BufferGeometry[] = [];
-  for (let x = r.x0 + 0.15; x <= r.x1 - 0.1; x += 2.45) mullions.push(slab(x - 0.04, x + 0.04, 0, r.h, r.z1 - 0.04, r.z1 + 0.04));
-  mullions.push(slab(r.x0, r.x1, r.h - 0.08, r.h, r.z1 - 0.04, r.z1 + 0.04));
-  addMerged(site, M.frame, mullions);
 
-  // the reading chair: teak frame, linen cushion, a rug and a side table
-  const chair = new Group();
-  addMerged(chair, M.teak, [slab(-0.42, 0.42, 0.3, 0.38, -0.42, 0.42), slab(-0.42, -0.34, 0, 0.62, -0.42, 0.42), slab(0.34, 0.42, 0, 0.62, -0.42, 0.42)]);
-  addMerged(chair, M.fabric, [slab(-0.34, 0.34, 0.38, 0.52, -0.38, 0.38), slab(-0.34, 0.34, 0.5, 1.05, -0.42, -0.26)]);
-  chair.position.set(LAYOUT.seat[0], 0.04, LAYOUT.seat[2] - 0.2);
-  site.add(chair);
-  addMerged(site, M.fabric, [slab(LAYOUT.seat[0] - 1.2, LAYOUT.seat[0] + 1.2, 0.04, 0.06, LAYOUT.seat[2] - 1.6, LAYOUT.seat[2] + 0.6)], false);
-  addMerged(site, M.oak, [slab(LAYOUT.seat[0] + 0.7, LAYOUT.seat[0] + 1.1, 0.04, 0.55, LAYOUT.seat[2] - 0.6, LAYOUT.seat[2] - 0.2)]);
   const seatMark = new Mesh(new SphereGeometry(0.14, 20, 14), new MeshBasicMaterial({color: '#ffffff', transparent: true, opacity: 0.9}));
   seatMark.position.set(...LAYOUT.seat);
   site.add(seatMark);
 
   // the courtyard plant in a terracotta pot
   const plant = new Group();
-  plant.position.set(LAYOUT.plant[0], 0.06, LAYOUT.plant[2]);
+  plant.position.set(LAYOUT.plant[0], 0.05, LAYOUT.plant[2]);
   site.add(plant);
 
   // the neighbour's window, lit warm with a dark frame, so it reads as "someone is there"
   const win = new Mesh(new PlaneGeometry(1.4, 1.2), M.window);
-  win.position.set(n.house.x0 + 0.29, n.window[1], n.window[2]);
+  win.position.set(n.house.x0 + 0.25, n.window[1], n.window[2]);
   win.rotation.y = -Math.PI / 2;
   site.add(win);
-  addMerged(site, M.frame, [
-    slab(n.house.x0 + 0.24, n.house.x0 + 0.3, n.window[1] - 0.66, n.window[1] - 0.6, n.window[2] - 0.76, n.window[2] + 0.76),
-    slab(n.house.x0 + 0.24, n.house.x0 + 0.3, n.window[1] + 0.6, n.window[1] + 0.66, n.window[2] - 0.76, n.window[2] + 0.76),
-    slab(n.house.x0 + 0.24, n.house.x0 + 0.3, n.window[1] - 0.66, n.window[1] + 0.66, n.window[2] - 0.76, n.window[2] - 0.7),
-    slab(n.house.x0 + 0.24, n.house.x0 + 0.3, n.window[1] - 0.66, n.window[1] + 0.66, n.window[2] + 0.7, n.window[2] + 0.76),
-  ]);
 
   // the privacy screen: a teak panel of vertical battens on a dark hinge, with a bronze lever
   const {screen: s} = LAYOUT;

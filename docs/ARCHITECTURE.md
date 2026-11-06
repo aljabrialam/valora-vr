@@ -67,7 +67,10 @@ A ray pinch is used deliberately: it works with Quest hand tracking, with contro
 - One directional light is the sun, with a 2048 shadow map fitted to the model.
 - The dome and image-based light are IWSDK gradient components set in the scene file.
 - Beams are thin open cylinders; labels and the level card are canvas textures with tone mapping off, so text stays crisp.
-- Materials are matte basswood, card and teak to read as an architect's model.
+- The static house is authored in Blender by script (`art/blender/house.py`): board-formed concrete, oak and deck boards, stone paving, pool coping, the reading corner (armchair, rug, lamp, bookshelf), garden walls with caps and wall lights, and the neighbour's house. It reads `art/layout.json`, which `npm run export-layout` (scripts/export-layout.ts) writes from `src/sim/world.ts`, so every wall the player sees is the box the watchers test against.
+- Cycles bakes two 2048 atlases: colour (procedural materials flattened, with part of the occlusion folded in so corners stay grounded in direct sun) and ambient occlusion (glTF occlusion texture). The sun is not baked: it moves between levels and the screen and overhang move with the player's hands, so it stays a real-time light with shadows.
+- Code keeps only what moves, glows, is see-through or tiles: lawn, water, glass, the ghost roof, the screen, the overhang, the neighbour's lit window, beams and labels.
+- Rebuild the house: `npm run export-layout && /path/to/blender -b -P art/blender/house.py` (or Python with the `bpy` package). Output: `public/models/valora-house.glb`.
 
 ## 7. Build and hosting
 
