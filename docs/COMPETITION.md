@@ -30,6 +30,28 @@ Sources: the official Devpost overview and the [official rules](https://start-de
 | Video under 3 minutes, from a Quest, XR Simulator or equivalent emulator; show real gameplay, don't rely on AI-generated video | Emulator capture of the real build, labelled |
 | Judging: Stage One pass/fail viability; Stage Two four criteria at 25% each; at least 60 fps on Quest hardware, solid and bug-free | Measure on a borrowed Quest |
 
+## From the full official rules text (read 6 Nov 2026): what changes for us
+
+**Compliance risks to resolve**
+
+| Rule | Risk for us | Action |
+|---|---|---|
+| "Projects may not mention or depict any identifiable person other than Entrants." | The VaLora name story names the designer's wife, who is not an entrant | Decide: add her to the team as an entrant, or keep the VaLora name and leave the story out of the game and the entry materials (README, video, description) |
+| Entrants "may not be under any legal or contractual obligation that would prohibit their participation" | Employment agreements sometimes claim side-project IP | Check the employment contract's IP and outside-work clauses |
+| No corporate logos, brand names or recognizable branded products | VaLora's own logo is ours; avoid real brands in the scene (cars, furniture) | Keep the model generic |
+| Sponsor may re-assign Track and Division at its discretion | Lowers the risk of picking the wrong division | Still ask on the forum |
+
+**What the judging criteria reward (beyond the overview)**
+
+| Criterion wording | Our response |
+|---|---|
+| Innovation: "uniquely leverage Meta device capabilities (e.g. spatial depth, hands-first design, gaze…) to drive repeat usage" | Hands-first, spatial watcher views; promote the daily-sun challenge from stretch goal to core |
+| Experience: "intuitive navigation, clear onboarding, and a habit-forming purpose" | Hand-in-the-sunbeam onboarding; daily sun gives the habit |
+| Experience: "FoV-aware design… keep essential UI and interactions within a comfortable, narrower FoV" | Keep the level card, labels and handles inside the Meta VR Glasses view (about 37° left/right, 25° up, 43° down); test with the `metaVRGlasses` emulator profile |
+| Technical: "gaze interactions… hand tracking… FoV-aware design"; min 60 fps; solid and bug-free | Ray pinch already works with gaze + pinch; add a glasses-profile test; measure fps on Quest |
+| Passthrough "should be purposeful… not a scene that plays the same with passthrough off" | We do not use passthrough; nothing to lose |
+| Polish: "Lead with the story and what makes your project distinct. Don't lean on AI-generated video" | Video opens on the seat view and the two-watchers idea; real emulator footage |
+
 ## Prizes we are aiming at
 
 | Prize | Why |

@@ -18,6 +18,11 @@ gantt
 
 Freeze the submitted build on the evening of 18 November (Singapore time).
 
+**Changes after reading the full rules (6 Nov)**
+- Daily-sun challenge moves from stretch goal to core (judges reward repeat usage and habit).
+- FoV-aware layout: everything essential inside the narrow Meta VR Glasses view; add a `metaVRGlasses` emulator test.
+- Resolve the "identifiable person" rule for the VaLora name story before any entry material mentions it.
+
 **Known follow-ups from the prototype**
 - Scale up the model (about 1:16) and put the handle on a longer lever: at 1:25 the 15° detents are only about 2 cm apart, too fine for real hands.
 - Tighten Level 1 (3 solutions) once the other tools exist.
