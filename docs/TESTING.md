@@ -11,6 +11,7 @@ Emulator results and headset results are reported separately. Emulation cannot e
 | Production build | Node | builds | `npm run build` |
 | Rules match the picture (start and solved states of Level 2) | Desktop Chrome, software WebGL | match | screenshots in `docs/screens/` |
 | Simulated right hand pinches the handle and swings the screen to a solution | IWER emulator, Meta Quest 3 profile, hand input | pass | `npm run e2e:hand` |
+| Hands-only playthrough: pinch Tiki three times through the tutorial, swing the screen, solve Level 1, Tiki celebrates | IWER emulator, Meta Quest 3 profile, hand input | pass | `npm run e2e:play` |
 | Hand tracking on a real Quest 3 or 3S | Headset | not yet tested | [QUEST-TEST-CHECKLIST](QUEST-TEST-CHECKLIST.md) |
 | Frame rate on Quest 3 | Headset | not yet measured | [PERFORMANCE](PERFORMANCE.md) |
 
@@ -44,7 +45,11 @@ selectstart → select → selectend
 screenDeg -90 → -75 → -60 → -30 → 30   solved true
 ```
 
-## 3. Not tested yet
+## 3. Bug found by the playthrough
+
+The labels and Tiki's speech card are three.js sprites. IWSDK's hand ray pointer raycasts every object, and a sprite throws ("Raycaster.camera needs to be set") without a camera, which stopped input processing and blanked the XR view. Sprites are display only, so their `raycast` is now a no-op; Tiki's pinch goes to an invisible hit sphere. The playthrough passed after the fix.
+
+## 4. Not tested yet
 
 - Real hand tracking: pinch reliability on the handle, drift, jitter at detents.
 - Seated reach and arm fatigue at the desk height and distance.

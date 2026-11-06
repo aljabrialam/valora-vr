@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "prove": "node scripts/prove.ts",
     "e2e:hand": "bash scripts/e2e-hand.sh",
+    "e2e:play": "node scripts/e2e-play.mjs",
     "check": "npm run typecheck && npm run prove"
   },
   "dependencies": {

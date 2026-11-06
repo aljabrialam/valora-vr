@@ -6,10 +6,13 @@ VaLora carries one name inside it: **Lora**, the designer's wife. Her initial, t
 ## Game title
 **VaLora: Two Watchers.** Tagline: *Let the sun in. Keep the neighbour out.*
 
-## Art direction: an architect's model at golden hour
-- The house as a hand-made model: basswood, grey card and teak on a dark walnut desk.
+## Art direction: the VaLora house as a living diorama
+- The same materials as the VaLora website (procedural, no image files): board-formed concrete, teak battens, timber deck, stone paving, a reflecting pool, palms and tropical planting, on a dark stone plinth on a walnut desk.
 - One warm late-afternoon sun, crisp shadows, visible sunbeams and dust in the light (*planned*).
 - A calm studio around the desk instead of an empty void (*planned*).
+
+## Tiki
+An original house gecko: warm sand skin, a paler belly, soft brown spots, big round eyes with a highlight, a little blush. Built from simple shapes so it reads at arm's length and stays cheap to render.
 
 ## Colour
 | Role | Colour |

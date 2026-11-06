@@ -13,7 +13,7 @@ import {
   SpriteMaterial,
   SRGBColorSpace,
   Vector3,
-} from 'three';
+} from '@iwsdk/core';
 import type {Look} from './sim/world.ts';
 import type {V3} from './sim/geom.ts';
 
@@ -130,6 +130,8 @@ export class Label {
     this.sprite = new Sprite(new SpriteMaterial({map: this.tex, transparent: true, depthTest: false, toneMapped: false}));
     this.sprite.scale.set(widthM, widthM / 4, 1);
     this.sprite.renderOrder = 10;
+    // display only: IWSDK's ray pointer cannot raycast sprites (it throws without a camera)
+    this.sprite.raycast = () => {};
   }
 
   set(text: string, icon: Icon, good: boolean) {

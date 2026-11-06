@@ -5,8 +5,9 @@
 | To | Do this |
 |---|---|
 | Enter | Select **Enter VR** on the page, then put the controllers down |
+| Continue, next level | Pinch Tiki the gecko on the front left of the desk |
 | Swing the privacy screen | Point at the bronze handle on the screen's end, pinch, move your hand around the hinge, let go |
-| Slide the overhang | Pinch the handle on its edge and pull or push (*planned*) |
+| Slide the overhang (Level 3) | Pinch the second bronze handle above the glass and pull it towards you |
 | Move the sun | Pinch the sun and drag it along its arc (*planned*) |
 | See through a watcher's eyes | Pinch and hold the neighbour's window or the sun (*planned*) |
 | Undo, reset, pause | Turn your left palm up to open the wrist menu, pinch a button (*planned*) |

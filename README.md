@@ -17,7 +17,7 @@
 
 **VaLora: Two Watchers is a seated, hands-only VR puzzle game about designing a house.** A small architectural model of the VaLora courtyard house sits on the desk in front of you. You pinch and swing a privacy screen, slide the roof overhang and drag the sun across the sky until the reading chair is private, the garden gets its morning sun and the chair is shaded in the afternoon. Then you sit in that chair, at full size, and see the room you designed.
 
-> **Status (6 Nov 2026): working prototype.** One screen, one neighbour, one sun and three levels, with the core interaction verified end to end with a simulated hand in Meta's emulator. Everything below marked *planned* is on the [milestone plan](docs/ROADMAP.md).
+> **Status (6 Nov 2026): playable alpha, live at [valora-vr.vercel.app](https://valora-vr.vercel.app).** Three levels, Tiki the gecko guide, the VaLora look (board-formed concrete, teak, deck, pool, palms), screen and overhang handles, and a hands-only playthrough verified in Meta's emulator. Items marked *planned* are on the [roadmap](docs/ROADMAP.md).
 
 **In a hurry?** [30-second version](#the-30-second-version) → [competition checklist](#competition-checklist) → [how it plays](#how-it-plays) → [how it works](#how-it-works) → [for judges](#for-judges-try-it-in-two-minutes) → [results](#results) → [documentation](#documentation)
 
@@ -30,6 +30,7 @@
 | **What** | A short puzzle game played with your hands, seated, in VR. You shape a courtyard house so two watchers see only what they should |
 | **The two watchers** | **The Sun** should see some places (the plant in the morning) and not others (the reading chair in the afternoon). **The Neighbour** must never see the reading chair |
 | **The idea** | Sunlight and privacy are the same test: *can something see this spot?* The sun is just a watcher very far away. We could not find another game that treats them as one puzzle |
+| **Your guide** | **Tiki**, a house gecko who lives on the courtyard walls and knows where every shadow falls. Pinch Tiki to continue; Tiki looks at whatever it is talking about |
 | **What you do** | Pinch and swing the privacy screen, slide the roof overhang in and out, drag the sun across the sky, look through either watcher's eyes, then sit in the chair |
 | **Session** | About 5 minutes: hand-in-the-sunbeam tutorial, three levels, the seat view |
 | **Platform** | WebXR in Quest Browser, built with Meta's Immersive Web SDK (IWSDK). Designed for Quest 3/3S hands, and for look-and-pinch on Meta VR Glasses |
@@ -48,7 +49,7 @@
 | Seated, two-foot radius | A desk-top model within reach; watcher views and the seat view are fixed viewpoints with a fade, no walking |
 | Easy in and out, satisfying in under 10 minutes | Opens from a link, about 5 minutes for the whole game, pause and resume at any time |
 | Original, not a wrapper | All gameplay, geometry and checks are written here; no external AI or web service |
-| Playable build, judge access | Static WebXR build hosted on Vercel (*planned*: stable judge URL) |
+| Playable build, judge access | [valora-vr.vercel.app](https://valora-vr.vercel.app), static WebXR on Vercel |
 | Video under 3 minutes | Recorded from the real build in the emulator (*planned*, [script](docs/VIDEO.md)) |
 
 **Judging criteria** (four, equally weighted)
@@ -59,6 +60,15 @@
 | Experience design | Hand-in-the-sunbeam onboarding, large snapping handles, cause-and-effect beams, the seat view, comfort-first transitions |
 | Technical implementation | One pure geometry engine shared by the game and the solver, solvability proof in CI, emulator hand tests ([ARCHITECTURE](docs/ARCHITECTURE.md)) |
 | Polish and presentation | Architectural-model art direction, synthesised sound, 72 fps target on Quest 3 ([PERFORMANCE](docs/PERFORMANCE.md)) |
+
+## See it
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screens/valora-look-level1-tiki.png" alt="Level 1 with Tiki the gecko guide"><br><sub><b>Level 1.</b> Tiki introduces the two watchers; the red line is the neighbour's view.</sub></td>
+<td width="50%"><img src="docs/screens/valora-look-level3-solved.png" alt="Level 3 solved"><br><sub><b>Level 3 solved.</b> Screen at 30°, overhang out: private, sunny garden, shaded chair.</sub></td>
+</tr>
+</table>
 
 ## How it plays
 
@@ -98,7 +108,7 @@ Both watchers run the same test: a straight segment from the watcher to the targ
 
 ## For judges: try it in two minutes
 
-*Planned once the build is hosted.* Open the judge link in Quest Browser on Quest 3 or 3S, select **Enter VR**, put the controllers down and follow the sunbeam. Controls are in [CONTROLS](docs/CONTROLS.md).
+Open **[valora-vr.vercel.app](https://valora-vr.vercel.app)** in Quest Browser on Quest 3 or 3S, select **Enter VR**, put the controllers down and pinch Tiki the gecko to begin. Controls are in [CONTROLS](docs/CONTROLS.md).
 
 ## Results
 
@@ -106,7 +116,7 @@ Both watchers run the same test: a straight segment from the watcher to the targ
 |---|---|---|
 | Levels solvable, none starts solved | 3/3 | `npm run prove` |
 | Type check | clean | `npm run typecheck` |
-| Simulated hand swings the screen and solves Level 1 (IWER, Quest 3 profile) | pass: −90° → −75° → −60° → −30° → 30°, solved | `npm run e2e:hand` |
+| Hands-only playthrough: pinch Tiki through the tutorial, swing the screen, solve Level 1 (IWER, Quest 3 profile) | pass: hello → watchers → beam → swing; −90° → −75° → −60° → −45° → −30° → 30°, solved | `npm run e2e:play` |
 | Real Quest 3 hand tracking, comfort, readability, frame rate | not yet tested | [QUEST-TEST-CHECKLIST](docs/QUEST-TEST-CHECKLIST.md) |
 
 Emulator results are reported separately from headset results. The emulator cannot establish real hand-tracking reliability, seated reach, fatigue, stereo readability, comfort or Quest performance.

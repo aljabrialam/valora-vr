@@ -23,6 +23,12 @@ Freeze the submitted build on the evening of 18 November (Singapore time).
 - FoV-aware layout: everything essential inside the narrow Meta VR Glasses view; add a `metaVRGlasses` emulator test.
 - Resolve the "identifiable person" rule for the VaLora name story before any entry material mentions it.
 
+**Done 6 Nov (evening)**
+- VaLora look ported; model at 1:18 with a lever arm on the screen (detents about 5 cm apart at the grip).
+- Tiki the gecko guide and the tutorial script; pinch Tiki to continue and to change level.
+- Overhang handle for Level 3; visible suns with their times; sounds for snaps, new level and solved.
+- Live at valora-vr.vercel.app; hands-only playthrough passes in the emulator.
+
 **Known follow-ups from the prototype**
 - Scale up the model (about 1:16) and put the handle on a longer lever: at 1:25 the 15° detents are only about 2 cm apart, too fine for real hands.
 - Tighten Level 1 (3 solutions) once the other tools exist.

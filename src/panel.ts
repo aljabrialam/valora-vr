@@ -1,7 +1,7 @@
 // The level card that stands at the back of the desk: title, brief and one line per rule
 // with a pass or fail symbol. Drawn to a canvas so it stays sharp and cheap to render.
 
-import {CanvasTexture, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace} from 'three';
+import {CanvasTexture, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace} from '@iwsdk/core';
 import {BRONZE, drawIcon, FAIL, INK, PASS, roundRect} from './feedback.ts';
 import type {Level, RuleResult} from './sim/levels.ts';
 
