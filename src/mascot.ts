@@ -49,6 +49,8 @@ export class Gecko {
   private talkUntil = 0;
   private wave = 0;
   hit: Mesh; // generous invisible pinch target
+  /** False on a flat screen, where the page overlay shows Tiki's words instead. */
+  bubbleShown = true;
 
   constructor() {
     const g = this.group;
@@ -183,7 +185,7 @@ export class Gecko {
     }
     this.tex.needsUpdate = true;
     this.talkUntil = now + 1.2;
-    this.bubble.visible = true;
+    this.bubble.visible = this.bubbleShown;
   }
 
   hide() {

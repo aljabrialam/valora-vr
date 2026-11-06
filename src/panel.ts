@@ -61,7 +61,7 @@ export class LevelCard {
 
     g.fillStyle = solved ? PASS : '#6b6a66';
     g.font = '500 24px Inter, -apple-system, sans-serif';
-    g.fillText(solved ? 'Solved. Pinch Next to sit in the chair.' : 'Illustrative sunlight and visibility checks.', 56, H - 48);
+    g.fillText(solved ? 'Solved. Pinch Tiki for the next level.' : 'Illustrative sunlight and visibility checks.', 56, H - 48);
     this.tex.needsUpdate = true;
   }
 }

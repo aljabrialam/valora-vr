@@ -1,0 +1,88 @@
+// Readable text for players on a computer or phone. In the headset the level card and Tiki's speech
+// bubble live in the room; on a flat screen they are too small to read, so this page overlay
+// carries the same words at normal reading size. Hidden while an immersive session is running.
+// Styling follows Apple's HIG: system font, 17 px body, translucent material, quiet colour.
+
+import {animate} from 'motion';
+import type {Level, RuleResult} from './sim/levels.ts';
+
+const CSS = `
+.vh{position:fixed;inset:0;pointer-events:none;font:17px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#1d1d1f;-webkit-font-smoothing:antialiased;z-index:5}
+.vh[hidden]{display:none}
+.vh-glass{background:rgba(250,249,246,.86);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);border:1px solid rgba(0,0,0,.08);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.vh-card{position:absolute;top:16px;left:16px;width:min(340px,calc(100vw - 32px));padding:16px 18px}
+.vh-over{font-size:12px;font-weight:600;letter-spacing:.06em;color:#8a6a43;text-transform:uppercase}
+.vh-title{font:600 22px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;margin:2px 0 6px}
+.vh-brief{font-size:15px;color:#4a4945;margin:0 0 10px}
+.vh-rules{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.vh-rule{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;font-size:15px}
+.vh-rule svg{width:22px;height:22px}
+.vh-state{font-size:12px;font-weight:600;letter-spacing:.04em}
+.vh-pass{color:#2f6f4f}.vh-fail{color:#a2452e}
+.vh-note{font-size:12px;color:#6b6a66;margin-top:10px}
+.vh-tiki{position:absolute;left:0;right:0;margin:0 auto;bottom:20px;width:min(560px,calc(100vw - 32px));padding:14px 18px}
+.vh-name{font-size:12px;font-weight:600;letter-spacing:.06em;color:#8a6a43;text-transform:uppercase}
+.vh-say{font-size:17px;margin:2px 0 0}
+.vh-hint{font-size:15px;font-weight:600;color:#8a6a43;margin-top:6px}
+.vh-hint:empty{display:none}
+@media (max-width:600px){.vh-card{top:8px;left:8px;width:calc(100vw - 16px);padding:12px 14px}.vh-brief{display:none}.vh-tiki{bottom:10px}}
+@media (prefers-reduced-transparency:reduce){.vh-glass{background:#faf9f6;-webkit-backdrop-filter:none;backdrop-filter:none}}
+`;
+
+const ICON = {
+  pass: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#2f6f4f"/><path d="M7.5 12.4l3 3 6-6.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  fail: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="#a2452e" stroke-width="2"/><path d="M9 9l6 6M15 9l-6 6" stroke="#a2452e" stroke-width="2" stroke-linecap="round"/></svg>',
+};
+
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]!);
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+export class Hud {
+  private root = document.createElement('div');
+  private card = document.createElement('section');
+  private tiki = document.createElement('section');
+  private lastSay = '';
+  private lastSolved = false;
+
+  constructor() {
+    const style = document.createElement('style');
+    style.textContent = CSS;
+    document.head.append(style);
+    this.root.className = 'vh';
+    this.card.className = 'vh-glass vh-card';
+    this.card.setAttribute('aria-label', 'Level');
+    this.tiki.className = 'vh-glass vh-tiki';
+    this.tiki.setAttribute('role', 'status');
+    this.tiki.setAttribute('aria-live', 'polite');
+    this.root.append(this.card, this.tiki);
+    document.body.append(this.root);
+  }
+
+  /** Show or hide the overlay (hidden in the headset). */
+  set visible(v: boolean) {
+    this.root.hidden = !v;
+  }
+
+  level(index: number, level: Level, results: RuleResult[], solved: boolean) {
+    const rules = results
+      .map((r) => `<li class="vh-rule">${r.pass ? ICON.pass : ICON.fail}<span>${esc(r.rule.text)}</span><span class="vh-state ${r.pass ? 'vh-pass' : 'vh-fail'}">${r.pass ? 'DONE' : 'NOT YET'}</span></li>`)
+      .join('');
+    this.card.innerHTML = `<div class="vh-over">Level ${index + 1} of 3</div><h1 class="vh-title">${esc(level.title)}</h1><p class="vh-brief">${esc(level.brief)}</p><ul class="vh-rules">${rules}</ul><div class="vh-note">${solved ? '<span class="vh-pass">Solved.</span> Click Tiki for the next level.' : 'Illustrative sunlight and visibility checks.'}</div>`;
+    if (solved && !this.lastSolved && !reduced()) animate(this.card, {scale: [1, 1.03, 1]}, {duration: 0.45, ease: 'easeOut'});
+    this.lastSolved = solved;
+  }
+
+  say(text: string, hint: string) {
+    if (!text) {
+      this.tiki.hidden = true;
+      this.lastSay = '';
+      return;
+    }
+    this.tiki.hidden = false;
+    if (text === this.lastSay) return;
+    this.lastSay = text;
+    const extra = hint && !text.includes(hint) ? hint : ''; // skip a hint the sentence already says
+    this.tiki.innerHTML = `<div class="vh-name">Tiki</div><p class="vh-say">${esc(text)}</p><div class="vh-hint">${esc(extra)}</div>`;
+    if (!reduced()) animate(this.tiki, {opacity: [0, 1], y: [8, 0]}, {duration: 0.3, ease: 'easeOut'});
+  }
+}

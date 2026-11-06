@@ -30,6 +30,7 @@ import {buildModel, DESK, LEVER, SCALE, setOverhang, WIND} from './model.ts';
 import {Motes} from './motes.ts';
 import {loadHouse, loadPlant, loadRoom} from './look/assets.ts';
 import {Beam, Label} from './feedback.ts';
+import {Hud} from './hud.ts';
 import {LevelCard} from './panel.ts';
 import {Gecko} from './mascot.ts';
 import {LAYOUT, screenAngles, sunAt, type Design} from './sim/world.ts';
@@ -88,6 +89,7 @@ for (const l of [seatLabel, plantLabel]) {
 seatLabel.sprite.position.set(LAYOUT.seat[0], LAYOUT.seat[1] + 2.9, LAYOUT.seat[2]);
 plantLabel.sprite.position.set(LAYOUT.plant[0], LAYOUT.plant[1] + 1.9, LAYOUT.plant[2]);
 
+const hud = new Hud();
 const card = new LevelCard(0.42);
 card.mesh.position.set(0, 0.36, -0.5);
 card.mesh.rotation.x = -10 * D;
@@ -140,6 +142,7 @@ function refresh() {
   const wasSolved = solved;
   solved = res.solved;
   card.draw(levelIndex, level, res.results, solved);
+  hud.level(levelIndex, level, res.results, solved);
 
   const used = new Set<string>();
   for (const r of res.results) {
@@ -229,11 +232,24 @@ class Tutorial {
     const st = this.steps[this.i];
     this.enteredAt = now;
     console.info('[VR] step', st?.id ?? 'end');
-    if (!st) return tiki.hide();
-    tiki.say(forDevice(st.say), forDevice(st.hint ?? (st.until === 'tap' ? 'Pinch Tiki to continue' : '')), now);
+    if (!st) {
+      hud.say('', '');
+      return tiki.hide();
+    }
+    this.sayNow(now);
     tiki.look(lookAt(st.look));
     if (st.celebrate) tiki.celebrate();
     if (st.hop) tiki.hopTo(st.hop === 'home' ? TIKI_HOME : new Vector3(st.hop[0], st.hop[1], st.hop[2]));
+  }
+  /** Tiki's current line, worded for the device in use, in the room and in the page overlay. */
+  sayNow(now: number) {
+    const st = this.steps[this.i];
+    if (!st) return;
+    const text = forDevice(st.say);
+    const hint = forDevice(st.hint ?? (st.until === 'tap' ? 'Pinch Tiki to continue' : ''));
+    setFlatView(!inXR());
+    tiki.say(text, hint, now);
+    hud.say(text, hint);
   }
   next(now: number) {
     const st = this.steps[this.i];
@@ -425,6 +441,15 @@ const endFlat = () => {
 };
 window.addEventListener('pointerup', endFlat, true);
 window.addEventListener('pointercancel', endFlat, true);
+
+/** On a flat screen the page overlay carries the words; in the headset the room does. */
+function setFlatView(flatView: boolean) {
+  hud.visible = flatView;
+  card.mesh.visible = !flatView;
+  tiki.bubbleShown = !flatView;
+}
+world.renderer.xr.addEventListener('sessionstart', () => tutorial.sayNow(0));
+world.renderer.xr.addEventListener('sessionend', () => tutorial.sayNow(0));
 
 /** Tiki's words for the device in use: pinch in a headset, click or drag on a screen. */
 function forDevice(text: string): string {
