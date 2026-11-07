@@ -23,9 +23,9 @@ import {BRONZE, INK, roundRect} from './feedback.ts';
 
 // Tiki is a glazed ceramic figurine, in keeping with the architect's model: a celadon glaze with a
 // clear coat, bronze-glaze spots, small glossy bead eyes. One smooth body, not a string of balls.
-const skin = new MeshPhysicalMaterial({color: new Color('#bfcbb6'), roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08});
-const belly = new MeshPhysicalMaterial({color: new Color('#e4e1d4'), roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.1});
-const spots = new MeshPhysicalMaterial({color: new Color('#8a6a43'), roughness: 0.3, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.1});
+const skin = new MeshPhysicalMaterial({color: new Color('#6cc04a'), roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08});
+const belly = new MeshPhysicalMaterial({color: new Color('#f6e27a'), roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.1});
+const spots = new MeshPhysicalMaterial({color: new Color('#f08a2b'), roughness: 0.35, metalness: 0.0, clearcoat: 1, clearcoatRoughness: 0.1});
 // low environment reflection: a bright studio rim on the beads read as cartoon eye whites
 const eyeBead = new MeshPhysicalMaterial({color: new Color('#16130f'), roughness: 0.15, envMapIntensity: 0.25});
 

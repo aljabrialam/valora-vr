@@ -120,7 +120,7 @@ function buildMaterials() {
     fabric: std({color: '#d9d2c3', roughness: 0.95}),
     frame: std({color: '#2b2a28', roughness: 0.5, metalness: 0.3}),
     glass: new MeshPhysicalMaterial({color: '#dbe8ea', roughness: 0.02, metalness: 0, transparent: true, opacity: 0.2, depthWrite: false, clearcoat: 1, envMapIntensity: 1.6}),
-    water: new MeshPhysicalMaterial({color: '#a9c3c9', roughness: 0.18, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.82, envMapIntensity: 1.2}), // frosted acrylic sheet
+    water: waterMaterial(),
     poolIn: std({color: '#2f4a4a', roughness: 0.5}),
     window: std({color: '#f7dfae', emissive: new Color('#f0c674'), emissiveIntensity: 1.4, roughness: 0.4}),
     pot: std({color: '#b9784f', roughness: 0.8}),
@@ -151,27 +151,8 @@ export function buildModel(): Model {
   desk.name = 'desk';
   desk.position.set(0, DESK.y, DESK.z);
 
-  // Gallery presentation: the model sits on an ebonised walnut top over a charcoal pedestal that
-  // stands on the floor, like a maquette in an exhibition. Seated players lean over it.
-  const top = new Mesh(new RoundedBoxGeometry(DESK.w - 0.04, 0.045, DESK.d - 0.02, 3, 0.008), M.plinthTop);
-  top.position.y = -0.0225;
-  top.receiveShadow = true;
-  top.castShadow = true;
-  desk.add(top);
-  const pedestal = new Mesh(new BoxGeometry(DESK.w - 0.14, DESK.y - 0.045, DESK.d - 0.12), M.pedestal);
-  pedestal.position.y = -0.045 - (DESK.y - 0.045) / 2;
-  pedestal.receiveShadow = true;
-  desk.add(pedestal);
-  // no floor mesh: the pedestal stands in the dark of the studio dome, grounded by a soft shadow
-  const contact = new Mesh(new PlaneGeometry(DESK.w + 0.5, DESK.d + 0.5), new MeshBasicMaterial({map: radial(), transparent: true, depthWrite: false, opacity: 0.7, toneMapped: false}));
-  contact.rotation.x = -Math.PI / 2;
-  contact.position.y = -DESK.y + 0.002;
-  desk.add(contact);
-  // the board the site is mounted on: cork, with a thin white card edge like a real study model
-  const board = new Mesh(new BoxGeometry(1.372, 0.006, 0.812), M.edge);
-  board.position.y = -0.003 + 0.0005;
-  board.receiveShadow = true;
-  desk.add(board);
+  // Sunny floating island: the island itself is modelled in Blender (art/blender/island.py) and
+  // loaded into the site group by src/look/assets.ts. Nothing else stands under the model.
 
   const site = new Group();
   site.name = 'site';
@@ -185,11 +166,11 @@ export function buildModel(): Model {
   // The static house (room, deck, paving, pool coping, walls, furniture, neighbour) is modelled and
   // baked in Blender (art/blender/house.py) and loaded by src/look/assets.ts into this group.
   // Code keeps only what moves, glows, is see-through, or is tiled: lawn, water, glass, ghost roof.
-  addMerged(site, M.cork, [slab(ground.x0, ground.x1, -0.06, 0, ground.z0, ground.z1)], false);
+  void ground;
   const pool = {x0: -4.3, x1: -1.6, z0: 0.3, z1: 2.9};
   const water = new Mesh(new PlaneGeometry(pool.x1 - pool.x0, pool.z1 - pool.z0), M.water);
   water.rotation.x = -Math.PI / 2;
-  water.position.set((pool.x0 + pool.x1) / 2, 0.0, (pool.z0 + pool.z1) / 2);
+  water.position.set((pool.x0 + pool.x1) / 2, 0.06, (pool.z0 + pool.z1) / 2); // above the paving bed
   water.receiveShadow = true;
   site.add(water);
   let roof: Mesh | null = null;
@@ -254,6 +235,36 @@ export function buildModel(): Model {
   site.add(overhang);
 
   return {desk, site, screen, screenPanel: panel, lever, overhang, roof, marks: {seat: seatMark, plant, window: win}};
+}
+
+/**
+ * Pool water: bright turquoise, glossy, with a moving ripple in the normals and sparkles where the
+ * ripple crests catch the light. Driven by the shared WIND clock.
+ */
+function waterMaterial(): MeshPhysicalMaterial {
+  const m = new MeshPhysicalMaterial({color: '#3cc6d6', roughness: 0.08, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, transparent: true, opacity: 0.88, envMapIntensity: 1.4});
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uWind = WIND;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vWUv;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvWUv = position.xy;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uWind;\nvarying vec2 vWUv;')
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+        vec2 q = vWUv * 2.6;
+        float w1 = sin(q.x * 1.7 + uWind * 1.6) + sin(q.y * 2.3 - uWind * 1.2);
+        float w2 = sin((q.x + q.y) * 3.1 + uWind * 2.2);
+        normal = normalize(normal + vec3(cos(q.x * 1.7 + uWind * 1.6) * 0.12 + cos((q.x + q.y) * 3.1 + uWind * 2.2) * 0.06, cos(q.y * 2.3 - uWind * 1.2) * 0.12, 0.0));`,
+      )
+      .replace(
+        '#include <dithering_fragment>',
+        `#include <dithering_fragment>
+        float crest = smoothstep(1.55, 1.95, sin(vWUv.x * 7.0 + uWind * 2.0) + sin(vWUv.y * 9.0 - uWind * 1.7) + sin((vWUv.x - vWUv.y) * 5.0 + uWind));
+        gl_FragColor.rgb += vec3(0.9, 1.0, 1.0) * crest * 0.55;`,
+      );
+  };
+  m.customProgramCacheKey = () => 'pool-water';
+  return m;
 }
 
 /** A radial gradient, dark in the middle, for contact shadows. */
@@ -370,6 +381,14 @@ export const GARDEN: [string, number, number, number][] = [
   // outside: palms and clumps on the board, clear of the neighbour's sightline and the sun paths
   ['palm-a', -7.6, -7.4, 6.2],
   ['palm-b', -7.8, 4.6, 5.6],
+  ['palm-b', -6.6, -1.2, 5.0],
+  ['palm-a', 14.0, 4.4, 5.4],
+  ['palm-b', 13.6, -6.8, 6.0],
+  ['shrub-c', -7.4, 2.6, 1.1],
+  ['shrub-c', 6.2, -6.0, 0.9],
+  ['shrub-b', 7.0, 4.6, 0.8],
+  ['shrub-c', 12.8, 2.2, 0.9],
+  ['shrub-b', -5.6, -8.0, 0.8],
   ['shrub-a', -8, -2, 1.0],
   ['shrub-c', -3, -7.8, 0.9],
   ['shrub-a', 6.5, -7.9, 1.0],

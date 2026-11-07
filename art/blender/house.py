@@ -192,23 +192,29 @@ def basswood(base):
     return f
 
 
-# Architect's study model: warm white card for built work, basswood for timber, grey card for
-# paving, dark card for frames, frosted acrylic for water, a walnut accent for the furniture.
+# Sunny floating island: warm white plaster, honey timber, sandstone paving, terracotta caps,
+# a turquoise pool, a coral neighbour. Colours are given as sRGB hex and converted to linear.
+def S(h):
+    h = h.lstrip('#')
+    return tuple(((int(h[i:i + 2], 16) / 255) ** 2.2) for i in (0, 2, 4))
+
+
 MATS = {
-    'concrete': node_mat('concrete', card((0.86, 0.84, 0.80))),
-    'roof': node_mat('roof', card((0.86, 0.84, 0.80))),
-    'oak': node_mat('oak', basswood((0.80, 0.68, 0.50))),
-    'deck': node_mat('deck', basswood((0.72, 0.58, 0.40))),
-    'stone': node_mat('stone', card((0.70, 0.69, 0.66), 0.04)),
-    'plaster': node_mat('plaster', card((0.80, 0.80, 0.78))),
-    'frame': node_mat('frame', flat((0.11, 0.11, 0.11), 0.6)),
-    'linen': node_mat('linen', card((0.90, 0.87, 0.82))),
-    'teak': node_mat('teak', flat((0.30, 0.19, 0.12), 0.45)),
+    'concrete': node_mat('concrete', card(S('#f4ece0'), 0.03)),
+    'roof': node_mat('roof', card(S('#f4ece0'))),
+    'oak': node_mat('oak', basswood(S('#d9a066'))),
+    'deck': node_mat('deck', basswood(S('#c98a4b'))),
+    'stone': node_mat('stone', card(S('#e8d6b4'), 0.05)),
+    'cap': node_mat('cap', card(S('#c8643c'), 0.06)),
+    'plaster': node_mat('plaster', card(S('#f2a98e'), 0.04)),
+    'frame': node_mat('frame', flat(S('#3b3a36'), 0.5)),
+    'linen': node_mat('linen', card(S('#fbf3e4'))),
+    'teak': node_mat('teak', flat(S('#9a5a2c'), 0.45)),
     'grass': node_mat('grass', grass),
-    'soil': node_mat('soil', card((0.40, 0.29, 0.19), 0.08)),
-    'pool': node_mat('pool', flat((0.55, 0.65, 0.69), 0.3)),
+    'soil': node_mat('soil', card(S('#6b4a2e'), 0.08)),
+    'pool': node_mat('pool', flat(S('#2fb7c9'), 0.3)),
     'book': node_mat('book', flat((1, 1, 1), 0.7)),
-    'brass': node_mat('brass', flat((0.62, 0.47, 0.26), 0.35, 0.8)),
+    'brass': node_mat('brass', flat(S('#d9a441'), 0.35, 0.8)),
 }
 
 # ---------------------------------------------------------------- geometry helpers
@@ -261,7 +267,7 @@ while x < R['x1'] - 0.1:
     x += 0.2
 for key in ('north wall', 'west wall', 'east wall'):
     b = BOX[key]
-    box(b['c'][0] - b['h'][0], b['c'][0] + b['h'][0], 0.0, b['c'][1] + b['h'][1], b['c'][2] - b['h'][2], b['c'][2] + b['h'][2], 'concrete', bevel=0.03, name=key)
+    box(b['c'][0] - b['h'][0], b['c'][0] + b['h'][0], 0.0, b['c'][1] + b['h'][1], b['c'][2] - b['h'][2], b['c'][2] + b['h'][2], 'concrete', bevel=0.08, name=key)
 rf = BOX['roof']
 box(rf['c'][0] - rf['h'][0], rf['c'][0] + rf['h'][0], rf['c'][1] - rf['h'][1], rf['c'][1] + rf['h'][1], rf['c'][2] - rf['h'][2], rf['c'][2] + rf['h'][2], 'roof', bevel=0.04, name='roof')
 
@@ -334,8 +340,8 @@ for key in ('east garden wall', 'south garden wall', 'west garden wall'):
     x0, x1 = b['c'][0] - b['h'][0], b['c'][0] + b['h'][0]
     z0, z1 = b['c'][2] - b['h'][2], b['c'][2] + b['h'][2]
     top = b['c'][1] + b['h'][1]
-    box(x0, x1, 0.0, top - 0.06, z0, z1, 'concrete', bevel=0.02, name=key)
-    box(x0 - 0.03, x1 + 0.03, top - 0.06, top, z0 - 0.03, z1 + 0.03, 'stone', bevel=0.012, name='cap')
+    box(x0, x1, 0.0, top - 0.06, z0, z1, 'concrete', bevel=0.06, name=key)
+    box(x0 - 0.06, x1 + 0.06, top - 0.1, top + 0.04, z0 - 0.06, z1 + 0.06, 'cap', bevel=0.03, name='cap')
 for lx in (-3.0, 0.0, 3.0):
     box(lx - 0.07, lx + 0.07, 1.6, 1.72, C['z1'] - 0.06, C['z1'], 'brass', bevel=0.01, name='wall-light')
 # a teak bench on the west side of the pool
@@ -346,8 +352,8 @@ nh = BOX['neighbour house']
 nx0, nx1 = nh['c'][0] - nh['h'][0], nh['c'][0] + nh['h'][0]
 nz0, nz1 = nh['c'][2] - nh['h'][2], nh['c'][2] + nh['h'][2]
 ny1 = nh['c'][1] + nh['h'][1]
-box(nx0, nx1, 0.0, ny1, nz0, nz1, 'plaster', bevel=0.03, name='neighbour')
-box(nx0 - 0.06, nx1 + 0.06, ny1, ny1 + 0.35, nz0 - 0.06, nz1 + 0.06, 'plaster', bevel=0.03, tint_c=(0.95, 0.95, 0.95), name='parapet')
+box(nx0, nx1, 0.0, ny1, nz0, nz1, 'plaster', bevel=0.1, name='neighbour')
+box(nx0 - 0.08, nx1 + 0.08, ny1, ny1 + 0.4, nz0 - 0.08, nz1 + 0.08, 'cap', bevel=0.04, name='parapet')
 box(nx0 + 0.15, nx1 - 0.15, ny1 + 0.02, ny1 + 0.36, nz0 + 0.15, nz1 - 0.15, 'concrete', bevel=0.0, name='roof-inner')
 wy, wz = N['window'][1], N['window'][2]
 # the watching window: dark frame and a stone sill (the glow is added by the game)

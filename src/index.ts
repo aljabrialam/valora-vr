@@ -21,7 +21,7 @@ import {
   Raycaster,
   RayInteractable,
   SphereGeometry,
-  SpotLight,
+  HemisphereLight,
   TorusGeometry,
   BoxGeometry,
   CylinderGeometry,
@@ -34,7 +34,8 @@ import {
 import projectOptions from 'virtual:iwsdk-project';
 import {buildModel, DESK, GARDEN, SCALE, setOverhang, WIND} from './model.ts';
 import {Motes} from './motes.ts';
-import {loadHouse, loadPlant, loadTrees} from './look/assets.ts';
+import {loadHouse, loadIsland, loadPlant, loadTrees} from './look/assets.ts';
+import {Clouds} from './clouds.ts';
 import {Beam, Label} from './feedback.ts';
 import {Hud} from './hud.ts';
 import {LevelCard} from './panel.ts';
@@ -63,12 +64,13 @@ const model = buildModel();
 model.screen.visible = false; // the old swinging screen: screens are now pieces from the tray
 const deskEntity = world.createTransformEntity(model.desk);
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
+loadIsland().then((i) => model.site.add(i)).catch((e) => console.warn('[VR] island', e));
 loadHouse().then((h) => model.site.add(h)).catch((e) => console.warn('[VR] house', e));
 loadTrees(GARDEN).then((t) => model.site.add(t)).catch((e) => console.warn('[VR] trees', e));
 const siteToWorld = (p: number[], out = new Vector3()) => model.site.localToWorld(out.set(p[0], p[1], p[2]));
 
 // ---------- light: the sun casts the shadows; a gallery spot and a rim do the rest ----------
-const sunLight = new DirectionalLight(new Color(0xffe6c2), 2.6);
+const sunLight = new DirectionalLight(new Color(0xfff0d6), 3.2);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.set(2048, 2048);
 Object.assign(sunLight.shadow.camera, {left: -0.75, right: 0.75, top: 0.75, bottom: -0.75, near: 0.1, far: 5});
@@ -78,14 +80,12 @@ sunLight.shadow.radius = 4;
 world.createTransformEntity(sunLight);
 world.createTransformEntity(sunLight.target);
 sunLight.target.position.set(0, DESK.y, DESK.z);
-const rim = new DirectionalLight(new Color(0xc9d6ff), 0.7);
-rim.position.set(-1.4, DESK.y + 1.2, DESK.z - 2.2);
-world.createTransformEntity(rim);
-const spot = new SpotLight(new Color(0xfff1de), 5, 6, 0.42, 0.9, 2);
-spot.position.set(0.2, 3.0, DESK.z + 0.25);
-world.createTransformEntity(spot);
-world.createTransformEntity(spot.target);
-spot.target.position.set(0, 0, DESK.z);
+// daylight: a blue sky fill from above and warm bounce from below; the sun owns the shadows
+const sky = new HemisphereLight(new Color(0xbfdcff), new Color(0xf1d9b0), 0.9);
+world.createTransformEntity(sky);
+const clouds = new Clouds(14);
+clouds.group.position.set(0, DESK.y - 0.1, DESK.z);
+world.scene.add(clouds.group);
 
 // ---------- what the watchers see: beams, labels and the two scale figures ----------
 const beams = new Map<string, Beam>();
@@ -125,12 +125,26 @@ const tikiEntity = world.createTransformEntity(tiki.group, deskEntity);
 tikiEntity.addComponent(RayInteractable);
 
 // ---------- the tray: a walnut ledge on the front of the plinth ----------
-const ledge = new Mesh(new BoxGeometry(0.86, 0.03, 0.17), new MeshStandardMaterial({color: '#2a1d15', roughness: 0.75}));
-ledge.position.set(0.06, -0.015, 0.535);
-ledge.receiveShadow = true;
-model.desk.add(ledge);
+// the tray is a little timber raft floating just in front of the island
+const raft = new Group();
+const plankMat = new MeshStandardMaterial({color: '#c98a4b', roughness: 0.75});
+for (let i = 0; i < 5; i++) {
+  const plank = new Mesh(new BoxGeometry(0.84, 0.01, 0.03), plankMat);
+  plank.position.set(0, 0, -0.068 + i * 0.034);
+  plank.rotation.z = (i % 2 ? 1 : -1) * 0.006;
+  plank.receiveShadow = plank.castShadow = true;
+  raft.add(plank);
+}
+for (const x of [-0.4, 0, 0.4]) {
+  const batten = new Mesh(new BoxGeometry(0.03, 0.008, 0.17), new MeshStandardMaterial({color: '#9a5a2c', roughness: 0.8}));
+  batten.position.set(x, -0.009, 0);
+  raft.add(batten);
+}
+raft.position.set(0.06, -0.006, 0.56);
+model.desk.add(raft);
 const KIND_ORDER: Kind[] = ['screen', 'hedge', 'tree', 'pergola'];
-const traySlot = (kind: Kind, n: number) => new Vector3(-0.2 + KIND_ORDER.indexOf(kind) * 0.19 + n * 0.012, 0.0, 0.535 - n * 0.012);
+const TRAY_SCALE = 0.5; // pieces wait on the raft at half size
+const traySlot = (kind: Kind, n: number) => new Vector3(-0.2 + KIND_ORDER.indexOf(kind) * 0.19 + n * 0.012, 0.0, 0.56 - n * 0.012);
 
 // ---------- pieces: every copy in the tray is its own grabbable object ----------
 type PieceObj = {
@@ -160,7 +174,7 @@ function buildTray() {
       const root = new Group();
       root.name = `piece-${kind}-${n}`;
       root.add(pieceModel(kind));
-      root.scale.setScalar(SCALE);
+      root.scale.setScalar(SCALE * TRAY_SCALE);
       const entity = world.createTransformEntity(root);
       entity.addComponent(RayInteractable);
       entity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false});
@@ -300,8 +314,8 @@ function setHour(h: number) {
 function showSun() {
   const s = sunAt(viewHour);
   sunLight.position.set(s.dir[0] * 2.5, DESK.y + s.dir[1] * 2.5, DESK.z + s.dir[2] * 2.5);
-  sunLight.intensity = 2.6 * Math.min(1, Math.max(0.15, s.el / 20));
-  sunLight.color.set(s.el < 15 ? 0xffc690 : 0xffe6c2);
+  sunLight.intensity = 3.2 * Math.min(1, Math.max(0.2, s.el / 20));
+  sunLight.color.set(s.el < 15 ? 0xffc690 : 0xfff0d6);
   if (!sunGrabbed) arcPoint(viewHour, sunHandle.position);
   sunLabel.set(clock(viewHour), 'sun', true);
   sunLabel.sprite.position.copy(sunHandle.position).add(new Vector3(0, 0.05, 0));
@@ -329,7 +343,7 @@ function setOverhangFrom(local: Vector3) {
 
 // ---------- the play-the-day button on the ledge ----------
 const playButton = new Mesh(new CylinderGeometry(0.022, 0.024, 0.012, 32), handleMat);
-playButton.position.copy(model.desk.localToWorld(new Vector3(0.44, 0.006, 0.535)));
+playButton.position.copy(model.desk.localToWorld(new Vector3(0.44, 0.006, 0.56)));
 const playEntity = world.createTransformEntity(playButton);
 playEntity.addComponent(RayInteractable);
 
@@ -527,7 +541,7 @@ function lookAt(l: Look | undefined): Vector3 | null {
     case 'table':
       return siteToWorld(TARGETS[l].at);
     case 'tray':
-      return model.desk.localToWorld(new Vector3(0.1, 0.03, 0.535));
+      return model.desk.localToWorld(new Vector3(0.1, 0.03, 0.56));
     case 'sun':
       return sunHandle.getWorldPosition(new Vector3());
     case 'overhang':
@@ -731,6 +745,8 @@ class PlaySystem extends createSystem({}) {
         o.held = false;
         release(o, time);
       }
+      const full = o.held || o.socket >= 0;
+      o.root.scale.setScalar(o.root.scale.x + ((full ? SCALE : SCALE * TRAY_SCALE) - o.root.scale.x) * k);
       if (o.held) {
         hover(o);
         o.root.rotation.y += (o.yaw - o.root.rotation.y) * k;
@@ -772,6 +788,7 @@ class PlaySystem extends createSystem({}) {
 
     WIND.value = time;
     motes.update(delta, time);
+    clouds.update(delta);
     for (const b of beams.values()) b.pulse(time, !solved);
 
     const pressed = tikiEntity.hasComponent(Pressed);

@@ -3,7 +3,7 @@
 // - Meta's IWSDK example "plant-sansevieria": a modelled snake plant (MIT, same package)
 // Baked materials are shown unlit, so the baked light is not lit a second time.
 
-import {Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Quaternion, SRGBColorSpace, Vector3, type Object3D} from '@iwsdk/core';
+import {DoubleSide, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Quaternion, SRGBColorSpace, Vector3, type Object3D} from '@iwsdk/core';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 const base = import.meta.env.BASE_URL;
@@ -101,6 +101,7 @@ export async function loadTrees(placements: [string, number, number, number][]):
     const name = (src.parent && src.parent !== gltf.scene ? src.parent.name : src.name).replace(/_\d+$/, '');
     const mine = placements.filter((p) => p[0] === name);
     if (!mine.length) return;
+    (src.material as MeshStandardMaterial).side = DoubleSide; // fronds and leaflets are single sheets
     const inst = new InstancedMesh(src.geometry, src.material, mine.length);
     mine.forEach(([, x, z, size], i) => {
       q.setFromAxisAngle(up, rand() * Math.PI * 2);
@@ -113,5 +114,24 @@ export async function loadTrees(placements: [string, number, number, number][]):
     inst.raycast = () => {};
     g.add(inst);
   });
+  return g;
+}
+
+/** The floating island under the house (art/blender/island.py), in site metres. */
+export async function loadIsland(): Promise<Group> {
+  const gltf = await loader.loadAsync(`${base}models/valora-island.glb`);
+  gltf.scene.traverse((o) => {
+    const m = o as Mesh;
+    if (!m.isMesh) return;
+    m.receiveShadow = true;
+    m.castShadow = false;
+    m.raycast = () => {};
+    const mat = m.material as MeshStandardMaterial;
+    mat.flatShading = true;
+    mat.envMapIntensity = 0.7;
+  });
+  const g = new Group();
+  g.name = 'island';
+  g.add(gltf.scene);
   return g;
 }

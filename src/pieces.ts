@@ -19,14 +19,18 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import type {Kind} from './sim/play.ts';
 
 export const MAT = {
-  basswood: new MeshStandardMaterial({color: '#d2b48c', roughness: 0.7}),
-  dowel: new MeshStandardMaterial({color: '#b89a74', roughness: 0.7}),
-  foam: new MeshStandardMaterial({color: '#8e9a7c', roughness: 0.95, flatShading: true}),
-  foamDark: new MeshStandardMaterial({color: '#77856a', roughness: 0.95, flatShading: true}),
-  card: new MeshStandardMaterial({color: '#efe9df', roughness: 0.9}),
-  figure: new MeshStandardMaterial({color: '#f3efe6', roughness: 0.6}),
-  figureDark: new MeshStandardMaterial({color: '#3a3532', roughness: 0.6}),
-  ghostOk: new MeshStandardMaterial({color: '#2f6f4f', roughness: 0.6, transparent: true, opacity: 0.45, depthWrite: false}),
+  basswood: new MeshStandardMaterial({color: '#c98a4b', roughness: 0.7}),
+  dowel: new MeshStandardMaterial({color: '#8a5a33', roughness: 0.8}),
+  foam: new MeshStandardMaterial({color: '#4f9a3a', roughness: 0.85, flatShading: true}),
+  foamDark: new MeshStandardMaterial({color: '#3d7f2e', roughness: 0.85, flatShading: true}),
+  flowerPink: new MeshStandardMaterial({color: '#e8458f', roughness: 0.6}),
+  flowerWhite: new MeshStandardMaterial({color: '#fff4dc', roughness: 0.5, emissive: '#3a2a00', emissiveIntensity: 0.15}),
+  card: new MeshStandardMaterial({color: '#f4ece0', roughness: 0.9}),
+  figure: new MeshStandardMaterial({color: '#f2b37a', roughness: 0.6}),
+  figureDark: new MeshStandardMaterial({color: '#8d5a3b', roughness: 0.6}),
+  shirt: new MeshStandardMaterial({color: '#2f8fd6', roughness: 0.7}),
+  shirtDark: new MeshStandardMaterial({color: '#e2553a', roughness: 0.7}),
+  ghostOk: new MeshStandardMaterial({color: '#ffffff', roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false}),
 };
 
 function at(g: BufferGeometry, x: number, y: number, z: number, ry = 0): BufferGeometry {
@@ -65,6 +69,9 @@ export function pieceModel(kind: Kind): Group {
       const lumps: BufferGeometry[] = [at(new BoxGeometry(2.3, 1.0, 0.6), 0, 0.5, 0)];
       for (let i = 0; i < 14; i++) lumps.push(at(new IcosahedronGeometry(0.28 + r() * 0.1, 1), -1.05 + (i % 7) * 0.35, 0.95 + r() * 0.12, i < 7 ? -0.12 : 0.12));
       g.add(mesh(lumps, MAT.foam));
+      const fl: BufferGeometry[] = [];
+      for (let i = 0; i < 26; i++) fl.push(at(new IcosahedronGeometry(0.08, 0), -1.1 + r() * 2.2, 0.75 + r() * 0.5, (r() < 0.5 ? -1 : 1) * (0.3 + r() * 0.1)));
+      g.add(mesh(fl, MAT.flowerPink));
       break;
     }
     case 'tree': {
@@ -78,6 +85,13 @@ export function pieceModel(kind: Kind): Group {
         crown.push(at(new IcosahedronGeometry(0.55 + r() * 0.25, 1).scale(1, 0.75, 1), Math.cos(a) * d, 3.1 + (r() - 0.5) * 0.6, Math.sin(a) * d));
       }
       g.add(mesh(crown, MAT.foam));
+      const fl: BufferGeometry[] = [];
+      for (let i = 0; i < 30; i++) {
+        const a = r() * Math.PI * 2;
+        const d = r() * 1.1;
+        fl.push(at(new IcosahedronGeometry(0.1, 0), Math.cos(a) * d, 3.55 + r() * 0.35, Math.sin(a) * d));
+      }
+      g.add(mesh(fl, MAT.flowerWhite));
       break;
     }
     case 'pergola': {
@@ -87,6 +101,12 @@ export function pieceModel(kind: Kind): Group {
       posts.push(at(new BoxGeometry(2.6, 0.1, 0.1), 0, 2.5, -1.2), at(new BoxGeometry(2.6, 0.1, 0.1), 0, 2.5, 1.2));
       for (let z = -1.25; z <= 1.26; z += 0.16) posts.push(at(new BoxGeometry(0.06, 0.1, 2.7), 0, 0, 0, Math.PI / 2).translate(0, 2.6, z));
       g.add(mesh(posts, MAT.basswood));
+      // a vine along the beams and over part of the roof
+      const r = rng(5);
+      const vine: BufferGeometry[] = [];
+      for (let i = 0; i < 22; i++) vine.push(at(new IcosahedronGeometry(0.16 + r() * 0.08, 0), -1.2 + r() * 2.4, 2.68 + r() * 0.1, (r() < 0.5 ? -1.15 : 1.15) + (r() - 0.5) * 0.4));
+      for (let i = 0; i < 6; i++) vine.push(at(new IcosahedronGeometry(0.14, 0), (r() < 0.5 ? -1.2 : 1.2), 0.4 + r() * 2.0, (r() < 0.5 ? -1.2 : 1.2)));
+      g.add(mesh(vine, MAT.foamDark));
       break;
     }
   }
@@ -97,14 +117,14 @@ export function pieceModel(kind: Kind): Group {
 export function scaleFigure(dark = false): Group {
   const g = new Group();
   const m = dark ? MAT.figureDark : MAT.figure;
-  const body = new Mesh(new CapsuleGeometry(0.2, 0.75, 4, 12), m);
+  const body = new Mesh(new CapsuleGeometry(0.24, 0.62, 4, 12), dark ? MAT.shirtDark : MAT.shirt);
   body.position.y = 0.85;
-  const head = new Mesh(new SphereGeometry(0.15, 16, 12), m);
+  const head = new Mesh(new SphereGeometry(0.21, 20, 14), m);
   head.position.y = 1.55;
   const arm = new Group(); // right arm, pivots at the shoulder so it can wave
   arm.name = 'arm';
   arm.position.set(0.24, 1.28, 0);
-  const a = new Mesh(new CapsuleGeometry(0.06, 0.55, 4, 8), m);
+  const a = new Mesh(new CapsuleGeometry(0.075, 0.5, 4, 8), dark ? MAT.shirtDark : MAT.shirt);
   a.position.y = -0.3;
   arm.add(a);
   for (const o of [body, head, a]) o.castShadow = true;
