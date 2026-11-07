@@ -6,6 +6,7 @@
 // geometry the prover runs (src/sim/play.ts, scripts/prove2.ts).
 
 import {
+  Box3,
   Color,
   createSystem,
   DirectionalLight,
@@ -65,7 +66,9 @@ const world = await World.create(document.getElementById('scene-container') as H
 
 // ---------- the model ----------
 const model = buildModel();
-model.screen.visible = false; // the old swinging screen: screens are now pieces from the tray
+// The old swinging screen: screens are now pieces from the raft. Removed, not just hidden, because a
+// hidden mesh still catches hand rays and would block pinches on pieces behind it.
+model.screen.removeFromParent();
 const deskEntity = world.createTransformEntity(model.desk);
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
 loadIsland().then((i) => model.site.add(i)).catch((e) => console.warn('[VR] island', e));
@@ -155,6 +158,7 @@ const TRAY_SCALE = 0.5; // pieces wait on the raft at half size
 const traySlot = (kind: Kind, n: number) => new Vector3(0.8 + n * 0.014, 0.0, 0.42 - KIND_ORDER.indexOf(kind) * 0.12 - n * 0.012);
 
 // ---------- pieces: every copy in the tray is its own grabbable object ----------
+const HIT_MAT = new MeshBasicMaterial({colorWrite: false, depthWrite: false});
 type PieceObj = {
   kind: Kind;
   n: number; // which copy of this kind
@@ -167,6 +171,8 @@ type PieceObj = {
   held: boolean;
   heldAt: number;
   heldFrom: Vector3;
+  hand?: 'left' | 'right';
+  grabOffset?: Vector3;
 };
 let pieceObjs: PieceObj[] = [];
 const ghost = new Mesh(new CylinderGeometry(1.0, 1.0, 0.06, 32), MAT.ghostOk);
@@ -181,12 +187,21 @@ function buildTray() {
     for (let n = 0; n < count; n++) {
       const root = new Group();
       root.name = `piece-${kind}-${n}`;
-      root.add(pieceModel(kind));
+      const shape = pieceModel(kind);
+      root.add(shape);
+      // An invisible solid box around the shape: slatted screens and leafy trees have gaps a hand ray
+      // slips through, so pinching anywhere on the piece should still catch it.
+      shape.updateMatrixWorld(true);
+      const bb = new Box3().setFromObject(shape);
+      const hit = new Mesh(new BoxGeometry(...bb.getSize(new Vector3()).toArray()), HIT_MAT);
+      bb.getCenter(hit.position);
+      hit.name = 'hit';
+      root.add(hit);
       root.scale.setScalar(SCALE * TRAY_SCALE);
       const entity = world.createTransformEntity(root);
       entity.addComponent(RayInteractable);
-      entity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false});
-      const o: PieceObj = {kind, n, root, entity, socket: -1, rot: 0, target: new Vector3(), yaw: 0, held: false, heldAt: 0, heldFrom: new Vector3()};
+      entity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: false, rotate: false, scale: false});
+      const o: PieceObj = {kind, n, root, entity, socket: -1, rot: 0, target: new Vector3(), yaw: 0, held: false, heldAt: 0, heldFrom: new Vector3(), hand: undefined, grabOffset: new Vector3()};
       homeInTray(o);
       root.position.copy(o.target);
       pieceObjs.push(o);
@@ -246,12 +261,13 @@ function hover(o: PieceObj) {
   if (s >= 0) ghost.position.set(SOCKETS[s][0], 0.04, SOCKETS[s][2]);
 }
 
-/** A piece was let go: land on the nearest free socket, or go back to the tray. A short pinch that
- *  barely moved is a tap: it turns a placed piece. */
+/** A piece was let go: land on the nearest free socket, or go back to the tray. A pinch on a placed
+ *  piece that barely moved it is a tap: it turns the piece. */
 function release(o: PieceObj, now: number) {
   ghost.visible = false;
   const moved = o.root.position.distanceTo(o.heldFrom);
-  if (o.socket >= 0 && moved < 0.02 && now - o.heldAt < 0.45) return rotate(o);
+  console.info('[VR] release', o.kind, 'moved', moved.toFixed(3), 'held', (now - o.heldAt).toFixed(2));
+  if (o.socket >= 0 && moved < 0.02) return rotate(o); // a pinch that does not move a placed piece turns it
   const s = socketNear(o.root.position, o);
   if (s >= 0) placeAt(o, s);
   else homeInTray(o);
@@ -273,7 +289,7 @@ const sunRing = new Mesh(new TorusGeometry(0.034, 0.003, 8, 40), new MeshBasicMa
 sunHandle.add(sunRing);
 const sunEntity = world.createTransformEntity(sunHandle);
 sunEntity.addComponent(RayInteractable);
-sunEntity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false});
+sunEntity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: false, rotate: false, scale: false});
 const sunLabel = new Label(0.07);
 sunLabel.sprite.raycast = () => {};
 world.scene.add(sunLabel.sprite);
@@ -656,6 +672,21 @@ const toScreen = (v: Vector3) => {
     const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
     return o ? toScreen(o.root.position.clone()) : null;
   },
+  pieceBox(kind: Kind, n = 0) {
+    const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
+    if (!o) return null;
+    const b = new Box3().setFromObject(o.root.getObjectByName('hit') ?? o.root);
+    return {min: b.min.toArray().map((x) => +x.toFixed(3)), max: b.max.toArray().map((x) => +x.toFixed(3)), at: o.root.position.toArray().map((x) => +x.toFixed(3))};
+  },
+  rayHits(from: number[], to: number[]) {
+    const r = new Raycaster(new Vector3(...from), new Vector3(...to).sub(new Vector3(...from)).normalize());
+    return r.intersectObjects(world.scene.children, true).slice(0, 6).map((h) => {
+      let o: Object3D | null = h.object;
+      const path: string[] = [];
+      while (o && path.length < 4) { if (o.name) path.push(o.name); o = o.parent; }
+      return `${h.distance.toFixed(3)} ${h.object.type} ${path.join('<') || '(unnamed)'}`;
+    });
+  },
   socketScreen: (i: number) => toScreen(siteToWorld(SOCKETS[i])),
   worldPos(name: 'tiki' | 'sun' | 'overhang') {
     const o = name === 'tiki' ? tiki.hit : name === 'sun' ? sunHandle : overhangHandle;
@@ -666,7 +697,41 @@ let pendingTap = false;
 let lastTime = 0;
 local.set(COUNTRY);
 goToLevel(levelIndex);
+// Test anchors: world positions the emulator test aims hands at.
+setTimeout(() => {
+  const v = (o: Object3D) => o.getWorldPosition(new Vector3()).toArray().map((x) => +x.toFixed(4));
+  console.info('[VR] anchors', JSON.stringify({
+    tiki: v(tiki.hit), sun: v(sunHandle), play: v(playButton),
+    pieces: pieceObjs.map((o) => ({kind: o.kind, n: o.n, at: v(o.root)})),
+    sockets: SOCKETS.map((s) => siteToWorld(s).toArray().map((x) => +x.toFixed(4))),
+  }));
+}, 1500);
 if (!startCountry) hud.showMap(COUNTRIES.map((c) => ({id: c.id, name: c.name, place: c.place, house: c.house})));
+
+
+// ---------- seated hand rays ----------
+// Held pieces and the sun follow where the hand points, not how far the hand travels, so a seated
+// player covers the whole board with a small wrist turn instead of a long reach.
+const handRay = {ray: new Raycaster().ray, dir: new Vector3(), to: new Vector3(), plane: new Plane(), hit: new Vector3(), lift: new Vector3(0, 0.01, 0)};
+/** Point `handRay.ray` along whichever hand's target ray aims closest to `at`. */
+function aimHandAt(at: Vector3, side?: 'left' | 'right'): 'left' | 'right' {
+  let best: 'left' | 'right' = 'right';
+  let bestCos = -2;
+  for (const s of side ? [side] : (['left', 'right'] as const)) {
+    const space = world.player.raySpaces[s];
+    space.getWorldPosition(handRay.to);
+    handRay.dir.set(0, 0, -1).transformDirection(space.matrixWorld);
+    const c = handRay.dir.dot(handRay.to.subVectors(at, handRay.to).normalize());
+    if (c > bestCos) {
+      bestCos = c;
+      best = s;
+    }
+  }
+  const space = world.player.raySpaces[best];
+  space.getWorldPosition(handRay.ray.origin);
+  handRay.ray.direction.set(0, 0, -1).transformDirection(space.matrixWorld);
+  return best;
+}
 
 // ---------- play on a screen with a mouse or touch ----------
 // Outside an immersive session the hand-ray system has nothing to drive, so the page pointer does
@@ -775,6 +840,7 @@ function forDevice(text: string): string {
 // ---------- per frame ----------
 class PlaySystem extends createSystem({}) {
   private wasPressed = false;
+  private sunHand: 'left' | 'right' = 'right';
   private wasPlay = false;
   private head = new Vector3();
   private tmp = new Vector3();
@@ -790,9 +856,19 @@ class PlaySystem extends createSystem({}) {
         o.held = true;
         o.heldAt = time;
         o.heldFrom.copy(o.root.position);
+        o.hand = aimHandAt(o.root.position);
+        handRay.plane.setFromNormalAndCoplanarPoint(handRay.lift.set(0, 1, 0), model.desk.localToWorld(handRay.hit.set(0, 0, 0)));
+        // keep where the piece sat relative to the pointed spot, so a quick pinch does not make it jump
+        if (handRay.ray.intersectPlane(handRay.plane, handRay.hit)) o.grabOffset!.subVectors(o.root.position, handRay.hit);
+        else o.grabOffset!.set(0, 0.01, 0);
+      }
+      if (grabbed && o.hand) {
+        aimHandAt(o.root.position, o.hand);
+        if (handRay.ray.intersectPlane(handRay.plane, handRay.hit)) o.root.position.copy(handRay.hit).add(o.grabOffset!);
       }
       if (o.held && xr && !grabbed) {
         o.held = false;
+        o.hand = undefined;
         release(o, time);
       }
       const full = o.held || o.socket >= 0;
@@ -808,8 +884,19 @@ class PlaySystem extends createSystem({}) {
 
     // the sun
     const sg = xr && sunEntity.hasComponent(Grabbed);
-    if (sg) setHour(hourNearest(sunHandle.position));
-    if (sunGrabbed && !sg) arcPoint(viewHour, sunHandle.position);
+    if (sg) {
+      aimHandAt(sunHandle.position, sunGrabbed ? this.sunHand : undefined);
+      if (!sunGrabbed) {
+        this.sunHand = aimHandAt(sunHandle.position);
+        console.info('[VR] sun grab', viewHour);
+      }
+      setHour(hourNearestRay(handRay.ray));
+      arcPoint(viewHour, sunHandle.position);
+    }
+    if (sunGrabbed && !sg) {
+      arcPoint(viewHour, sunHandle.position);
+      console.info('[VR] sun release', viewHour);
+    }
     sunGrabbed = sg;
     sunRing.rotation.z = time * 0.6;
     sunRing.scale.setScalar(1 + 0.08 * Math.sin(time * 2));
