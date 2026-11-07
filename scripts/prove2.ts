@@ -1,7 +1,7 @@
 // Proves every v2 level is solvable, does not start solved, and that its par (pieces for three
 // stars) is the true minimum. Exact search up to 3 pieces; seeded random search beyond that.
 //   node scripts/prove2.ts
-import {evaluateLevel, LEVELS, PIECES, placements, type Design, type Kind, type Level, type Placed} from '../src/sim/play.ts';
+import {COUNTRIES, evaluateLevel, PIECES, placements, setCountry, type Design, type Kind, type Level, type Placed} from '../src/sim/play.ts';
 
 function candidates(level: Level): Placed[] {
   return (Object.keys(level.tray) as Kind[]).flatMap((k) => placements(k));
@@ -67,7 +67,10 @@ function randomSolve(level: Level, k: number, tries: number): Design | null {
 const show = (d: Design) => d.pieces.map((p) => `${PIECES[p.kind].name}@${p.socket}${PIECES[p.kind].rots > 1 ? `/${p.rot * (p.kind === 'hedge' ? 90 : 45)}°` : ''}`).join(' + ') + (d.overhang ? ` + overhang ${d.overhang} m` : '');
 
 let ok = true;
-for (const level of LEVELS) {
+for (const country of COUNTRIES) {
+  setCountry(country.id);
+  console.log(`\n${country.name} (${country.place})`);
+  for (const level of country.levels) {
   const empty = solve(level, 0, 1);
   let min = -1;
   let example: Design | null = null;
@@ -96,6 +99,7 @@ for (const level of LEVELS) {
     const all = solve(level, min, 1e9).length;
     const total = candidates(level).length;
     console.log(`      ${all} winning layouts with ${min} piece(s), out of about ${min === 1 ? total * depths(level).length : (total * total / 2) * depths(level).length} tries`);
+  }
   }
 }
 process.exit(ok ? 0 : 1);

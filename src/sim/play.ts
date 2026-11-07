@@ -11,6 +11,7 @@
 import {box, firstBlocker, type Box, type V3} from './geom.ts';
 import {sunAt, type Sun} from './sun.ts';
 import {fixedBoxes, LAYOUT} from './world.ts';
+import {COUNTRIES, DECL_NOV_8, type Country, type CountryLevel, type CountryRule} from './countries.ts';
 
 const D = Math.PI / 180;
 
@@ -75,7 +76,18 @@ export function overhangBox(depth: number): Box[] {
   return [box('overhang', [(r.x0 + r.x1) / 2, r.h + 0.08, r.z1 + depth / 2], [(r.x1 - r.x0) / 2 + 0.2, 0.08, depth / 2])];
 }
 
-export const occluders = (d: Design): Box[] => [...d.pieces.flatMap(pieceBoxes), ...overhangBox(d.overhang), ...fixedBoxes()];
+/** Fixed buildings for the current country: garden walls at its height, plus any extra block. */
+export function countryBoxes(): Box[] {
+  const c = COUNTRY;
+  const out = fixedBoxes().map((b) => {
+    if (!b.id.includes('garden wall') || c.wallH === LAYOUT.court.wallH) return b;
+    return box(b.id, [b.c[0], c.wallH / 2, b.c[2]], [b.h[0], c.wallH / 2, b.h[2]], b.yaw);
+  });
+  for (const e of c.extra ?? []) out.push(box(e.id, e.c, e.h));
+  return out;
+}
+
+export const occluders = (d: Design): Box[] => [...d.pieces.flatMap(pieceBoxes), ...overhangBox(d.overhang), ...countryBoxes()];
 
 // ---------------------------------------------------------------- watchers and targets
 
@@ -84,22 +96,42 @@ export const TARGETS = {
   plant: {at: LAYOUT.plant, name: 'plant'},
   pool: {at: [-2.95, 0.15, 1.6] as V3, name: 'pool'},
   table: {at: [2.6, 0.8, 2.6] as V3, name: 'garden table'},
+  deck: {at: [1.2, 0.8, -2.5] as V3, name: 'deck'},
 } as const;
 export type Target = keyof typeof TARGETS;
 
-export const EYES = {
-  window: {at: LAYOUT.neighbour.window, name: 'the neighbour at his window'},
-  terrace: {at: [9.4, 6.0, 0.4] as V3, name: 'the neighbour on his roof terrace'},
-} as const;
-export type Eye = keyof typeof EYES;
-
 export type Look = {sees: boolean; from: V3; to: V3; blocker: string | null; t: number};
 
-export function eyeSees(eye: Eye, target: V3, d: Design): Look {
-  const from = EYES[eye].at;
-  const hit = firstBlocker(from, target, occluders(d).filter((b) => b.id !== 'neighbour house'));
-  return {sees: !hit, from, to: target, blocker: hit?.box.id ?? null, t: hit ? hit.t : 1};
+export type Eye = 'window' | 'terrace' | 'tower' | 'boat';
+
+/** Where an eye watcher looks from in the current country (a boat has several positions). */
+export function eyePoints(eye: Eye): V3[] {
+  return COUNTRY.eyes[eye] ?? [];
 }
+
+/** An eye watcher sees the target if it can from any of its positions (a passing boat). */
+export function eyeSees(eye: Eye, target: V3, d: Design): Look {
+  const boxes = occluders(d).filter((b) => b.id !== 'neighbour house' && !(eye === 'tower' && b.id === 'tower'));
+  let first: Look | null = null;
+  for (const from of eyePoints(eye)) {
+    const hit = firstBlocker(from, target, boxes);
+    const look: Look = {sees: !hit, from, to: target, blocker: hit?.box.id ?? null, t: hit ? hit.t : 1};
+    if (look.sees) return look;
+    first ??= look;
+  }
+  return first ?? {sees: false, from: target, to: target, blocker: null, t: 0};
+}
+
+/** Weather from a fixed direction: wind or rain reaches the target unless something blocks it. */
+export function weatherSees(dirTo: V3, target: V3, d: Design): Look {
+  const far = 40;
+  const from: V3 = [target[0] + dirTo[0] * far, target[1] + dirTo[1] * far, target[2] + dirTo[2] * far];
+  const hit = firstBlocker(target, from, occluders(d));
+  return {sees: !hit, from, to: target, blocker: hit?.box.id ?? null, t: hit ? 1 - hit.t : 1};
+}
+
+/** The sun in the current country at a clock hour. */
+export const countrySun = (hour: number) => sunAt(hour, DECL_NOV_8, COUNTRY.solarNoon, COUNTRY.lat);
 
 export function sunSees(target: V3, d: Design, sun: Sun): Look {
   const far = 60;
@@ -111,91 +143,17 @@ export function sunSees(target: V3, d: Design, sun: Sun): Look {
 
 // ---------------------------------------------------------------- levels
 
-export type Rule = {
-  id: string;
-  who: 'sun' | Eye;
-  target: Target;
-  want: 'sees' | 'blind';
-  hour?: number; // the sun's hour; also when the moment plays in "live the day"
-  text: string;
-};
+export type Rule = CountryRule;
+export type Level = CountryLevel;
 
-export type Level = {
-  id: string;
-  title: string;
-  brief: string;
-  tray: Partial<Record<Kind, number>>; // pieces available and how many of each
-  overhang: boolean;
-  par: number; // pieces for three stars
-  rules: Rule[];
-};
-
-const R = {
-  private: {id: 'private', who: 'window', target: 'seat', want: 'blind', hour: 9.5, text: 'The neighbour cannot see you reading'} as Rule,
-  plantAm: {id: 'plant-am', who: 'sun', target: 'plant', want: 'sees', hour: 8.5, text: 'Morning sun on the plant at 8:30'} as Rule,
-  seatPm: {id: 'seat-pm', who: 'sun', target: 'seat', want: 'blind', hour: 15.5, text: 'Shade on the reading chair at 3:30'} as Rule,
-  lunch: {id: 'lunch', who: 'sun', target: 'table', want: 'blind', hour: 12.5, text: 'Shade on the garden table at lunch'} as Rule,
-  lunchPrivate: {id: 'lunch-private', who: 'window', target: 'table', want: 'blind', hour: 12.5, text: 'Lunch out of the neighbour’s sight'} as Rule,
-  swimSun: {id: 'swim-sun', who: 'sun', target: 'pool', want: 'sees', hour: 11, text: 'Sun on the pool for an 11:00 swim'} as Rule,
-  swimPrivate: {id: 'swim-private', who: 'terrace', target: 'pool', want: 'blind', hour: 11, text: 'Swim unseen from the roof terrace'} as Rule,
-};
-
-export const LEVELS: Level[] = [
-  {
-    id: 'neighbour',
-    title: 'The Neighbour',
-    brief: 'He can see straight into your reading chair. Place a screen to block his view.',
-    tray: {screen: 1},
-    overhang: false,
-    par: 1,
-    rules: [R.private],
-  },
-  {
-    id: 'morning',
-    title: 'Morning Light',
-    brief: 'Stay private, but the plant needs the morning sun from the east. A screen in the wrong place steals it.',
-    tray: {screen: 2, hedge: 1},
-    overhang: false,
-    par: 1,
-    rules: [R.private, R.plantAm],
-  },
-  {
-    id: 'lunch',
-    title: 'Lunch Outside',
-    brief: 'Midday sun is almost overhead. Shade the garden table, and keep lunch private.',
-    tray: {tree: 1, pergola: 1, hedge: 1},
-    overhang: false,
-    par: 1,
-    rules: [R.lunch, R.lunchPrivate],
-  },
-  {
-    id: 'swim',
-    title: 'Morning Swim',
-    brief: 'The neighbour likes his roof terrace. Hide the pool from above, but keep it sunny.',
-    tray: {tree: 2, pergola: 1, hedge: 1},
-    overhang: false,
-    par: 1,
-    rules: [R.swimPrivate, R.swimSun],
-  },
-  {
-    id: 'afternoon',
-    title: 'Afternoon Read',
-    brief: 'Afternoon sun comes low from the west. Shade your chair without losing the morning light or your privacy.',
-    tray: {screen: 1, tree: 2},
-    overhang: true,
-    par: 1,
-    rules: [R.private, R.plantAm, R.seatPm],
-  },
-  {
-    id: 'day',
-    title: 'The Whole Day',
-    brief: 'Morning plant, a private swim, shaded lunch, an afternoon read. Plan the whole day.',
-    tray: {screen: 2, tree: 2, pergola: 1, hedge: 1},
-    overhang: true,
-    par: 2,
-    rules: [R.plantAm, R.swimSun, R.swimPrivate, R.lunch, R.private, R.seatPm],
-  },
-];
+/** The country being played; levels, eyes, weather, walls and sun all come from it. */
+export let COUNTRY: Country = COUNTRIES[3];
+export let LEVELS: Level[] = COUNTRY.levels;
+export function setCountry(id: Country['id']) {
+  COUNTRY = COUNTRIES.find((c) => c.id === id) ?? COUNTRIES[3];
+  LEVELS = COUNTRY.levels;
+}
+export {COUNTRIES};
 
 // ---------------------------------------------------------------- checking
 
@@ -203,7 +161,14 @@ export type RuleResult = {rule: Rule; look: Look; pass: boolean};
 
 export function evaluate(rule: Rule, d: Design, sun?: Sun): RuleResult {
   const target = TARGETS[rule.target].at;
-  const look = rule.who === 'sun' ? sunSees(target, d, sun ?? sunAt(rule.hour ?? 12)) : eyeSees(rule.who, target, d);
+  const look =
+    rule.who === 'sun'
+      ? sunSees(target, d, sun ?? countrySun(rule.hour))
+      : rule.who === 'wind'
+        ? weatherSees(COUNTRY.wind!, target, d)
+        : rule.who === 'rain'
+          ? weatherSees(COUNTRY.rain!, target, d)
+          : eyeSees(rule.who, target, d);
   return {rule, look, pass: rule.want === 'sees' ? look.sees : !look.sees};
 }
 

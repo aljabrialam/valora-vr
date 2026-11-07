@@ -42,13 +42,17 @@ import {LevelCard} from './panel.ts';
 import {Gecko} from './mascot.ts';
 import {MAT, pieceModel, scaleFigure} from './pieces.ts';
 import {LAYOUT} from './sim/world.ts';
-import {EYES, evaluate, evaluateLevel, LEVELS, PIECES, SOCKETS, TARGETS, type Design, type Kind, type Placed, type RuleResult} from './sim/play.ts';
-import {clock, sunAt} from './sim/sun.ts';
+import {COUNTRIES, COUNTRY, countrySun, evaluate, evaluateLevel, eyePoints, LEVELS, PIECES, setCountry, SOCKETS, TARGETS, type Design, type Kind, type Placed, type RuleResult} from './sim/play.ts';
+import {LocalWatchers} from './watchers.ts';
+import {clock} from './sim/sun.ts';
 import {chimeSound, clickSound, solveSound} from './sound.ts';
-import {SCRIPT, type Look, type Step} from './tutorial.ts';
+import {scriptFor, type Look, type Step} from './tutorial.ts';
 
 const D = Math.PI / 180;
 const params = new URLSearchParams(location.search);
+const startCountry = params.get('country');
+setCountry((startCountry ?? 'ph') as 'ph');
+let firstLevelPlayed = true;
 let levelIndex = Math.min(LEVELS.length - 1, Math.max(0, Number(params.get('level') ?? 1) - 1));
 let level = LEVELS[levelIndex];
 const design: Design = {pieces: [], overhang: 0};
@@ -103,11 +107,14 @@ model.site.add(balcony);
 neighbourAtWindow.position.set(nh.x0 + 0.3 - 0.45, LAYOUT.neighbour.window[1] - 1.56, LAYOUT.neighbour.window[2]);
 neighbourAtWindow.rotation.y = -Math.PI / 2;
 const neighbourOnTerrace = scaleFigure(true);
-neighbourOnTerrace.position.set(EYES.terrace.at[0], EYES.terrace.at[1] - 1.55, EYES.terrace.at[2]);
+neighbourOnTerrace.position.set(9.4, 6.0 - 1.55, 0.4);
+neighbourOnTerrace.visible = false;
 neighbourOnTerrace.rotation.y = -Math.PI / 2 - 0.3;
 const resident = scaleFigure(false); // stands where each moment of the day happens
 resident.visible = false;
 model.site.add(neighbourAtWindow, neighbourOnTerrace, resident);
+const local = new LocalWatchers();
+model.site.add(local.group);
 
 const hud = new Hud();
 const card = new LevelCard(0.42);
@@ -129,22 +136,23 @@ tikiEntity.addComponent(RayInteractable);
 const raft = new Group();
 const plankMat = new MeshStandardMaterial({color: '#c98a4b', roughness: 0.75});
 for (let i = 0; i < 5; i++) {
-  const plank = new Mesh(new BoxGeometry(0.84, 0.01, 0.03), plankMat);
+  const plank = new Mesh(new BoxGeometry(0.66, 0.01, 0.03), plankMat);
   plank.position.set(0, 0, -0.068 + i * 0.034);
   plank.rotation.z = (i % 2 ? 1 : -1) * 0.006;
   plank.receiveShadow = plank.castShadow = true;
   raft.add(plank);
 }
-for (const x of [-0.4, 0, 0.4]) {
+for (const x of [-0.3, 0, 0.3]) {
   const batten = new Mesh(new BoxGeometry(0.03, 0.008, 0.17), new MeshStandardMaterial({color: '#9a5a2c', roughness: 0.8}));
   batten.position.set(x, -0.009, 0);
   raft.add(batten);
 }
-raft.position.set(0.06, -0.006, 0.56);
+raft.position.set(0.8, -0.006, 0.13);
+raft.rotation.y = Math.PI / 2; // along the right side of the island, out of the boats' way
 model.desk.add(raft);
 const KIND_ORDER: Kind[] = ['screen', 'hedge', 'tree', 'pergola'];
 const TRAY_SCALE = 0.5; // pieces wait on the raft at half size
-const traySlot = (kind: Kind, n: number) => new Vector3(-0.2 + KIND_ORDER.indexOf(kind) * 0.19 + n * 0.012, 0.0, 0.56 - n * 0.012);
+const traySlot = (kind: Kind, n: number) => new Vector3(0.8 + n * 0.014, 0.0, 0.42 - KIND_ORDER.indexOf(kind) * 0.12 - n * 0.012);
 
 // ---------- pieces: every copy in the tray is its own grabbable object ----------
 type PieceObj = {
@@ -256,7 +264,7 @@ function release(o: PieceObj, now: number) {
 const ARC_R = 9; // site metres from the courtyard centre
 const ARC_C: [number, number, number] = [0, 0, 0.5];
 const arcPoint = (h: number, out = new Vector3()) => {
-  const s = sunAt(h);
+  const s = countrySun(h);
   return siteToWorld([ARC_C[0] + s.dir[0] * ARC_R, ARC_C[1] + s.dir[1] * ARC_R, ARC_C[2] + s.dir[2] * ARC_R], out);
 };
 const sunMat = new MeshBasicMaterial({color: new Color('#ffd27a'), toneMapped: false});
@@ -312,7 +320,7 @@ function setHour(h: number) {
   showSun();
 }
 function showSun() {
-  const s = sunAt(viewHour);
+  const s = countrySun(viewHour);
   sunLight.position.set(s.dir[0] * 2.5, DESK.y + s.dir[1] * 2.5, DESK.z + s.dir[2] * 2.5);
   sunLight.intensity = 3.2 * Math.min(1, Math.max(0.2, s.el / 20));
   sunLight.color.set(s.el < 15 ? 0xffc690 : 0xfff0d6);
@@ -343,7 +351,7 @@ function setOverhangFrom(local: Vector3) {
 
 // ---------- the play-the-day button on the ledge ----------
 const playButton = new Mesh(new CylinderGeometry(0.022, 0.024, 0.012, 32), handleMat);
-playButton.position.copy(model.desk.localToWorld(new Vector3(0.44, 0.006, 0.56)));
+playButton.position.copy(model.desk.localToWorld(new Vector3(0.8, 0.006, -0.17)));
 const playEntity = world.createTransformEntity(playButton);
 playEntity.addComponent(RayInteractable);
 
@@ -371,11 +379,12 @@ function labelFor(id: string) {
 
 function drawResult(r: RuleResult, k: number) {
   const look = r.look;
-  const isSun = r.rule.who === 'sun';
-  const b = beamFor(r.rule.id, isSun ? 0xf2b84b : 0xa2452e);
+  const who = r.rule.who;
+  const isSun = who === 'sun' || who === 'wind' || who === 'rain';
+  const b = beamFor(r.rule.id, who === 'sun' ? 0xf2b84b : who === 'wind' ? 0xffffff : who === 'rain' ? 0x6fa8ff : 0xa2452e);
   b.group.visible = true;
   if (isSun) {
-    const f = 11 / 60; // the last 11 m of the sun's ray, so it stays on the model
+    const f = who === 'sun' ? 11 / 60 : 9 / 40; // the last stretch of the ray, so it stays on the model
     const from = [0, 1, 2].map((i) => look.to[i] + (look.from[i] - look.to[i]) * f) as typeof look.from;
     b.set(from, look.to, look.sees ? 1 : Math.max(0, (look.t - (1 - f)) / f));
   } else b.set(look.from, look.to, look.t);
@@ -383,8 +392,23 @@ function drawResult(r: RuleResult, k: number) {
   l.sprite.visible = true;
   const t = TARGETS[r.rule.target].at;
   l.sprite.position.set(t[0], t[1] + 2.4 + k * 1.1, t[2]);
-  const word = isSun ? (look.sees ? `SUN ${clock(r.rule.hour ?? 12)}` : `SHADE ${clock(r.rule.hour ?? 12)}`) : look.sees ? 'SEEN' : 'PRIVATE';
-  l.set(word, isSun ? (look.sees ? 'sun' : 'shade') : look.sees ? 'eye' : 'eye-off', r.pass);
+  const word =
+    who === 'sun'
+      ? look.sees
+        ? `SUN ${clock(r.rule.hour)}`
+        : `SHADE ${clock(r.rule.hour)}`
+      : who === 'wind'
+        ? look.sees
+          ? 'WINDY'
+          : 'SHELTERED'
+        : who === 'rain'
+          ? look.sees
+            ? 'WET'
+            : 'DRY'
+          : look.sees
+            ? 'SEEN'
+            : 'PRIVATE';
+  l.set(word, who === 'sun' ? (look.sees ? 'sun' : 'shade') : isSun ? (look.sees ? 'cross' : 'check') : look.sees ? 'eye' : 'eye-off', r.pass);
 }
 
 function refresh() {
@@ -405,10 +429,11 @@ function refresh() {
   }
   const winRules = res.results.filter((r) => r.rule.who === 'window');
   const terrRules = res.results.filter((r) => r.rule.who === 'terrace');
-  neighbourAtWindow.visible = winRules.length > 0 || levelIndex === 0;
+  neighbourAtWindow.visible = winRules.length > 0 || COUNTRY.id === 'ph';
   neighbourOnTerrace.visible = terrRules.length > 0;
   waving.window = winRules.some((r) => r.look.sees);
   waving.terrace = terrRules.some((r) => r.look.sees);
+  waving.local = res.results.some((r) => (r.rule.who === 'tower' || r.rule.who === 'boat') && r.look.sees);
   overhangHandle.visible = level.overhang;
   if (solved && !was) {
     solveSound();
@@ -417,7 +442,7 @@ function refresh() {
   console.info('[VR] design', JSON.stringify(design), 'level', level.id, 'solved', solved, 'stars', stars);
   (window as any).VR.state = {level: level.id, design: JSON.parse(JSON.stringify(design)), solved, stars, step: tutorial.stepId(), results: res.results.map((r) => ({id: r.rule.id, pass: r.pass, blocker: r.look.blocker}))};
 }
-const waving = {window: false, terrace: false};
+const waving = {window: false, terrace: false, local: false};
 
 function bestStars(id: string): number {
   try {
@@ -483,7 +508,8 @@ class Tutorial {
   private i = 0;
   private enteredAt = 0;
   start(levelIdx: number) {
-    this.steps = SCRIPT[levelIdx] ?? [];
+    this.steps = scriptFor(COUNTRY, levelIdx, LEVELS[levelIdx], firstLevelPlayed);
+    firstLevelPlayed = false;
     this.i = 0;
     this.enter(0);
   }
@@ -513,14 +539,14 @@ class Tutorial {
   }
   next(now: number) {
     const st = this.steps[this.i];
-    if (st?.then === 'next-level') return goToLevel((levelIndex + 1) % LEVELS.length);
+    if (st?.then === 'next-level') return advance();
     this.i++;
     this.enter(now);
   }
   tick(now: number, tapped: boolean) {
     const st = this.steps[this.i];
     if (!st) {
-      if (tapped && solved) goToLevel((levelIndex + 1) % LEVELS.length);
+      if (tapped && solved) advance();
       return;
     }
     if (now - this.enteredAt < 0.4) return;
@@ -533,15 +559,19 @@ function lookAt(l: Look | undefined): Vector3 | null {
   switch (l) {
     case 'window':
       return siteToWorld(LAYOUT.neighbour.window);
-    case 'terrace':
-      return siteToWorld(EYES.terrace.at);
+    case 'tower':
+    case 'boat': {
+      const p = eyePoints(l)[0];
+      return p ? siteToWorld(p) : null;
+    }
     case 'seat':
     case 'plant':
     case 'pool':
     case 'table':
+    case 'deck':
       return siteToWorld(TARGETS[l].at);
     case 'tray':
-      return model.desk.localToWorld(new Vector3(0.1, 0.03, 0.56));
+      return model.desk.localToWorld(new Vector3(0.86, 0.03, 0.1));
     case 'sun':
       return sunHandle.getWorldPosition(new Vector3());
     case 'overhang':
@@ -555,7 +585,21 @@ function lookAt(l: Look | undefined): Vector3 | null {
 
 const tutorial = new Tutorial();
 
+/** After a level: the next one in this country, or the first level of the next country. */
+function advance() {
+  if (levelIndex + 1 < LEVELS.length) return goToLevel(levelIndex + 1);
+  const next = COUNTRIES[(COUNTRIES.findIndex((c) => c.id === COUNTRY.id) + 1) % COUNTRIES.length];
+  goToCountry(next.id, 0);
+}
+
+function goToCountry(id: typeof COUNTRY.id, i = 0) {
+  setCountry(id);
+  local.set(COUNTRY);
+  goToLevel(i);
+}
+
 function goToLevel(i: number) {
+  hud.country(COUNTRY.name);
   levelIndex = i;
   level = LEVELS[i];
   design.overhang = 0;
@@ -571,7 +615,8 @@ function goToLevel(i: number) {
   refresh();
   chimeSound();
   tutorial.start(i);
-  history.replaceState(null, '', `?level=${i + 1}`);
+  history.replaceState(null, '', `?country=${COUNTRY.id}&level=${i + 1}`);
+  hud.country(COUNTRY.name);
 }
 
 // ---------- test and debug hooks ----------
@@ -586,6 +631,7 @@ const toScreen = (v: Vector3) => {
     return {calls: i.render.calls, triangles: i.render.triangles, textures: i.memory.textures, geometries: i.memory.geometries};
   },
   setLevel: (i: number) => goToLevel(i),
+  setCountry: (id: string, i = 0) => goToCountry(id as typeof COUNTRY.id, i),
   tapTiki() {
     pendingTap = true;
   },
@@ -618,7 +664,9 @@ const toScreen = (v: Vector3) => {
 };
 let pendingTap = false;
 let lastTime = 0;
+local.set(COUNTRY);
 goToLevel(levelIndex);
+if (!startCountry) hud.showMap(COUNTRIES.map((c) => ({id: c.id, name: c.name, place: c.place, house: c.house})));
 
 // ---------- play on a screen with a mouse or touch ----------
 // Outside an immersive session the hand-ray system has nothing to drive, so the page pointer does
@@ -715,6 +763,8 @@ hud.onReset = () => {
   refresh();
 };
 hud.onLevel = (i: number) => goToLevel(i);
+hud.onCountry = (id: string) => goToCountry(id as typeof COUNTRY.id, 0);
+hud.onMap = () => hud.showMap(COUNTRIES.map((c) => ({id: c.id, name: c.name, place: c.place, house: c.house})));
 
 /** Tiki's words for the device in use: pinch in a headset, click or drag on a screen. */
 function forDevice(text: string): string {
@@ -784,6 +834,8 @@ class PlaySystem extends createSystem({}) {
       if (arm) arm.rotation.z = on ? 2.6 + 0.4 * Math.sin(time * 9) : 0.1;
     };
     wave(neighbourAtWindow, waving.window);
+    for (const f of local.figures()) wave(f as Group, waving.local);
+    local.update(time);
     wave(neighbourOnTerrace, waving.terrace);
 
     WIND.value = time;

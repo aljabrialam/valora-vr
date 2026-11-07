@@ -382,7 +382,7 @@ export const GARDEN: [string, number, number, number][] = [
   ['palm-a', -7.6, -7.4, 6.2],
   ['palm-b', -7.8, 4.6, 5.6],
   ['palm-b', -6.6, -1.2, 5.0],
-  ['palm-a', 14.0, 4.4, 5.4],
+  ['palm-a', 14.4, -2.4, 5.4],
   ['palm-b', 13.6, -6.8, 6.0],
   ['shrub-c', -7.4, 2.6, 1.1],
   ['shrub-c', 6.2, -6.0, 0.9],

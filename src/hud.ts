@@ -30,6 +30,22 @@ const CSS = `
 .vh-levels{display:flex;gap:6px;margin-top:10px;pointer-events:auto}
 .vh-dot{width:28px;height:28px;border-radius:8px;border:0;background:rgba(0,0,0,.06);font:600 12px/28px Inter,system-ui,sans-serif;color:#4a4945;cursor:pointer;padding:0}
 .vh-dot[aria-current=true]{background:#1d1d1f;color:#fff}
+.vh-map{font:17px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#1d1d1f;position:fixed;inset:0;display:grid;place-items:center;background:rgba(18,52,74,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:auto;z-index:6}
+.vh-map[hidden]{display:none}
+.vh-mapcard{width:min(880px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:24px 26px}
+.vh-maptitle{font:600 28px/1.15 -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;margin:2px 0 4px}
+.vh-mapsub{font-size:15px;color:#4a4945;margin:0 0 14px}
+.vh-mapgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:start}
+.vh-mapsvg{width:100%;height:auto;background:linear-gradient(180deg,#bfe6f2,#8fd0e4);border-radius:14px}
+.vh-places{display:grid;gap:8px}
+.vh-place{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;border:0;border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.05);cursor:pointer;font:inherit;color:inherit;min-height:44px}
+.vh-place:hover,.vh-place:focus-visible{background:rgba(0,0,0,.09);outline:none}
+.vh-place b{font-weight:600}
+.vh-place small{grid-column:1/-1;color:#4a4945;font-size:13px}
+.vh-place[disabled]{opacity:.5;cursor:default}
+.vh-soon{font-size:12px;color:#6b6a66}
+.vh-mapbtn{pointer-events:auto;margin-top:10px}
+@media (max-width:700px){.vh-mapgrid{grid-template-columns:1fr}}
 .vh-tiki{position:absolute;left:0;right:0;margin:0 auto;bottom:20px;width:min(560px,calc(100vw - 32px));padding:14px 18px}
 .vh-name{font-size:12px;font-weight:600;letter-spacing:.06em;color:#8a6a43;text-transform:uppercase}
 .vh-say{font-size:17px;margin:2px 0 0}
@@ -74,6 +90,57 @@ export class Hud {
   }
 
   onPlay: () => void = () => {};
+  onCountry: (id: string) => void = () => {};
+  onMap: () => void = () => {};
+  private countryName = '';
+  private map = document.createElement('div');
+
+  /** The country being played, shown above the level title. */
+  country(name: string) {
+    this.countryName = name;
+  }
+
+  /** The ASEAN map: four playable places, the others coming soon. Capitals plotted by longitude
+   *  and latitude so the map is honest without needing coastlines. */
+  showMap(playable: {id: string; name: string; place: string; house: string}[]) {
+    const all: {name: string; place: string; lon: number; lat: number; id?: string}[] = [
+      {name: 'Myanmar', place: 'Naypyidaw', lon: 96.1, lat: 19.7},
+      {name: 'Thailand', place: 'Bangkok', lon: 100.5, lat: 13.75, id: 'th'},
+      {name: 'Laos', place: 'Vientiane', lon: 102.6, lat: 18.0},
+      {name: 'Vietnam', place: 'Hanoi', lon: 105.8, lat: 21.0},
+      {name: 'Cambodia', place: 'Phnom Penh', lon: 104.9, lat: 11.6},
+      {name: 'Malaysia', place: 'Kuala Lumpur', lon: 101.7, lat: 3.1},
+      {name: 'Singapore', place: 'Singapore', lon: 103.8, lat: 1.35, id: 'sg'},
+      {name: 'Brunei', place: 'Bandar Seri Begawan', lon: 114.9, lat: 4.9},
+      {name: 'Philippines', place: 'Manila', lon: 121.0, lat: 14.6, id: 'ph'},
+      {name: 'Indonesia', place: 'Jakarta', lon: 106.8, lat: -6.2, id: 'id'},
+      {name: 'Timor-Leste', place: 'Dili', lon: 125.6, lat: -8.6},
+    ];
+    const X = (lon: number) => ((lon - 92) / 38) * 520 + 20;
+    const Y = (lat: number) => ((24 - lat) / 36) * 400 + 20;
+    const dots = all
+      .map((p) => {
+        const on = !!p.id;
+        return `<g ${on ? `data-country="${p.id}" style="cursor:pointer"` : ''}><circle cx="${X(p.lon)}" cy="${Y(p.lat)}" r="${on ? 11 : 6}" fill="${on ? '#c8643c' : '#ffffff'}" stroke="${on ? '#fff' : '#7aa9bb'}" stroke-width="3"/><text x="${X(p.lon) + (p.lon > 118 ? -14 : 14)}" y="${Y(p.lat) + 5}" text-anchor="${p.lon > 118 ? 'end' : 'start'}" font-size="${on ? 17 : 13}" font-weight="${on ? 600 : 400}" fill="${on ? '#1d1d1f' : '#47707f'}" font-family="-apple-system,Inter,system-ui,sans-serif">${p.name}</text></g>`;
+      })
+      .join('');
+    const cards = playable
+      .map((c) => `<button class="vh-place" data-country="${c.id}"><b>${esc(c.name)}</b><span class="vh-soon">${esc(c.place)}</span><small>${esc(c.house)}</small></button>`)
+      .join('');
+    const soon = all.filter((p) => !p.id).map((p) => p.name).join(', ');
+    this.map.className = 'vh-map';
+    this.map.innerHTML = `<section class="vh-glass vh-mapcard" role="dialog" aria-label="Choose a place"><div class="vh-over">VaLora: Two Watchers</div><h1 class="vh-maptitle">Choose a place</h1><p class="vh-mapsub">Same sun, different skies. Each country has its own house, its own sun path for today, and its own watchers.</p>
+      <div class="vh-mapgrid"><svg class="vh-mapsvg" viewBox="0 0 560 440" role="img" aria-label="Map of South-east Asia">${dots}</svg><div class="vh-places">${cards}<p class="vh-soon">Coming soon: ${esc(soon)}.</p></div></div></section>`;
+    this.map.hidden = false;
+    if (!this.map.isConnected) document.body.append(this.map);
+    this.map.querySelectorAll<HTMLElement>('[data-country]').forEach((el) =>
+      el.addEventListener('click', () => {
+        this.map.hidden = true;
+        this.onCountry(el.dataset.country!);
+      }),
+    );
+    if (!reduced()) animate(this.map.firstElementChild as HTMLElement, {opacity: [0, 1], y: [12, 0]}, {duration: 0.35, ease: 'easeOut'});
+  }
   onReset: () => void = () => {};
   onLevel: (i: number) => void = () => {};
 
@@ -83,14 +150,15 @@ export class Hud {
       .join('');
     const starStr = (n: number) => '\u2605'.repeat(n) + '\u2606'.repeat(3 - n);
     const dots = Array.from({length: total}, (_, i) => `<button class="vh-dot" data-level="${i}" aria-label="Level ${i + 1}" aria-current="${i === index}">${i + 1}</button>`).join('');
-    this.card.innerHTML = `<div class="vh-over">Level ${index + 1} of ${total}</div><h1 class="vh-title">${esc(level.title)}</h1><p class="vh-brief">${esc(level.brief)}</p><ul class="vh-rules">${rules}</ul>
+    this.card.innerHTML = `<div class="vh-over">${esc(this.countryName)} \u00b7 Level ${index + 1} of ${total}</div><h1 class="vh-title">${esc(level.title)}</h1><p class="vh-brief">${esc(level.brief)}</p><ul class="vh-rules">${rules}</ul>
       <div class="vh-meta"><span>Pieces used ${info.used} \u00b7 three stars with ${info.par}</span><span class="vh-stars" aria-label="${solved ? info.stars : info.best} stars">${starStr(solved ? info.stars : info.best)}</span></div>
       <div class="vh-actions"><button class="vh-btn vh-primary" data-act="play">Live the day</button><button class="vh-btn vh-secondary" data-act="reset">Reset</button></div>
-      <div class="vh-levels">${dots}</div>
+      <div class="vh-levels">${dots}<button class="vh-dot" style="width:auto;padding:0 10px" data-act="map" aria-label="Choose a country">Map</button></div>
       <div class="vh-note">${solved ? '<span class="vh-pass">Solved.</span> Live the day, or click Tiki for the next level.' : 'Illustrative sunlight and visibility checks.'}</div>`;
     this.card.querySelector('[data-act=play]')!.addEventListener('click', () => this.onPlay());
     this.card.querySelector('[data-act=reset]')!.addEventListener('click', () => this.onReset());
-    this.card.querySelectorAll<HTMLButtonElement>('.vh-dot').forEach((b) => b.addEventListener('click', () => this.onLevel(Number(b.dataset.level))));
+    this.card.querySelector('[data-act=map]')!.addEventListener('click', () => this.onMap());
+    this.card.querySelectorAll<HTMLButtonElement>('.vh-dot[data-level]').forEach((b) => b.addEventListener('click', () => this.onLevel(Number(b.dataset.level))));
     if (solved && !this.lastSolved && !reduced()) animate(this.card, {scale: [1, 1.03, 1]}, {duration: 0.45, ease: 'easeOut'});
     this.lastSolved = solved;
   }

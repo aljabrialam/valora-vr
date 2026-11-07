@@ -1,7 +1,9 @@
-// What Tiki says, level by level. Short lines, one idea each; the player acts as soon as possible.
-// `until` decides when a step ends: a pinch on Tiki, or the level being solved.
+// What Tiki says. Short lines, one idea each; the player acts as soon as possible.
+// The first level anywhere teaches placing; each country's first level introduces its twist.
 
-export type Look = 'window' | 'terrace' | 'seat' | 'plant' | 'pool' | 'table' | 'tray' | 'sun' | 'overhang' | 'play' | null;
+import type {Country, CountryLevel} from './sim/countries.ts';
+
+export type Look = 'window' | 'tower' | 'boat' | 'seat' | 'plant' | 'pool' | 'table' | 'deck' | 'tray' | 'sun' | 'overhang' | 'play' | null;
 
 export type Step = {
   id: string;
@@ -13,42 +15,38 @@ export type Step = {
   then?: 'next-level';
 };
 
-const done = (id: string, say: string): Step => ({id, say, hint: 'Pinch Tiki for the next level', look: 'play', until: 'tap', celebrate: true, then: 'next-level'});
+const TWIST: Record<Country['id'], {say: string; look: Look}> = {
+  ph: {say: 'Here the neighbour watches from his balcony, and in typhoon season the wind comes in low over the bamboo fence.', look: 'window'},
+  th: {say: 'Long-tail boats pass on the water all day, and the railing is low. Passengers can see a lot.', look: 'boat'},
+  id: {say: 'In the wet season the afternoon rain slants in from the west. Cover from above keeps things dry.', look: 'table'},
+  sg: {say: 'A high-rise block next door looks straight down. Screens will not help much; think about what covers from above.', look: 'tower'},
+};
 
-export const SCRIPT: Step[][] = [
-  // 1 · The Neighbour: learn to place a piece
-  [
-    {id: 'hello', say: "Hi, I'm Tiki. I live on these walls, so I know where every shadow falls.", until: 'tap'},
-    {id: 'watcher', say: 'See the man at that window? He is waving because he can see right into your reading chair.', look: 'window', until: 'tap'},
-    {id: 'place', say: 'Pinch and drag the screen from the tray into the courtyard, so it blocks the red line.', hint: 'Pinch a piece on the tray, move it over the courtyard, let go', look: 'tray', until: 'solved'},
-    done('l1-done', 'He stopped waving. Pinch a placed piece to turn it, or play the day with the bronze button.'),
-  ],
-  // 2 · Morning Light: the sun is a watcher too
-  [
-    {id: 'sun', say: 'The second watcher is the sun. Drag it across the sky and watch the shadows move.', hint: 'Pinch and drag the sun', look: 'sun', until: 'tap'},
-    {id: 'plant', say: 'The plant needs the 8:30 sun from the east. Stay private, but do not steal its light.', look: 'plant', until: 'solved'},
-    done('l2-done', 'Both watchers happy. One piece was enough: that is three stars.'),
-  ],
-  // 3 · Lunch Outside: high sun, different tools
-  [
-    {id: 'lunch', say: 'At lunch the sun is almost overhead. A screen will not help; something above the table will.', look: 'table', until: 'solved'},
-    done('l3-done', 'Shade and privacy from one piece. Height matters.'),
-  ],
-  // 4 · Morning Swim: a watcher from above
-  [
-    {id: 'terrace', say: 'Now the neighbour is up on his roof terrace, looking down at the pool.', look: 'terrace', until: 'tap'},
-    {id: 'swim', say: 'Hide the pool from above, but leave it in the 11 o’clock sun.', look: 'pool', until: 'solved'},
-    done('l4-done', 'A private swim in the sun. Trees see things screens cannot.'),
-  ],
-  // 5 · Afternoon Read: the overhang
-  [
-    {id: 'pm', say: 'At 3:30 the sun comes low from the west, right onto your chair.', look: 'seat', until: 'tap'},
-    {id: 'overhang', say: 'Try pulling the roof overhang out over the glass, then fix the privacy.', hint: 'Pinch and drag the bronze handle on the roof', look: 'overhang', until: 'solved'},
-    done('l5-done', 'Cool, private and the plant still gets its morning. Nicely done.'),
-  ],
-  // 6 · The Whole Day
-  [
-    {id: 'whole', say: 'Last one: the whole day. Six moments, two watchers. Two pieces is possible.', look: 'tray', until: 'solved'},
-    done('l6-done', 'The house works from morning to night. Come back tomorrow for a new day.'),
-  ],
-];
+export function scriptFor(country: Country, index: number, level: CountryLevel, first: boolean): Step[] {
+  const steps: Step[] = [];
+  if (first) {
+    steps.push({id: 'hello', say: "Hi, I'm Tiki. I live on these walls, so I know where every shadow falls.", until: 'tap'});
+    steps.push({id: 'place', say: 'Pinch and drag a piece from the raft onto the courtyard. Pinch a placed piece to turn it.', hint: 'Pinch a piece on the raft, move it over the courtyard, let go', look: 'tray', until: 'tap'});
+  }
+  if (index === 0) steps.push({id: `${country.id}-twist`, say: `Welcome to ${country.place}: ${country.house}. ${TWIST[country.id].say}`, look: TWIST[country.id].look, until: 'tap'});
+  if (index === 0 && first) steps.push({id: 'sun', say: 'You can drag the sun across the sky to watch the shadows move.', hint: 'Pinch and drag the sun', look: 'sun', until: 'tap'});
+  steps.push({id: `${level.id}-goal`, say: level.brief, look: lookFor(level), until: 'solved'});
+  const last = index === country.levels.length - 1;
+  steps.push({
+    id: `${level.id}-done`,
+    say: last ? `The ${country.name} house works all day. Try another country on the map.` : 'It works. Play the day with the bronze button, or try for fewer pieces.',
+    hint: last ? 'Pinch Tiki for the next country' : 'Pinch Tiki for the next level',
+    look: 'play',
+    until: 'tap',
+    celebrate: true,
+    then: 'next-level',
+  });
+  return steps;
+}
+
+function lookFor(level: CountryLevel): Look {
+  const r = level.rules[level.rules.length - 1];
+  if (r.who === 'tower' || r.who === 'boat') return r.who;
+  if (r.who === 'window') return 'window';
+  return r.target;
+}
