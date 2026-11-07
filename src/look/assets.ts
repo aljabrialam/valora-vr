@@ -3,7 +3,7 @@
 // - Meta's IWSDK example "plant-sansevieria": a modelled snake plant (MIT, same package)
 // Baked materials are shown unlit, so the baked light is not lit a second time.
 
-import {Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, SRGBColorSpace, type Object3D} from '@iwsdk/core';
+import {Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Quaternion, SRGBColorSpace, Vector3, type Object3D} from '@iwsdk/core';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 
 const base = import.meta.env.BASE_URL;
@@ -79,5 +79,39 @@ export async function loadHouse(): Promise<Group> {
   const g = new Group();
   g.name = 'house';
   g.add(gltf.scene);
+  return g;
+}
+
+/**
+ * Model-maker's trees (art/blender/trees.py), one instanced mesh per variant, placed in site
+ * metres from `placements` ([variant, x, z, size]). Scenery only: they never take rays.
+ */
+export async function loadTrees(placements: [string, number, number, number][]): Promise<Group> {
+  const gltf = await loader.loadAsync(`${base}models/valora-trees.glb`);
+  const g = new Group();
+  g.name = 'trees';
+  const m = new Matrix4();
+  const q = new Quaternion();
+  const up = new Vector3(0, 1, 0);
+  let seed = 3;
+  const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  gltf.scene.traverse((o) => {
+    const src = o as Mesh;
+    if (!src.isMesh) return;
+    const name = (src.parent && src.parent !== gltf.scene ? src.parent.name : src.name).replace(/_\d+$/, '');
+    const mine = placements.filter((p) => p[0] === name);
+    if (!mine.length) return;
+    const inst = new InstancedMesh(src.geometry, src.material, mine.length);
+    mine.forEach(([, x, z, size], i) => {
+      q.setFromAxisAngle(up, rand() * Math.PI * 2);
+      const flat = name.startsWith('shrub') ? 0.85 : 1;
+      m.compose(new Vector3(x, 0, z), q, new Vector3(size, size * flat, size));
+      inst.setMatrixAt(i, m);
+    });
+    inst.castShadow = true;
+    inst.receiveShadow = true;
+    inst.raycast = () => {};
+    g.add(inst);
+  });
   return g;
 }

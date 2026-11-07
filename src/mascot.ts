@@ -1,5 +1,5 @@
-// Tiki, the house gecko who guides the tutorial. Original character, built from simple shapes in code
-// (no imported art). Tiki sits on the front of the desk, looks at whatever it is talking about,
+// Tiki, the house gecko who guides the tutorial. Original character, a glazed ceramic figurine built
+// in code from turned (lathe) forms. Tiki sits on the front of the desk, looks at whatever it is talking about,
 // blinks, breathes, sways its tail and hops when it moves. Pinch Tiki to continue.
 
 import {
@@ -9,7 +9,10 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
+  LatheGeometry,
+  MeshPhysicalMaterial,
+  type Material,
+  Vector2,
   SphereGeometry,
   Sprite,
   SpriteMaterial,
@@ -18,17 +21,29 @@ import {
 } from '@iwsdk/core';
 import {BRONZE, INK, roundRect} from './feedback.ts';
 
-const skin = new MeshStandardMaterial({color: new Color('#d6c095'), roughness: 0.7});
-const belly = new MeshStandardMaterial({color: new Color('#eadcbc'), roughness: 0.75});
-const spots = new MeshStandardMaterial({color: new Color('#a5885c'), roughness: 0.8});
-const eyeWhite = new MeshStandardMaterial({color: new Color('#fbf8f1'), roughness: 0.25});
-const pupil = new MeshStandardMaterial({color: new Color('#2a2018'), roughness: 0.2});
-const shine = new MeshBasicMaterial({color: '#ffffff'});
-const blush = new MeshStandardMaterial({color: new Color('#e3a58b'), roughness: 0.9, transparent: true, opacity: 0.6});
+// Tiki is a glazed ceramic figurine, in keeping with the architect's model: a celadon glaze with a
+// clear coat, bronze-glaze spots, small glossy bead eyes. One smooth body, not a string of balls.
+const skin = new MeshPhysicalMaterial({color: new Color('#bfcbb6'), roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08});
+const belly = new MeshPhysicalMaterial({color: new Color('#e4e1d4'), roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.1});
+const spots = new MeshPhysicalMaterial({color: new Color('#8a6a43'), roughness: 0.3, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.1});
+// low environment reflection: a bright studio rim on the beads read as cartoon eye whites
+const eyeBead = new MeshPhysicalMaterial({color: new Color('#16130f'), roughness: 0.15, envMapIntensity: 0.25});
 
-function ball(r: number, mat: MeshStandardMaterial | MeshBasicMaterial, sx = 1, sy = 1, sz = 1): Mesh {
-  const m = new Mesh(new SphereGeometry(r, 20, 14), mat);
+function ball(r: number, mat: Material, sx = 1, sy = 1, sz = 1): Mesh {
+  const m = new Mesh(new SphereGeometry(r, 24, 16), mat);
   m.scale.set(sx, sy, sz);
+  m.castShadow = true;
+  return m;
+}
+
+/** A smooth body turned on a lathe along +z: `radii` are sampled evenly from back to front. */
+function turned(length: number, radii: number[], mat: Material, flatten = 1): Mesh {
+  const pts = radii.map((r, i) => new Vector2(Math.max(r, 0.0001), (i / (radii.length - 1)) * length));
+  const geo = new LatheGeometry(pts, 32);
+  geo.rotateX(Math.PI / 2); // lathe axis y -> z (back to front)
+  geo.scale(1, flatten, 1);
+  geo.computeVertexNormals();
+  const m = new Mesh(geo, mat);
   m.castShadow = true;
   return m;
 }
@@ -58,49 +73,45 @@ export class Gecko {
     g.add(this.body);
     this.body.scale.setScalar(1.7); // about 24 cm nose to tail: big enough to read at arm's length
 
-    // body and belly
-    const torso = ball(0.024, skin, 1, 0.62, 1.55);
-    torso.position.set(0, 0.016, 0);
-    const tummy = ball(0.02, belly, 1, 0.45, 1.4);
-    tummy.position.set(0, 0.011, 0.002);
+    // body: one turned, flattened form from hips to shoulders, a paler belly glaze beneath
+    const torso = turned(0.078, [0.004, 0.011, 0.017, 0.02, 0.021, 0.019, 0.015, 0.011, 0.008], skin, 0.58);
+    torso.position.set(0, 0.016, -0.04);
+    const tummy = turned(0.07, [0.004, 0.012, 0.018, 0.02, 0.019, 0.015, 0.009], belly, 0.42);
+    tummy.position.set(0, 0.0115, -0.036);
     this.body.add(torso, tummy);
-    for (const [x, z, r] of [[0.009, -0.012, 0.005], [-0.008, 0.004, 0.006], [0.006, 0.018, 0.004], [-0.004, -0.024, 0.004]] as const) {
-      const s = ball(r, spots, 1, 0.35, 1);
-      s.position.set(x, 0.0295, z);
+    for (const [x, z, r] of [[0.009, -0.014, 0.0045], [-0.008, 0.002, 0.0055], [0.006, 0.017, 0.0038], [-0.005, -0.027, 0.0035], [0.0, 0.03, 0.003]] as const) {
+      const s = ball(r, spots, 1, 0.3, 1);
+      s.position.set(x, 0.0298, z);
       this.body.add(s);
     }
 
-    // head: big round eyes on top, a little blush
-    this.head.position.set(0, 0.026, 0.042);
+    // head: a wedge-shaped turned head with a rounded snout, bead eyes set on the sides
+    this.head.position.set(0, 0.024, 0.036);
     this.body.add(this.head);
-    const skull = ball(0.025, skin, 1.15, 0.8, 1.15);
+    const skull = turned(0.056, [0.01, 0.017, 0.0195, 0.019, 0.0165, 0.013, 0.009, 0.0055, 0.001], skin, 0.62);
+    skull.position.set(0, 0, -0.008);
+    skull.scale.x = 1.12;
     this.head.add(skull);
     for (const side of [-1, 1]) {
-      const eye = ball(0.0115, eyeWhite);
-      eye.position.set(side * 0.016, 0.013, 0.01);
-      const p = ball(0.0072, pupil);
-      p.position.set(side * 0.0175, 0.0135, 0.0175);
-      const s = new Mesh(new SphereGeometry(0.0019, 8, 6), shine);
-      s.position.set(side * 0.0152, 0.0172, 0.0228);
-      const lid = ball(0.0122, skin, 1, 0.08, 1);
-      lid.position.set(side * 0.016, 0.0225, 0.01);
+      const eye = ball(0.0068, eyeBead);
+      eye.position.set(side * 0.0168, 0.0068, 0.008);
+      const lid = ball(0.0074, skin, 1, 0.08, 1);
+      lid.position.set(side * 0.0168, 0.0114, 0.008);
       this.lids.push(lid);
-      const b = ball(0.0045, blush, 1, 0.4, 1);
-      b.position.set(side * 0.017, -0.002, 0.016);
-      this.head.add(eye, p, s, lid, b);
+      this.head.add(eye, lid);
     }
 
     // legs with round toe pads, splayed like a gecko on a wall
     for (const [x, z, fwd] of [[0.022, 0.022, 1], [-0.022, 0.022, 1], [0.022, -0.02, -1], [-0.022, -0.02, -1]] as const) {
       const leg = new Group();
       leg.position.set(x, 0.012, z);
-      const limb = new Mesh(new CylinderGeometry(0.0045, 0.0045, 0.022, 8), skin);
+      const limb = new Mesh(new CylinderGeometry(0.0034, 0.0042, 0.022, 12), skin);
       limb.rotation.z = Math.sign(x) * 1.0;
       limb.position.set(Math.sign(x) * 0.008, -0.004, 0);
       limb.castShadow = true;
       leg.add(limb);
       for (let k = -1; k <= 1; k++) {
-        const toe = ball(0.0042, skin, 1, 0.5, 1);
+        const toe = ball(0.0034, skin, 1, 0.5, 1.2);
         toe.position.set(Math.sign(x) * 0.018 + k * 0.004 * fwd, -0.01, k * 0.005 + fwd * 0.004);
         leg.add(toe);
       }
@@ -110,17 +121,17 @@ export class Gecko {
 
     // tail: a chain of shrinking segments that sways
     let parent: Group = this.body;
-    let z = -0.036;
-    for (let i = 0; i < 7; i++) {
+    let z = -0.038;
+    for (let i = 0; i < 9; i++) {
       const seg = new Group();
-      seg.position.set(0, i === 0 ? 0.012 : 0, z);
-      const r = 0.0095 * (1 - i / 8.5);
-      const b = ball(r, skin, 1, 0.75, 1.25);
+      seg.position.set(0, i === 0 ? 0.014 : 0, z);
+      const r = 0.0088 * (1 - i / 10.5);
+      const b = ball(r, skin, 1, 0.68, 1.5);
       seg.add(b);
       parent.add(seg);
       this.tail.push(seg);
       parent = seg;
-      z = -r * 1.55;
+      z = -r * 1.15; // segments overlap so the glaze reads as one tapering tail
     }
 
     // speech card above Tiki
@@ -224,7 +235,10 @@ export class Gecko {
     if (t > this.nextBlink) {
       const b = t - this.nextBlink;
       const open = b < 0.08 ? 1 - b / 0.08 : b < 0.16 ? (b - 0.08) / 0.08 : 1;
-      for (const lid of this.lids) lid.scale.y = 0.08 + (1 - open) * 0.95;
+      for (const lid of this.lids) {
+        lid.scale.y = 0.08 + (1 - open) * 0.95;
+        lid.visible = open < 0.9; // only during a blink
+      }
       if (b > 0.16) this.nextBlink = t + 2.5 + Math.random() * 2.5;
     }
     this.head.rotation.x = talking ? Math.sin(t * 9) * 0.06 : 0;

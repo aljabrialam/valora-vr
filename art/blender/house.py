@@ -167,19 +167,46 @@ def soil(nt, bsdf, coord):
     bsdf.inputs['Roughness'].default_value = 1.0
 
 
+def card(base, var=0.025):
+    """Mount board: an even matte colour with a faint paper fibre, as in a museum study model."""
+    lo = tuple(c * (1 - var) for c in base)
+    def f(nt, bsdf, coord):
+        c = mix(nt, noise(nt, coord, 9, 8, 0.65), rgb(nt, lo), rgb(nt, base))
+        nt.links.new(tint(nt, c), bsdf.inputs['Base Color'])
+        bsdf.inputs['Roughness'].default_value = 0.9
+    return f
+
+
+def basswood(base):
+    """Basswood sheet: pale, fine straight grain, very little figure."""
+    def f(nt, bsdf, coord):
+        w = nt.nodes.new('ShaderNodeTexWave')
+        w.bands_direction = 'X'
+        w.inputs['Scale'].default_value = 14.0
+        w.inputs['Distortion'].default_value = 2.5
+        w.inputs['Detail'].default_value = 2
+        nt.links.new(coord.outputs['Object'], w.inputs['Vector'])
+        c = mix(nt, w.outputs['Fac'], rgb(nt, tuple(v * 0.9 for v in base)), rgb(nt, base))
+        nt.links.new(tint(nt, c), bsdf.inputs['Base Color'])
+        bsdf.inputs['Roughness'].default_value = 0.7
+    return f
+
+
+# Architect's study model: warm white card for built work, basswood for timber, grey card for
+# paving, dark card for frames, frosted acrylic for water, a walnut accent for the furniture.
 MATS = {
-    'concrete': node_mat('concrete', concrete),
-    'roof': node_mat('roof', concrete),
-    'oak': node_mat('oak', oak),
-    'deck': node_mat('deck', deck),
-    'stone': node_mat('stone', stone),
-    'plaster': node_mat('plaster', plaster),
-    'frame': node_mat('frame', flat((0.05, 0.05, 0.05), 0.45, 0.6)),
-    'linen': node_mat('linen', flat((0.78, 0.74, 0.66), 0.95)),
-    'teak': node_mat('teak', flat((0.36, 0.20, 0.10), 0.5)),
+    'concrete': node_mat('concrete', card((0.86, 0.84, 0.80))),
+    'roof': node_mat('roof', card((0.86, 0.84, 0.80))),
+    'oak': node_mat('oak', basswood((0.80, 0.68, 0.50))),
+    'deck': node_mat('deck', basswood((0.72, 0.58, 0.40))),
+    'stone': node_mat('stone', card((0.70, 0.69, 0.66), 0.04)),
+    'plaster': node_mat('plaster', card((0.80, 0.80, 0.78))),
+    'frame': node_mat('frame', flat((0.11, 0.11, 0.11), 0.6)),
+    'linen': node_mat('linen', card((0.90, 0.87, 0.82))),
+    'teak': node_mat('teak', flat((0.30, 0.19, 0.12), 0.45)),
     'grass': node_mat('grass', grass),
-    'soil': node_mat('soil', soil),
-    'pool': node_mat('pool', flat((0.10, 0.20, 0.21), 0.4)),
+    'soil': node_mat('soil', card((0.40, 0.29, 0.19), 0.08)),
+    'pool': node_mat('pool', flat((0.55, 0.65, 0.69), 0.3)),
     'book': node_mat('book', flat((1, 1, 1), 0.7)),
     'brass': node_mat('brass', flat((0.62, 0.47, 0.26), 0.35, 0.8)),
 }
@@ -230,7 +257,7 @@ box(R['x0'], R['x1'], 0.0, 0.05, R['z0'], R['z1'], 'oak', bevel=0.0, name='room-
 # oak boards: thin strips just proud of the floor, each a slightly different tone
 x = R['x0'] + 0.1
 while x < R['x1'] - 0.1:
-    box(x, min(x + 0.19, R['x1'] - 0.1), 0.05, 0.055, R['z0'] + 0.15, R['z1'] - 0.05, 'oak', bevel=0.004, tint_c=jitter((1, 1, 1), 0.12), name='board')
+    box(x, min(x + 0.19, R['x1'] - 0.1), 0.05, 0.055, R['z0'] + 0.15, R['z1'] - 0.05, 'oak', bevel=0.004, tint_c=jitter((1, 1, 1), 0.05), name='board')
     x += 0.2
 for key in ('north wall', 'west wall', 'east wall'):
     b = BOX[key]
@@ -269,7 +296,7 @@ for shelf_y in (0.45, 0.95, 1.45, 1.95):
     while z < R['z0'] + 2.5:
         w = rnd.uniform(0.04, 0.08)
         h = rnd.uniform(0.22, 0.34)
-        col = rnd.choice([(0.45, 0.20, 0.15), (0.20, 0.30, 0.35), (0.75, 0.68, 0.55), (0.30, 0.35, 0.22), (0.15, 0.15, 0.17), (0.62, 0.48, 0.30)])
+        col = rnd.choice([(0.86, 0.84, 0.80), (0.78, 0.76, 0.72), (0.66, 0.55, 0.42), (0.55, 0.53, 0.50), (0.35, 0.34, 0.33)])
         box(bx0 + 0.04, bx0 + 0.34, shelf_y, shelf_y + h, z, z + w, 'book', bevel=0.004, tint_c=col, name='book')
         z += w + 0.005
 
@@ -278,7 +305,7 @@ deck_z1 = C['z0'] + 1.5
 # deck boards running east-west, 140 mm wide with 6 mm gaps
 z = C['z0'] + 0.02
 while z < deck_z1:
-    box(C['x0'], C['x1'], 0.0, 0.06, z, min(z + 0.14, deck_z1), 'deck', bevel=0.006, tint_c=jitter((1, 1, 1), 0.14), name='deck-board')
+    box(C['x0'], C['x1'], 0.0, 0.06, z, min(z + 0.14, deck_z1), 'deck', bevel=0.006, tint_c=jitter((1, 1, 1), 0.06), name='deck-board')
     z += 0.146
 pool = {'x0': -4.3, 'x1': -1.6, 'z0': 0.3, 'z1': 2.9}
 # stone paving: 600 x 600 slabs with 10 mm joints over a mortar bed, skipping the pool
@@ -291,7 +318,7 @@ while z < C['z1'] - 1.0 - 0.1:
         z1 = min(z + 0.59, C['z1'] - 1.0 - 0.005)
         inside_pool = x1 > pool['x0'] - 0.25 and x < pool['x1'] + 0.25 and z1 > pool['z0'] - 0.25 and z < pool['z1'] + 0.25
         if not inside_pool:
-            box(x, x1, 0.0, 0.05, z, z1, 'stone', bevel=0.008, tint_c=jitter((1, 1, 1), 0.08), name='slab')
+            box(x, x1, 0.0, 0.05, z, z1, 'stone', bevel=0.008, tint_c=jitter((1, 1, 1), 0.03), name='slab')
         x += 0.6
     z += 0.6
 # pool: basin, coping, a step

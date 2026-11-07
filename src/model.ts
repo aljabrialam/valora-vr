@@ -8,6 +8,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
+  RepeatWrapping,
   CatmullRomCurve3,
   Color,
   CylinderGeometry,
@@ -25,6 +26,7 @@ import {
   type Material,
 } from '@iwsdk/core';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import * as TX from './look/textures.ts';
 import {fixedBoxes, LAYOUT} from './sim/world.ts';
 import type {Box} from './sim/geom.ts';
@@ -111,21 +113,24 @@ function buildMaterials() {
     roofGhost: std({map: T.roof, transparent: true, opacity: 0.18, depthWrite: false}),
     deck: std({map: T.deck, roughness: 0.75}),
     stone: std({map: T.stone, roughness: 0.8}),
-    grass: std({map: T.grass, roughness: 1}),
+    cork: std({map: cork(), roughness: 0.95}),
     oak: std({map: T.oak, roughness: 0.6}),
     slate: std({map: T.slate, roughness: 0.7}),
     teak: new MeshPhysicalMaterial({color: '#9c6a3f', roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.4}),
     fabric: std({color: '#d9d2c3', roughness: 0.95}),
     frame: std({color: '#2b2a28', roughness: 0.5, metalness: 0.3}),
     glass: new MeshPhysicalMaterial({color: '#dbe8ea', roughness: 0.02, metalness: 0, transparent: true, opacity: 0.2, depthWrite: false, clearcoat: 1, envMapIntensity: 1.6}),
-    water: new MeshPhysicalMaterial({color: '#24494b', roughness: 0.03, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, transparent: true, opacity: 0.9, envMapIntensity: 1.8}),
+    water: new MeshPhysicalMaterial({color: '#a9c3c9', roughness: 0.18, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.82, envMapIntensity: 1.2}), // frosted acrylic sheet
     poolIn: std({color: '#2f4a4a', roughness: 0.5}),
     window: std({color: '#f7dfae', emissive: new Color('#f0c674'), emissiveIntensity: 1.4, roughness: 0.4}),
     pot: std({color: '#b9784f', roughness: 0.8}),
     trunk: std({color: '#7a6c5c', roughness: 0.95}),
     walnut: new MeshPhysicalMaterial({color: '#3a271c', roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.25}),
-    plinth: std({map: T.slate, color: new Color('#5a5a5e'), roughness: 0.55}),
-    floor: std({color: '#17130f', roughness: 0.95}),
+    // gallery presentation: an ebonised walnut top on a charcoal pedestal, a dark polished floor
+    plinthTop: std({color: '#2a1d15', roughness: 0.75, envMapIntensity: 0.12}),
+    pedestal: std({color: '#1b1a19', roughness: 0.9, envMapIntensity: 0.2}),
+    floor: std({color: '#0d0c0b', roughness: 0.9, envMapIntensity: 0.15}),
+    edge: std({color: '#efe9df', roughness: 0.9, envMapIntensity: 0.3}),
   };
 }
 
@@ -146,18 +151,27 @@ export function buildModel(): Model {
   desk.name = 'desk';
   desk.position.set(0, DESK.y, DESK.z);
 
-  // desk and a dark stone plinth the diorama sits on
-  const plinth = new Mesh(new BoxGeometry(DESK.w - 0.12, 0.025, DESK.d - 0.1), M.plinth);
-  plinth.position.y = -0.0125;
-  plinth.receiveShadow = true;
-  plinth.castShadow = true;
-  desk.add(plinth);
-  // a soft contact shadow where the plinth meets the desk (cheap, always on)
-  const contact = new Mesh(new PlaneGeometry(DESK.w - 0.02, DESK.d), new MeshBasicMaterial({map: radial(), transparent: true, depthWrite: false, opacity: 0.55, toneMapped: false}));
+  // Gallery presentation: the model sits on an ebonised walnut top over a charcoal pedestal that
+  // stands on the floor, like a maquette in an exhibition. Seated players lean over it.
+  const top = new Mesh(new RoundedBoxGeometry(DESK.w - 0.04, 0.045, DESK.d - 0.02, 3, 0.008), M.plinthTop);
+  top.position.y = -0.0225;
+  top.receiveShadow = true;
+  top.castShadow = true;
+  desk.add(top);
+  const pedestal = new Mesh(new BoxGeometry(DESK.w - 0.14, DESK.y - 0.045, DESK.d - 0.12), M.pedestal);
+  pedestal.position.y = -0.045 - (DESK.y - 0.045) / 2;
+  pedestal.receiveShadow = true;
+  desk.add(pedestal);
+  // no floor mesh: the pedestal stands in the dark of the studio dome, grounded by a soft shadow
+  const contact = new Mesh(new PlaneGeometry(DESK.w + 0.5, DESK.d + 0.5), new MeshBasicMaterial({map: radial(), transparent: true, depthWrite: false, opacity: 0.7, toneMapped: false}));
   contact.rotation.x = -Math.PI / 2;
-  contact.position.y = -0.0245;
+  contact.position.y = -DESK.y + 0.002;
   desk.add(contact);
-  // the desk itself, the floor and the walls come from Meta's baked room (src/look/assets.ts)
+  // the board the site is mounted on: cork, with a thin white card edge like a real study model
+  const board = new Mesh(new BoxGeometry(1.372, 0.006, 0.812), M.edge);
+  board.position.y = -0.003 + 0.0005;
+  board.receiveShadow = true;
+  desk.add(board);
 
   const site = new Group();
   site.name = 'site';
@@ -171,7 +185,7 @@ export function buildModel(): Model {
   // The static house (room, deck, paving, pool coping, walls, furniture, neighbour) is modelled and
   // baked in Blender (art/blender/house.py) and loaded by src/look/assets.ts into this group.
   // Code keeps only what moves, glows, is see-through, or is tiled: lawn, water, glass, ghost roof.
-  addMerged(site, M.grass, [slab(ground.x0, ground.x1, -0.06, 0, ground.z0, ground.z1)], false);
+  addMerged(site, M.cork, [slab(ground.x0, ground.x1, -0.06, 0, ground.z0, ground.z1)], false);
   const pool = {x0: -4.3, x1: -1.6, z0: 0.3, z1: 2.9};
   const water = new Mesh(new PlaneGeometry(pool.x1 - pool.x0, pool.z1 - pool.z0), M.water);
   water.rotation.x = -Math.PI / 2;
@@ -239,11 +253,38 @@ export function buildModel(): Model {
   overhang.visible = false;
   site.add(overhang);
 
-  plantGarden(site, M);
   return {desk, site, screen, screenPanel: panel, lever, overhang, roof, marks: {seat: seatMark, plant, window: win}};
 }
 
 /** A radial gradient, dark in the middle, for contact shadows. */
+/** Cork sheet: warm tan with dark and light granules, tiled across the site board. */
+function cork(): CanvasTexture {
+  const n = 512;
+  const c = document.createElement('canvas');
+  c.width = c.height = n;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#c4a47d';
+  g.fillRect(0, 0, n, n);
+  let seed = 7;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 18000; i++) {
+    const x = r() * n;
+    const y = r() * n;
+    const s = 0.5 + r() * 1.4;
+    const k = r();
+    g.fillStyle = k < 0.45 ? `rgba(120,88,58,${0.15 + r() * 0.25})` : k < 0.8 ? `rgba(222,200,168,${0.15 + r() * 0.3})` : `rgba(160,128,94,${0.15 + r() * 0.25})`;
+    g.beginPath();
+    g.ellipse(x, y, s, s * (0.6 + r() * 0.6), r() * Math.PI, 0, Math.PI * 2);
+    g.fill();
+  }
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.repeat.set(0.5, 0.5); // uv is in site metres: one tile per 2 m of site, about 11 cm on the board
+  t.anisotropy = 8;
+  return t;
+}
+
 function radial(): CanvasTexture {
   const c = document.createElement('canvas');
   c.width = c.height = 256;
@@ -308,7 +349,39 @@ function tint(g: BufferGeometry, c: Color): BufferGeometry {
 
 const green = (h: number, s: number, l: number) => new Color().setHSL(h / 360, s, l);
 
-function plantGarden(site: Group, M: Mats) {
+/**
+ * Where the modelled trees stand, in site metres (art/blender/trees.py makes them). Plants are
+ * scenery: the watcher checks never test them. [variant, x, z, size]: size is height for a palm
+ * and radius for a shrub.
+ */
+export const GARDEN: [string, number, number, number][] = [
+  // courtyard: palms in the west corners, foam planting along the south bed and the west edge
+  ['palm-a', -4.2, 3.2, 5.2],
+  ['palm-b', -4.3, -0.2, 4.4],
+  ['shrub-a', -4.3, 3.55, 0.6],
+  ['shrub-c', -3.1, 3.5, 0.55],
+  ['shrub-b', -1.9, 3.55, 0.5],
+  ['shrub-a', -0.6, 3.5, 0.6],
+  ['shrub-c', 0.7, 3.55, 0.52],
+  ['shrub-b', 1.9, 3.5, 0.58],
+  ['shrub-a', 3.1, 3.55, 0.5],
+  ['shrub-c', 4.3, 3.5, 0.56],
+  ['shrub-b', -4.65, 0.6, 0.36],
+  ['shrub-b', -4.65, 1.6, 0.32],
+  ['shrub-b', -4.65, 2.5, 0.34],
+  // outside: palms and clumps on the board, clear of the neighbour's sightline and the sun paths
+  ['palm-a', -7.6, -7.4, 6.2],
+  ['palm-b', -7.8, 4.6, 5.6],
+  ['shrub-a', -8, -2, 1.0],
+  ['shrub-c', -3, -7.8, 0.9],
+  ['shrub-a', 6.5, -7.9, 1.0],
+  ['shrub-c', 13.8, -7.6, 0.9],
+  ['shrub-b', 2, 5.0, 0.7],
+  ['shrub-a', -8.2, 1.5, 0.8],
+];
+
+/** The earlier code-built palms and shrubs, kept for reference; GARDEN and the Blender trees replace them. */
+export function plantGarden(site: Group, M: Mats) {
   const cards: Record<'frond' | 'broad' | 'mid' | 'fine' | 'red', BufferGeometry[]> = {frond: [], broad: [], mid: [], fine: [], red: []};
   const trunks: BufferGeometry[] = [];
 

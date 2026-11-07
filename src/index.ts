@@ -17,6 +17,7 @@ import {
   RayInteractable,
   Plane,
   Raycaster,
+  SpotLight,
   Vector2,
   type Object3D,
   SphereGeometry,
@@ -26,9 +27,9 @@ import {
   type Entity,
 } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
-import {buildModel, DESK, LEVER, SCALE, setOverhang, WIND} from './model.ts';
+import {buildModel, DESK, GARDEN, LEVER, SCALE, setOverhang, WIND} from './model.ts';
 import {Motes} from './motes.ts';
-import {loadHouse, loadPlant, loadRoom} from './look/assets.ts';
+import {loadHouse, loadPlant, loadTrees} from './look/assets.ts';
 import {Beam, Label} from './feedback.ts';
 import {Hud} from './hud.ts';
 import {LevelCard} from './panel.ts';
@@ -53,10 +54,10 @@ const world = await World.create(document.getElementById('scene-container') as H
 // ---------- the model ----------
 const model = buildModel();
 const deskEntity = world.createTransformEntity(model.desk);
-// authored art: Meta's baked room around the desk, and a modelled snake plant in the courtyard
-loadRoom(DESK.z).then((room) => world.createTransformEntity(room)).catch((e) => console.warn('[VR] room', e));
+// authored art: a modelled snake plant in the courtyard, the baked house
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
 loadHouse().then((h) => model.site.add(h)).catch((e) => console.warn('[VR] house', e));
+loadTrees(GARDEN).then((t) => model.site.add(t)).catch((e) => console.warn('[VR] trees', e));
 setOverhang(model, design.overhang);
 
 // ---------- the sun: one light, a tight shadow over the model ----------
@@ -67,10 +68,16 @@ Object.assign(sunLight.shadow.camera, {left: -0.75, right: 0.75, top: 0.75, bott
 sunLight.shadow.bias = -0.0004;
 sunLight.shadow.normalBias = 0.012;
 sunLight.shadow.radius = 4;
-// a cool rim light from behind, no shadow: separates the model from the dark room
-const rim = new DirectionalLight(new Color(0xbfd2ff), 0.9);
+// gallery lighting: a cool rim from behind separates the model from the dark studio, and a soft
+// overhead spot pools light on the plinth and the floor around it (no shadows: the sun owns those)
+const rim = new DirectionalLight(new Color(0xc9d6ff), 0.7);
 rim.position.set(-1.4, DESK.y + 1.2, DESK.z - 2.2);
 world.createTransformEntity(rim);
+const spot = new SpotLight(new Color(0xfff1de), 5, 6, 0.42, 0.9, 2);
+spot.position.set(0.2, 3.0, DESK.z + 0.25);
+world.createTransformEntity(spot);
+world.createTransformEntity(spot.target);
+spot.target.position.set(0, 0, DESK.z);
 world.createTransformEntity(sunLight);
 world.createTransformEntity(sunLight.target);
 sunLight.target.position.set(0, DESK.y, DESK.z);
@@ -96,7 +103,7 @@ card.mesh.rotation.x = -10 * D;
 model.desk.add(card.mesh);
 
 // dust drifting in the sunlight over the model
-const motes = new Motes(140);
+const motes = new Motes(60);
 model.desk.add(motes.points);
 
 // ---------- Tiki, the guide ----------
