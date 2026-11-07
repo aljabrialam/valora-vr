@@ -1,7 +1,9 @@
 // VaLora: Two Watchers.
-// A seated, hands-only puzzle: swing the privacy screen and slide the overhang so the sun and the
-// neighbour see only what they should. Tiki the house gecko guides you. Every rule is checked by
-// the same geometry the solver proves (src/sim).
+// A seated, hands-first puzzle on an architect's model. Two watchers look at the house: the sun,
+// hour by hour, and the neighbour next door. Pick pieces from the tray (screen, tree, pergola,
+// hedge), set them in the courtyard, drag the sun across the sky to see the shadows move, then
+// live the day and see if the house works. Fewer pieces earn more stars. Every check is the same
+// geometry the prover runs (src/sim/play.ts, scripts/prove2.ts).
 
 import {
   Color,
@@ -9,34 +11,38 @@ import {
   DirectionalLight,
   DistanceGrabbable,
   Grabbed,
+  Group,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
   MovementMode,
-  Pressed,
-  RayInteractable,
   Plane,
+  Pressed,
   Raycaster,
-  SpotLight,
-  Vector2,
-  type Object3D,
+  RayInteractable,
   SphereGeometry,
+  SpotLight,
   TorusGeometry,
+  BoxGeometry,
+  CylinderGeometry,
+  Vector2,
   Vector3,
   World,
   type Entity,
+  type Object3D,
 } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
-import {buildModel, DESK, GARDEN, LEVER, SCALE, setOverhang, WIND} from './model.ts';
+import {buildModel, DESK, GARDEN, SCALE, setOverhang, WIND} from './model.ts';
 import {Motes} from './motes.ts';
 import {loadHouse, loadPlant, loadTrees} from './look/assets.ts';
 import {Beam, Label} from './feedback.ts';
 import {Hud} from './hud.ts';
 import {LevelCard} from './panel.ts';
 import {Gecko} from './mascot.ts';
-import {LAYOUT, screenAngles, sunAt, type Design} from './sim/world.ts';
-import {evaluateLevel, LEVELS} from './sim/levels.ts';
-import {clock} from './sim/sun.ts';
+import {MAT, pieceModel, scaleFigure} from './pieces.ts';
+import {LAYOUT} from './sim/world.ts';
+import {EYES, evaluate, evaluateLevel, LEVELS, PIECES, SOCKETS, TARGETS, type Design, type Kind, type Placed, type RuleResult} from './sim/play.ts';
+import {clock, sunAt} from './sim/sun.ts';
 import {chimeSound, clickSound, solveSound} from './sound.ts';
 import {SCRIPT, type Look, type Step} from './tutorial.ts';
 
@@ -44,23 +50,24 @@ const D = Math.PI / 180;
 const params = new URLSearchParams(location.search);
 let levelIndex = Math.min(LEVELS.length - 1, Math.max(0, Number(params.get('level') ?? 1) - 1));
 let level = LEVELS[levelIndex];
-const design: Design = {...level.start};
-let shownDeg = design.screenDeg;
-let shownOverhang = design.overhang;
+const design: Design = {pieces: [], overhang: 0};
+let shownOverhang = 0;
 let solved = false;
+let stars = 0;
+let viewHour = 10; // the hour the sun is showing; the player drags it
 
 const world = await World.create(document.getElementById('scene-container') as HTMLDivElement, projectOptions);
 
 // ---------- the model ----------
 const model = buildModel();
+model.screen.visible = false; // the old swinging screen: screens are now pieces from the tray
 const deskEntity = world.createTransformEntity(model.desk);
-// authored art: a modelled snake plant in the courtyard, the baked house
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
 loadHouse().then((h) => model.site.add(h)).catch((e) => console.warn('[VR] house', e));
 loadTrees(GARDEN).then((t) => model.site.add(t)).catch((e) => console.warn('[VR] trees', e));
-setOverhang(model, design.overhang);
+const siteToWorld = (p: number[], out = new Vector3()) => model.site.localToWorld(out.set(p[0], p[1], p[2]));
 
-// ---------- the sun: one light, a tight shadow over the model ----------
+// ---------- light: the sun casts the shadows; a gallery spot and a rim do the rest ----------
 const sunLight = new DirectionalLight(new Color(0xffe6c2), 2.6);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.set(2048, 2048);
@@ -68,8 +75,9 @@ Object.assign(sunLight.shadow.camera, {left: -0.75, right: 0.75, top: 0.75, bott
 sunLight.shadow.bias = -0.0004;
 sunLight.shadow.normalBias = 0.012;
 sunLight.shadow.radius = 4;
-// gallery lighting: a cool rim from behind separates the model from the dark studio, and a soft
-// overhead spot pools light on the plinth and the floor around it (no shadows: the sun owns those)
+world.createTransformEntity(sunLight);
+world.createTransformEntity(sunLight.target);
+sunLight.target.position.set(0, DESK.y, DESK.z);
 const rim = new DirectionalLight(new Color(0xc9d6ff), 0.7);
 rim.position.set(-1.4, DESK.y + 1.2, DESK.z - 2.2);
 world.createTransformEntity(rim);
@@ -78,148 +86,381 @@ spot.position.set(0.2, 3.0, DESK.z + 0.25);
 world.createTransformEntity(spot);
 world.createTransformEntity(spot.target);
 spot.target.position.set(0, 0, DESK.z);
-world.createTransformEntity(sunLight);
-world.createTransformEntity(sunLight.target);
-sunLight.target.position.set(0, DESK.y, DESK.z);
 
-
-// ---------- the watchers' beams and labels (in site metres) ----------
-const neighbourBeam = new Beam(0xa2452e, 0.07);
-const sunBeams = new Map<string, Beam>();
-const seatLabel = new Label();
-const plantLabel = new Label();
-model.site.add(neighbourBeam.group);
-for (const l of [seatLabel, plantLabel]) {
-  l.sprite.scale.multiplyScalar(1 / SCALE);
-  model.site.add(l.sprite);
-}
-seatLabel.sprite.position.set(LAYOUT.seat[0], LAYOUT.seat[1] + 2.9, LAYOUT.seat[2]);
-plantLabel.sprite.position.set(LAYOUT.plant[0], LAYOUT.plant[1] + 1.9, LAYOUT.plant[2]);
+// ---------- what the watchers see: beams, labels and the two scale figures ----------
+const beams = new Map<string, Beam>();
+const labels = new Map<string, Label>();
+const neighbourAtWindow = scaleFigure(true);
+// he stands on a small balcony outside his window, so you can see him (and see him wave)
+const nh = LAYOUT.neighbour.house;
+const balcony = new Mesh(new BoxGeometry(1.0, 0.12, 2.0), MAT.card);
+balcony.position.set(nh.x0 + 0.3 - 0.5, LAYOUT.neighbour.window[1] - 1.62, LAYOUT.neighbour.window[2]);
+balcony.castShadow = balcony.receiveShadow = true;
+const rail = new Mesh(new BoxGeometry(0.05, 0.9, 2.0), MAT.card);
+rail.position.set(-0.48, 0.5, 0);
+balcony.add(rail);
+model.site.add(balcony);
+neighbourAtWindow.position.set(nh.x0 + 0.3 - 0.45, LAYOUT.neighbour.window[1] - 1.56, LAYOUT.neighbour.window[2]);
+neighbourAtWindow.rotation.y = -Math.PI / 2;
+const neighbourOnTerrace = scaleFigure(true);
+neighbourOnTerrace.position.set(EYES.terrace.at[0], EYES.terrace.at[1] - 1.55, EYES.terrace.at[2]);
+neighbourOnTerrace.rotation.y = -Math.PI / 2 - 0.3;
+const resident = scaleFigure(false); // stands where each moment of the day happens
+resident.visible = false;
+model.site.add(neighbourAtWindow, neighbourOnTerrace, resident);
 
 const hud = new Hud();
 const card = new LevelCard(0.42);
 card.mesh.position.set(0, 0.36, -0.5);
 card.mesh.rotation.x = -10 * D;
 model.desk.add(card.mesh);
-
-// dust drifting in the sunlight over the model
 const motes = new Motes(60);
 model.desk.add(motes.points);
 
-// ---------- Tiki, the guide ----------
+// ---------- Tiki ----------
 const tiki = new Gecko();
 const TIKI_HOME = new Vector3(-0.38, 0.002, 0.3);
 tiki.group.position.copy(TIKI_HOME);
-model.desk.add(tiki.group);
-model.desk.remove(tiki.group);
 const tikiEntity = world.createTransformEntity(tiki.group, deskEntity);
 tikiEntity.addComponent(RayInteractable);
 
-// ---------- handles you pinch ----------
-const handleMat = new MeshStandardMaterial({color: 0xb08a5c, roughness: 0.25, metalness: 0.85, emissive: new Color(0x6b4a24), emissiveIntensity: 0.4});
-function makeHandle(): {mesh: Mesh; entity: Entity} {
-  const mesh = new Mesh(new SphereGeometry(0.024, 24, 16), handleMat);
-  const ring = new Mesh(new TorusGeometry(0.036, 0.0035, 8, 40), handleMat);
-  ring.rotation.x = Math.PI / 2;
-  mesh.add(ring);
-  const entity = world.createTransformEntity(mesh);
-  entity.addComponent(RayInteractable);
-  entity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false});
-  return {mesh, entity};
-}
-const screenHandle = makeHandle();
-const overhangHandle = makeHandle();
+// ---------- the tray: a walnut ledge on the front of the plinth ----------
+const ledge = new Mesh(new BoxGeometry(0.86, 0.03, 0.17), new MeshStandardMaterial({color: '#2a1d15', roughness: 0.75}));
+ledge.position.set(0.06, -0.015, 0.535);
+ledge.receiveShadow = true;
+model.desk.add(ledge);
+const KIND_ORDER: Kind[] = ['screen', 'hedge', 'tree', 'pergola'];
+const traySlot = (kind: Kind, n: number) => new Vector3(-0.2 + KIND_ORDER.indexOf(kind) * 0.19 + n * 0.012, 0.0, 0.535 - n * 0.012);
 
-function screenHandleHome(deg: number): Vector3 {
-  const s = LAYOUT.screen;
-  const a = deg * D;
-  const rad = s.len + LEVER.reach;
-  return model.site.localToWorld(new Vector3(s.pivot[0] + Math.cos(a) * rad, s.h + LEVER.rise, s.pivot[2] - Math.sin(a) * rad));
+// ---------- pieces: every copy in the tray is its own grabbable object ----------
+type PieceObj = {
+  kind: Kind;
+  n: number; // which copy of this kind
+  root: Group;
+  entity: Entity;
+  socket: number; // -1 in the tray
+  rot: number;
+  target: Vector3; // where it springs to (world)
+  yaw: number;
+  held: boolean;
+  heldAt: number;
+  heldFrom: Vector3;
+};
+let pieceObjs: PieceObj[] = [];
+const ghost = new Mesh(new CylinderGeometry(1.0, 1.0, 0.06, 32), MAT.ghostOk);
+ghost.visible = false;
+model.site.add(ghost);
+
+function buildTray() {
+  for (const o of pieceObjs) o.entity.dispose();
+  pieceObjs = [];
+  for (const kind of KIND_ORDER) {
+    const count = level.tray[kind] ?? 0;
+    for (let n = 0; n < count; n++) {
+      const root = new Group();
+      root.name = `piece-${kind}-${n}`;
+      root.add(pieceModel(kind));
+      root.scale.setScalar(SCALE);
+      const entity = world.createTransformEntity(root);
+      entity.addComponent(RayInteractable);
+      entity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false});
+      const o: PieceObj = {kind, n, root, entity, socket: -1, rot: 0, target: new Vector3(), yaw: 0, held: false, heldAt: 0, heldFrom: new Vector3()};
+      homeInTray(o);
+      root.position.copy(o.target);
+      pieceObjs.push(o);
+    }
+  }
 }
-const OVERHANG_GRIP = {x: 0.5, y: 0.6, z: 0.45};
-function overhangHandleHome(depth: number): Vector3 {
-  const r = LAYOUT.room;
-  return model.site.localToWorld(new Vector3(OVERHANG_GRIP.x, r.h + OVERHANG_GRIP.y, r.z1 + depth + OVERHANG_GRIP.z));
+
+function homeInTray(o: PieceObj) {
+  o.socket = -1;
+  o.rot = 0;
+  o.yaw = 0;
+  model.desk.localToWorld(o.target.copy(traySlot(o.kind, o.n)));
 }
+
+function syncDesign() {
+  design.pieces = pieceObjs.filter((o) => o.socket >= 0).map((o): Placed => ({kind: o.kind, socket: o.socket, rot: o.rot}));
+}
+
+/** The free socket nearest a world point, if the point is over the courtyard. */
+function socketNear(world: Vector3, self: PieceObj): number {
+  const p = model.site.worldToLocal(world.clone());
+  const c = LAYOUT.court;
+  if (p.x < c.x0 - 1.2 || p.x > c.x1 + 1.2 || p.z < c.z0 - 1.2 || p.z > c.z1 + 1.2) return -1;
+  let best = -1;
+  let bd = 1.6;
+  SOCKETS.forEach((s, i) => {
+    if (pieceObjs.some((o) => o !== self && o.socket === i)) return;
+    const d = Math.hypot(s[0] - p.x, s[2] - p.z);
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+function placeAt(o: PieceObj, socket: number) {
+  o.socket = socket;
+  siteToWorld(SOCKETS[socket], o.target);
+  o.yaw = o.rot * (o.kind === 'hedge' ? 90 : 45) * D;
+}
+
+function rotate(o: PieceObj) {
+  const n = PIECES[o.kind].rots;
+  if (n < 2 || o.socket < 0) return;
+  o.rot = (o.rot + 1) % n;
+  placeAt(o, o.socket);
+  clickSound();
+  syncDesign();
+  refresh();
+}
+
+/** While a piece is held: show where it would land. */
+function hover(o: PieceObj) {
+  const s = socketNear(o.root.position, o);
+  ghost.visible = s >= 0;
+  if (s >= 0) ghost.position.set(SOCKETS[s][0], 0.04, SOCKETS[s][2]);
+}
+
+/** A piece was let go: land on the nearest free socket, or go back to the tray. A short pinch that
+ *  barely moved is a tap: it turns a placed piece. */
+function release(o: PieceObj, now: number) {
+  ghost.visible = false;
+  const moved = o.root.position.distanceTo(o.heldFrom);
+  if (o.socket >= 0 && moved < 0.02 && now - o.heldAt < 0.45) return rotate(o);
+  const s = socketNear(o.root.position, o);
+  if (s >= 0) placeAt(o, s);
+  else homeInTray(o);
+  clickSound();
+  syncDesign();
+  refresh();
+}
+
+// ---------- the sun you can drag across the sky ----------
+const ARC_R = 9; // site metres from the courtyard centre
+const ARC_C: [number, number, number] = [0, 0, 0.5];
+const arcPoint = (h: number, out = new Vector3()) => {
+  const s = sunAt(h);
+  return siteToWorld([ARC_C[0] + s.dir[0] * ARC_R, ARC_C[1] + s.dir[1] * ARC_R, ARC_C[2] + s.dir[2] * ARC_R], out);
+};
+const sunMat = new MeshBasicMaterial({color: new Color('#ffd27a'), toneMapped: false});
+const sunHandle = new Mesh(new SphereGeometry(0.022, 24, 16), sunMat);
+const sunRing = new Mesh(new TorusGeometry(0.034, 0.003, 8, 40), new MeshBasicMaterial({color: new Color('#ffd27a'), toneMapped: false, transparent: true, opacity: 0.6}));
+sunHandle.add(sunRing);
+const sunEntity = world.createTransformEntity(sunHandle);
+sunEntity.addComponent(RayInteractable);
+sunEntity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false});
+const sunLabel = new Label(0.07);
+sunLabel.sprite.raycast = () => {};
+world.scene.add(sunLabel.sprite);
+// a faint dotted path for the sun's day
+const arcDots = new Group();
+for (let h = 7; h <= 18.5; h += 0.5) {
+  const d = new Mesh(new SphereGeometry(0.003, 8, 6), new MeshBasicMaterial({color: new Color('#ffd27a'), transparent: true, opacity: 0.5, toneMapped: false}));
+  arcPoint(h, d.position);
+  d.raycast = () => {};
+  arcDots.add(d);
+}
+world.scene.add(arcDots);
+
+function hourNearest(p: Vector3): number {
+  let best = viewHour;
+  let bd = Infinity;
+  const q = new Vector3();
+  for (let h = 7; h <= 18.5; h += 0.25) {
+    const d = arcPoint(h, q).distanceTo(p);
+    if (d < bd) {
+      bd = d;
+      best = h;
+    }
+  }
+  return best;
+}
+function hourNearestRay(ray: Raycaster['ray']): number {
+  let best = viewHour;
+  let bd = Infinity;
+  const q = new Vector3();
+  for (let h = 7; h <= 18.5; h += 0.25) {
+    const d = ray.distanceSqToPoint(arcPoint(h, q));
+    if (d < bd) {
+      bd = d;
+      best = h;
+    }
+  }
+  return best;
+}
+
+function setHour(h: number) {
+  if (h === viewHour) return;
+  viewHour = h;
+  showSun();
+}
+function showSun() {
+  const s = sunAt(viewHour);
+  sunLight.position.set(s.dir[0] * 2.5, DESK.y + s.dir[1] * 2.5, DESK.z + s.dir[2] * 2.5);
+  sunLight.intensity = 2.6 * Math.min(1, Math.max(0.15, s.el / 20));
+  sunLight.color.set(s.el < 15 ? 0xffc690 : 0xffe6c2);
+  if (!sunGrabbed) arcPoint(viewHour, sunHandle.position);
+  sunLabel.set(clock(viewHour), 'sun', true);
+  sunLabel.sprite.position.copy(sunHandle.position).add(new Vector3(0, 0.05, 0));
+}
+let sunGrabbed = false;
+
+// ---------- the overhang handle ----------
+const handleMat = new MeshStandardMaterial({color: 0xb08a5c, roughness: 0.25, metalness: 0.85, emissive: new Color(0x6b4a24), emissiveIntensity: 0.4});
+const overhangHandle = new Mesh(new SphereGeometry(0.02, 24, 16), handleMat);
+const ohEntity = world.createTransformEntity(overhangHandle);
+ohEntity.addComponent(RayInteractable);
+ohEntity.addComponent(DistanceGrabbable, {movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false});
+const OH_GRIP = {x: 0.5, y: 0.6, z: 0.45};
+const ohHome = (depth: number) => siteToWorld([OH_GRIP.x, LAYOUT.room.h + OH_GRIP.y, LAYOUT.room.z1 + depth + OH_GRIP.z]);
+function setOverhangFrom(local: Vector3) {
+  if (!level.overhang) return;
+  const raw = local.z - LAYOUT.room.z1 - OH_GRIP.z;
+  const v = +Math.min(2.4, Math.max(0, Math.round(raw / 0.6) * 0.6)).toFixed(2);
+  if (v !== design.overhang) {
+    design.overhang = v;
+    clickSound();
+    refresh();
+  }
+}
+
+// ---------- the play-the-day button on the ledge ----------
+const playButton = new Mesh(new CylinderGeometry(0.022, 0.024, 0.012, 32), handleMat);
+playButton.position.copy(model.desk.localToWorld(new Vector3(0.44, 0.006, 0.535)));
+const playEntity = world.createTransformEntity(playButton);
+playEntity.addComponent(RayInteractable);
 
 // ---------- evaluate and redraw ----------
+function beamFor(id: string, colour: number) {
+  let b = beams.get(id);
+  if (!b) {
+    b = new Beam(colour, colour === 0xa2452e ? 0.07 : 0.06);
+    beams.set(id, b);
+    model.site.add(b.group);
+  }
+  return b;
+}
+function labelFor(id: string) {
+  let l = labels.get(id);
+  if (!l) {
+    l = new Label();
+    l.sprite.scale.multiplyScalar(1 / SCALE);
+    l.sprite.raycast = () => {};
+    labels.set(id, l);
+    model.site.add(l.sprite);
+  }
+  return l;
+}
+
+function drawResult(r: RuleResult, k: number) {
+  const look = r.look;
+  const isSun = r.rule.who === 'sun';
+  const b = beamFor(r.rule.id, isSun ? 0xf2b84b : 0xa2452e);
+  b.group.visible = true;
+  if (isSun) {
+    const f = 11 / 60; // the last 11 m of the sun's ray, so it stays on the model
+    const from = [0, 1, 2].map((i) => look.to[i] + (look.from[i] - look.to[i]) * f) as typeof look.from;
+    b.set(from, look.to, look.sees ? 1 : Math.max(0, (look.t - (1 - f)) / f));
+  } else b.set(look.from, look.to, look.t);
+  const l = labelFor(r.rule.id);
+  l.sprite.visible = true;
+  const t = TARGETS[r.rule.target].at;
+  l.sprite.position.set(t[0], t[1] + 2.4 + k * 1.1, t[2]);
+  const word = isSun ? (look.sees ? `SUN ${clock(r.rule.hour ?? 12)}` : `SHADE ${clock(r.rule.hour ?? 12)}`) : look.sees ? 'SEEN' : 'PRIVATE';
+  l.set(word, isSun ? (look.sees ? 'sun' : 'shade') : look.sees ? 'eye' : 'eye-off', r.pass);
+}
+
 function refresh() {
   setOverhang(model, design.overhang);
   const res = evaluateLevel(level, design);
-  const wasSolved = solved;
+  const was = solved;
   solved = res.solved;
+  stars = res.stars;
   card.draw(levelIndex, level, res.results, solved);
-  hud.level(levelIndex, level, res.results, solved);
-
-  const used = new Set<string>();
+  hud.level(levelIndex, LEVELS.length, level, res.results, solved, {used: design.pieces.length, par: level.par, stars, best: bestStars(level.id)});
+  for (const b of beams.values()) b.group.visible = false;
+  for (const l of labels.values()) l.sprite.visible = false;
+  const perTarget = new Map<string, number>();
   for (const r of res.results) {
-    const look = r.look;
-    if (r.rule.watcher === 'neighbour') {
-      neighbourBeam.set(look.from, look.to, look.t);
-      seatLabel.set(look.sees ? 'SEEN' : 'PRIVATE', look.sees ? 'eye' : 'eye-off', r.pass);
-    } else {
-      used.add(r.rule.id);
-      let beam = sunBeams.get(r.rule.id);
-      if (!beam) {
-        beam = new Beam(0xf2b84b, 0.06);
-        sunBeams.set(r.rule.id, beam);
-        model.site.add(beam.group);
-      }
-      const k = 11 / 60; // draw the last 11 m of the sun's ray so it stays on the model
-      const from: typeof look.from = [
-        look.to[0] + (look.from[0] - look.to[0]) * k,
-        look.to[1] + (look.from[1] - look.to[1]) * k,
-        look.to[2] + (look.from[2] - look.to[2]) * k,
-      ];
-      beam.set(from, look.to, look.sees ? 1 : Math.max(0, (look.t - (1 - k)) / k));
-      if (r.rule.target === 'plant') plantLabel.set(look.sees ? 'IN SUN' : 'SHADED', look.sees ? 'sun' : 'shade', r.pass);
-      if (r.rule.target === 'seat' && r.rule.watcher === 'sun' && !level.rules.some((x) => x.watcher === 'neighbour'))
-        seatLabel.set(look.sees ? 'IN SUN' : 'SHADED', look.sees ? 'sun' : 'shade', r.pass);
-    }
+    const k = perTarget.get(r.rule.target) ?? 0;
+    perTarget.set(r.rule.target, k + 1);
+    drawResult(r, k);
   }
-  for (const [id, beam] of sunBeams) beam.group.visible = used.has(id);
-  plantLabel.sprite.visible = level.rules.some((r) => r.target === 'plant');
-  overhangHandle.mesh.visible = level.tools.includes('overhang');
+  const winRules = res.results.filter((r) => r.rule.who === 'window');
+  const terrRules = res.results.filter((r) => r.rule.who === 'terrace');
+  neighbourAtWindow.visible = winRules.length > 0 || levelIndex === 0;
+  neighbourOnTerrace.visible = terrRules.length > 0;
+  waving.window = winRules.some((r) => r.look.sees);
+  waving.terrace = terrRules.some((r) => r.look.sees);
+  overhangHandle.visible = level.overhang;
+  if (solved && !was) {
+    solveSound();
+    saveStars(level.id, stars);
+  }
+  console.info('[VR] design', JSON.stringify(design), 'level', level.id, 'solved', solved, 'stars', stars);
+  (window as any).VR.state = {level: level.id, design: JSON.parse(JSON.stringify(design)), solved, stars, step: tutorial.stepId(), results: res.results.map((r) => ({id: r.rule.id, pass: r.pass, blocker: r.look.blocker}))};
+}
+const waving = {window: false, terrace: false};
 
-  // the light follows the first sun rule; each sun rule gets its own visible sun
-  const hours = level.rules.filter((r) => r.watcher === 'sun').map((r) => r.hour ?? 12);
-  placeSun(hours[0] ?? 10);
-  placeSunDiscs(hours);
-
-  if (solved && !wasSolved) solveSound();
-  console.info('[VR] design', JSON.stringify(design), 'level', level.id, 'solved', solved);
-  (window as any).VR.state = {level: level.id, design: {...design}, solved, step: tutorial.stepId(), results: res.results.map((r) => ({id: r.rule.id, pass: r.pass, blocker: r.look.blocker}))};
+function bestStars(id: string): number {
+  try {
+    return Number(localStorage.getItem(`valora-stars-${id}`) ?? 0);
+  } catch {
+    return 0;
+  }
+}
+function saveStars(id: string, n: number) {
+  try {
+    if (n > bestStars(id)) localStorage.setItem(`valora-stars-${id}`, String(n));
+  } catch {
+    /* storage can be unavailable; stars are a convenience */
+  }
 }
 
-function placeSun(hour: number) {
-  const s = sunAt(hour);
-  sunLight.position.set(s.dir[0] * 2.5, DESK.y + s.dir[1] * 2.5, DESK.z + s.dir[2] * 2.5);
+// ---------- live the day: a time-lapse from morning to evening ----------
+type Moment = {hour: number; result: RuleResult};
+const day = {on: false, t: 0, moments: [] as Moment[], next: 0, pauseUntil: 0, hour: 7};
+function startDay(now: number) {
+  if (day.on) return;
+  const moments = level.rules.map((rule) => ({hour: rule.hour ?? 12, result: evaluate(rule, design)})).sort((a, b) => a.hour - b.hour);
+  Object.assign(day, {on: true, t: now, moments, next: 0, pauseUntil: 0, hour: 7});
+  hud.say('Living the day…', '');
+  chimeSound();
+  console.info('[VR] day start');
 }
-
-const discMat = new MeshBasicMaterial({color: new Color('#ffd27a'), toneMapped: false});
-const discs: Mesh[] = [];
-const discLabels: Label[] = [];
-function placeSunDiscs(hours: number[]) {
-  while (discs.length < hours.length) {
-    const m = new Mesh(new SphereGeometry(0.55, 24, 16), discMat);
-    model.site.add(m);
-    discs.push(m);
-    const l = new Label(0.07);
-    l.sprite.scale.multiplyScalar(1 / SCALE);
-    model.site.add(l.sprite);
-    discLabels.push(l);
+function tickDay(now: number, dt: number) {
+  if (!day.on) return;
+  if (now < day.pauseUntil) return;
+  const m = day.moments[day.next];
+  if (m && day.hour >= m.hour) {
+    // a moment of the day: the resident steps in, the watcher looks, the stamp lands
+    const t = TARGETS[m.result.rule.target].at;
+    resident.visible = true;
+    resident.position.set(t[0] + 0.5, m.result.rule.target === 'pool' ? -0.2 : 0.05, t[2] + 0.4);
+    if (m.result.rule.target === 'seat') resident.position.set(t[0], 0.05, t[2] + 0.5);
+    for (const b of beams.values()) b.group.visible = false;
+    for (const l of labels.values()) l.sprite.visible = false;
+    drawResult(m.result, 0);
+    hud.say(`${clock(m.hour)}: ${m.result.rule.text}`, m.result.pass ? 'Works' : 'Not yet');
+    (m.result.pass ? clickSound : chimeSound)();
+    day.next++;
+    day.pauseUntil = now + 1.6;
+    return;
   }
-  discs.forEach((m, i) => {
-    const on = i < hours.length;
-    m.visible = on;
-    discLabels[i].sprite.visible = on;
-    if (!on) return;
-    const s = sunAt(hours[i]);
-    const c = LAYOUT.plant;
-    m.position.set(c[0] + s.dir[0] * 12, c[1] + s.dir[1] * 12, c[2] + s.dir[2] * 12);
-    discLabels[i].set(clock(hours[i]), 'sun', true);
-    discLabels[i].sprite.position.copy(m.position).add(new Vector3(0, 1.3, 0));
-  });
+  day.hour += dt * 1.1; // about ten seconds for the day
+  setHour(Math.round(day.hour * 4) / 4);
+  if (day.hour > 18.6 && day.next >= day.moments.length) {
+    day.on = false;
+    resident.visible = false;
+    refresh();
+    const ok = day.moments.every((x) => x.result.pass);
+    hud.say(ok ? `The house works all day. ${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}` : 'Not quite. Move a piece and live the day again.', ok ? 'Click Tiki for the next level' : '');
+    if (ok) tiki.celebrate();
+    console.info('[VR] day end', ok);
+  }
 }
 
 // ---------- the tutorial ----------
@@ -246,9 +487,7 @@ class Tutorial {
     this.sayNow(now);
     tiki.look(lookAt(st.look));
     if (st.celebrate) tiki.celebrate();
-    if (st.hop) tiki.hopTo(st.hop === 'home' ? TIKI_HOME : new Vector3(st.hop[0], st.hop[1], st.hop[2]));
   }
-  /** Tiki's current line, worded for the device in use, in the room and in the page overlay. */
   sayNow(now: number) {
     const st = this.steps[this.i];
     if (!st) return;
@@ -260,35 +499,41 @@ class Tutorial {
   }
   next(now: number) {
     const st = this.steps[this.i];
-    if (st?.then === 'next-level') return goToLevel((levelIndex + 1) % LEVELS.length, now);
+    if (st?.then === 'next-level') return goToLevel((levelIndex + 1) % LEVELS.length);
     this.i++;
     this.enter(now);
   }
   tick(now: number, tapped: boolean) {
     const st = this.steps[this.i];
-    if (!st) return;
-    if (now - this.enteredAt < 0.4) return; // ignore the pinch that advanced the previous step
+    if (!st) {
+      if (tapped && solved) goToLevel((levelIndex + 1) % LEVELS.length);
+      return;
+    }
+    if (now - this.enteredAt < 0.4) return;
     if (st.until === 'tap' && tapped) this.next(now);
-    else if (st.until === 'solved' && solved) this.next(now);
-    if (st.look === 'handle' || st.look === 'overhang') tiki.look(lookAt(st.look));
+    else if (st.until === 'solved' && solved && !day.on) this.next(now);
   }
 }
 
 function lookAt(l: Look | undefined): Vector3 | null {
-  const site = (p: number[]) => model.site.localToWorld(new Vector3(p[0], p[1], p[2]));
   switch (l) {
     case 'window':
-      return site(LAYOUT.neighbour.window);
+      return siteToWorld(LAYOUT.neighbour.window);
+    case 'terrace':
+      return siteToWorld(EYES.terrace.at);
     case 'seat':
-      return site(LAYOUT.seat);
     case 'plant':
-      return site(LAYOUT.plant);
-    case 'handle':
-      return screenHandle.mesh.getWorldPosition(new Vector3());
-    case 'overhang':
-      return overhangHandle.mesh.getWorldPosition(new Vector3());
+    case 'pool':
+    case 'table':
+      return siteToWorld(TARGETS[l].at);
+    case 'tray':
+      return model.desk.localToWorld(new Vector3(0.1, 0.03, 0.535));
     case 'sun':
-      return discs[0] ? discs[0].getWorldPosition(new Vector3()) : null;
+      return sunHandle.getWorldPosition(new Vector3());
+    case 'overhang':
+      return overhangHandle.getWorldPosition(new Vector3());
+    case 'play':
+      return playButton.getWorldPosition(new Vector3());
     default:
       return null;
   }
@@ -296,106 +541,77 @@ function lookAt(l: Look | undefined): Vector3 | null {
 
 const tutorial = new Tutorial();
 
-function goToLevel(i: number, now = 0) {
+function goToLevel(i: number) {
   levelIndex = i;
   level = LEVELS[i];
-  Object.assign(design, level.start);
+  design.overhang = 0;
+  design.pieces = [];
   solved = false;
+  day.on = false;
+  resident.visible = false;
+  buildTray();
+  syncDesign();
+  const firstSun = level.rules.find((r) => r.who === 'sun');
+  viewHour = -1;
+  setHour(firstSun?.hour ?? 10);
   refresh();
   chimeSound();
   tutorial.start(i);
-  void now;
+  history.replaceState(null, '', `?level=${i + 1}`);
 }
 
+// ---------- test and debug hooks ----------
+const toScreen = (v: Vector3) => {
+  v.project(world.camera);
+  return {x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight};
+};
 (window as any).VR = {
-  /** Debug: what a ray from `from` towards `to` hits first (names up the parent chain). */
-  pick(from: number[], to: number[]) {
-    const o = new Vector3(...(from as [number, number, number]));
-    const d = new Vector3(...(to as [number, number, number])).sub(o).normalize();
-    const hits = new Raycaster(o, d).intersectObjects(world.scene.children, true).filter((h) => (h.object as Mesh).isMesh);
-    return hits.slice(0, 4).map((h) => {
-      const path: string[] = [];
-      for (let x: Object3D | null = h.object; x; x = x.parent) if (x.name) path.push(x.name);
-      return `${h.distance.toFixed(3)} ${path.slice(0, 3).join('<')}`;
-    });
-  },
-  /** Draw calls, triangles and GPU resources of the last frame (performance budget checks). */
+  state: {},
   stats() {
     const i = world.renderer.info;
     return {calls: i.render.calls, triangles: i.render.triangles, textures: i.memory.textures, geometries: i.memory.geometries};
   },
-  state: {},
-  setDesign(d: Partial<Design>) {
-    Object.assign(design, d);
-    refresh();
-  },
-  setLevel(i: number) {
-    goToLevel(i);
-  },
+  setLevel: (i: number) => goToLevel(i),
   tapTiki() {
     pendingTap = true;
   },
-  // test hooks: project points to screen pixels, used by scripts
-  handleScreen() {
-    const v = screenHandle.mesh.getWorldPosition(new Vector3()).project(world.camera);
-    return {x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight};
+  /** Put pieces straight onto sockets (tests): [{kind, socket, rot}] */
+  place(ps: Placed[], overhang = 0) {
+    for (const o of pieceObjs) homeInTray(o);
+    for (const p of ps) {
+      const o = pieceObjs.find((x) => x.kind === p.kind && x.socket < 0);
+      if (!o) continue;
+      o.rot = p.rot;
+      placeAt(o, p.socket);
+    }
+    design.overhang = overhang;
+    syncDesign();
+    refresh();
   },
-  /** Screen pixels of a point given in site metres (desktop mouse tests). */
-  siteToScreen(p: number[]) {
-    const v = model.site.localToWorld(new Vector3(p[0], p[1], p[2])).project(world.camera);
-    return {x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight};
+  live: () => startDay(lastTime),
+  setHour: (h: number) => setHour(h),
+  siteToScreen: (p: number[]) => toScreen(siteToWorld(p)),
+  worldToScreen: (p: number[]) => toScreen(new Vector3(p[0], p[1], p[2])),
+  pieceScreen: (kind: Kind, n = 0) => {
+    const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
+    return o ? toScreen(o.root.position.clone()) : null;
   },
-  worldToScreen(p: number[]) {
-    const v = new Vector3(p[0], p[1], p[2]).project(world.camera);
-    return {x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight};
-  },
-  worldPos(name: 'screenHandle' | 'overhangHandle' | 'tiki') {
-    const o = name === 'tiki' ? tiki.hit : name === 'screenHandle' ? screenHandle.mesh : overhangHandle.mesh;
+  socketScreen: (i: number) => toScreen(siteToWorld(SOCKETS[i])),
+  worldPos(name: 'tiki' | 'sun' | 'overhang') {
+    const o = name === 'tiki' ? tiki.hit : name === 'sun' ? sunHandle : overhangHandle;
     return o.getWorldPosition(new Vector3()).toArray();
   },
 };
 let pendingTap = false;
-refresh();
-tutorial.start(levelIndex);
+let lastTime = 0;
+goToLevel(levelIndex);
 
-// ---------- hand or mouse position -> snapped design ----------
-/** `local` is a point in site metres; its angle about the hinge becomes the nearest allowed screen angle. */
-function setScreenFrom(local: Vector3) {
-  const piv = LAYOUT.screen.pivot;
-  const deg = Math.atan2(-(local.z - piv[2]), local.x - piv[0]) / D;
-  let best = Infinity;
-  let snapped = design.screenDeg;
-  for (const a of screenAngles()) {
-    const diff = Math.abs(((deg - a + 540) % 360) - 180);
-    if (diff < best) {
-      best = diff;
-      snapped = a;
-    }
-  }
-  if (snapped !== design.screenDeg) {
-    design.screenDeg = snapped;
-    clickSound();
-    refresh();
-  }
-}
-/** `local` is a point in site metres; its distance out from the glass becomes a snapped overhang depth. */
-function setOverhangFrom(local: Vector3) {
-  if (!level.tools.includes('overhang')) return;
-  const {min, max, step} = LAYOUT.overhang;
-  const raw = local.z - LAYOUT.room.z1 - OVERHANG_GRIP.z;
-  const snapped = +Math.min(max, Math.max(min, Math.round(raw / step) * step)).toFixed(2);
-  if (snapped !== design.overhang) {
-    design.overhang = snapped;
-    clickSound();
-    refresh();
-  }
-}
-
-// ---------- play on a screen, no headset: click Tiki, drag the bronze handles ----------
-// Outside an immersive session the hand-ray system has nothing to drive, so the page's own mouse
-// or touch pointer does the same jobs. In a headset this handler stands aside.
+// ---------- play on a screen with a mouse or touch ----------
+// Outside an immersive session the hand-ray system has nothing to drive, so the page pointer does
+// the same jobs. IWSDK's input layer stops pointer events before they reach the canvas, so listen on
+// the window in the capture phase. In a headset this stands aside.
 const canvas = world.renderer.domElement;
-const flat = {ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(), hit: new Vector3(), up: new Vector3(0, 1, 0), drag: '' as '' | 'screen' | 'overhang'};
+const flat = {ray: new Raycaster(), ndc: new Vector2(), plane: new Plane(), hit: new Vector3(), up: new Vector3(0, 1, 0), drag: null as null | PieceObj | 'sun' | 'overhang', downAt: 0, downX: 0, downY: 0};
 function inXR() {
   return world.renderer.xr.isPresenting;
 }
@@ -408,23 +624,31 @@ function aimFlat(e: PointerEvent) {
   flat.ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   flat.ray.setFromCamera(flat.ndc, world.camera);
 }
-// Listen on the window in the capture phase: IWSDK's own input layer stops pointer events before
-// they reach the canvas, so a canvas listener never fires.
-const onCanvas = (e: PointerEvent) => e.target === canvas && !inXR();
+const pickables = () => [tiki.hit, sunHandle, playButton, ...(level.overhang ? [overhangHandle] : []), ...pieceObjs.map((o) => o.root)];
 window.addEventListener('pointerdown', (e) => {
-  if (!onCanvas(e)) return;
+  if (e.target !== canvas || inXR()) return;
   aimFlat(e);
-  const targets: Object3D[] = [tiki.hit, screenHandle.mesh];
-  if (level.tools.includes('overhang')) targets.push(overhangHandle.mesh);
-  const h = flat.ray.intersectObjects(targets, true)[0];
+  const h = flat.ray.intersectObjects(pickables(), true)[0];
   if (!h) return;
-  if (within(h.object, tiki.hit)) {
-    pendingTap = true;
-    return;
+  if (within(h.object, tiki.hit)) return void (pendingTap = true);
+  if (within(h.object, playButton)) return startDay(lastTime);
+  flat.downAt = lastTime;
+  flat.downX = e.clientX;
+  flat.downY = e.clientY;
+  if (within(h.object, sunHandle)) flat.drag = 'sun';
+  else if (within(h.object, overhangHandle)) {
+    flat.drag = 'overhang';
+    flat.plane.setFromNormalAndCoplanarPoint(flat.up, h.point);
+  } else {
+    const o = pieceObjs.find((x) => within(h.object, x.root));
+    if (!o) return;
+    flat.drag = o;
+    o.held = true;
+    o.heldAt = lastTime;
+    o.heldFrom.copy(o.root.position);
+    // drag across the board's surface
+    flat.plane.setFromNormalAndCoplanarPoint(flat.up, model.desk.localToWorld(new Vector3(0, 0.0, 0)));
   }
-  flat.drag = within(h.object, screenHandle.mesh) ? 'screen' : 'overhang';
-  // drag across a level plane at the handle's height
-  flat.plane.setFromNormalAndCoplanarPoint(flat.up, h.point);
   canvas.setPointerCapture(e.pointerId);
   canvas.style.cursor = 'grabbing';
   e.preventDefault();
@@ -433,19 +657,31 @@ window.addEventListener('pointermove', (e) => {
   if (inXR() || (e.target !== canvas && !flat.drag)) return;
   aimFlat(e);
   if (!flat.drag) {
-    const over = flat.ray.intersectObjects([tiki.hit, screenHandle.mesh, ...(level.tools.includes('overhang') ? [overhangHandle.mesh] : [])], true).length > 0;
-    canvas.style.cursor = over ? 'pointer' : '';
+    canvas.style.cursor = flat.ray.intersectObjects(pickables(), true).length ? 'pointer' : '';
     return;
   }
+  if (flat.drag === 'sun') return setHour(hourNearestRay(flat.ray.ray));
   if (!flat.ray.ray.intersectPlane(flat.plane, flat.hit)) return;
-  const local = model.site.worldToLocal(flat.hit);
-  if (flat.drag === 'screen') setScreenFrom(local);
-  else setOverhangFrom(local);
+  if (flat.drag === 'overhang') return setOverhangFrom(model.site.worldToLocal(flat.hit.clone()));
+  const o = flat.drag;
+  o.root.position.copy(flat.hit).add(new Vector3(0, 0.01, 0));
+  hover(o);
 }, true);
-const endFlat = () => {
-  flat.drag = '';
+function endFlat(e: PointerEvent) {
+  const d = flat.drag;
+  flat.drag = null;
   canvas.style.cursor = '';
-};
+  if (!d || d === 'sun' || d === 'overhang') return;
+  d.held = false;
+  // a click without movement turns a placed piece (judged by the pointer, not the clock, so a
+  // slow frame never turns a click into a drag)
+  if (Math.hypot(e.clientX - flat.downX, e.clientY - flat.downY) < 6) {
+    d.root.position.copy(d.heldFrom);
+    ghost.visible = false;
+    if (d.socket >= 0) return rotate(d);
+  }
+  release(d, lastTime);
+}
 window.addEventListener('pointerup', endFlat, true);
 window.addEventListener('pointercancel', endFlat, true);
 
@@ -457,53 +693,87 @@ function setFlatView(flatView: boolean) {
 }
 world.renderer.xr.addEventListener('sessionstart', () => tutorial.sayNow(0));
 world.renderer.xr.addEventListener('sessionend', () => tutorial.sayNow(0));
+hud.onPlay = () => startDay(lastTime);
+hud.onReset = () => {
+  for (const o of pieceObjs) homeInTray(o);
+  design.overhang = 0;
+  syncDesign();
+  refresh();
+};
+hud.onLevel = (i: number) => goToLevel(i);
 
 /** Tiki's words for the device in use: pinch in a headset, click or drag on a screen. */
 function forDevice(text: string): string {
   if (inXR()) return text;
-  return text
-    .replace('Look at the handle, pinch, and move your hand', 'Drag the bronze handle')
-    .replace('Pinch the bronze handle and swing', 'Drag the bronze handle to swing')
-    .replace('Pinch the second handle and pull it towards you', 'Drag the second handle towards you')
-    .replace(/Pinch/g, 'Click')
-    .replace(/pinch/g, 'click');
+  return text.replace(/Pinch and drag/g, 'Drag').replace(/pinch and drag/g, 'drag').replace(/Pinch/g, 'Click').replace(/pinch/g, 'click');
 }
 
-// ---------- per-frame: drags, springs, Tiki ----------
+// ---------- per frame ----------
 class PlaySystem extends createSystem({}) {
   private wasPressed = false;
+  private wasPlay = false;
   private head = new Vector3();
   private tmp = new Vector3();
   update(delta: number, time: number) {
-    // screen: the handle position becomes a snapped angle about the hinge
-    // on a flat screen the mouse drag owns the handles (see 'play on a screen'); IWSDK's desktop
-    // pointer may also tag them Grabbed without moving them, which would pull the screen back
+    lastTime = time;
     const xr = inXR();
-    const sGrab = xr && screenHandle.entity.hasComponent(Grabbed);
-    if (sGrab) {
-      setScreenFrom(model.site.worldToLocal(screenHandle.mesh.getWorldPosition(this.tmp)));
-    }
-    // overhang: the handle's distance out from the glass becomes a snapped depth
-    const oGrab = xr && overhangHandle.entity.hasComponent(Grabbed);
-    if (oGrab && level.tools.includes('overhang')) {
-      setOverhangFrom(model.site.worldToLocal(overhangHandle.mesh.getWorldPosition(this.tmp)));
-    }
-    // springs towards the snapped values
     const k = 1 - Math.exp(-delta * 14);
-    shownDeg += (((design.screenDeg - shownDeg + 540) % 360) - 180) * k;
-    model.screen.rotation.y = shownDeg * D;
+
+    // pieces: hands hold them in XR, the mouse holds them on a screen; otherwise they spring home
+    for (const o of pieceObjs) {
+      const grabbed = xr && o.entity.hasComponent(Grabbed);
+      if (grabbed && !o.held) {
+        o.held = true;
+        o.heldAt = time;
+        o.heldFrom.copy(o.root.position);
+      }
+      if (o.held && xr && !grabbed) {
+        o.held = false;
+        release(o, time);
+      }
+      if (o.held) {
+        hover(o);
+        o.root.rotation.y += (o.yaw - o.root.rotation.y) * k;
+        continue;
+      }
+      o.root.position.lerp(o.target, k);
+      o.root.rotation.y += (o.yaw - o.root.rotation.y) * k;
+    }
+
+    // the sun
+    const sg = xr && sunEntity.hasComponent(Grabbed);
+    if (sg) setHour(hourNearest(sunHandle.position));
+    if (sunGrabbed && !sg) arcPoint(viewHour, sunHandle.position);
+    sunGrabbed = sg;
+    sunRing.rotation.z = time * 0.6;
+    sunRing.scale.setScalar(1 + 0.08 * Math.sin(time * 2));
+
+    // the overhang
+    const og = xr && ohEntity.hasComponent(Grabbed);
+    if (og) setOverhangFrom(model.site.worldToLocal(overhangHandle.getWorldPosition(this.tmp)));
     shownOverhang += (design.overhang - shownOverhang) * k;
     setOverhang(model, shownOverhang);
-    if (!sGrab) screenHandle.mesh.position.copy(screenHandleHome(shownDeg));
-    if (!oGrab) overhangHandle.mesh.position.copy(overhangHandleHome(shownOverhang));
-    handleMat.emissiveIntensity = sGrab || oGrab ? 1.2 : 0.4 + 0.25 * Math.sin(time * 2.5);
+    if (!og) overhangHandle.position.copy(ohHome(shownOverhang));
+    handleMat.emissiveIntensity = 0.4 + 0.25 * Math.sin(time * 2.5);
+
+    // the play button
+    const play = playEntity.hasComponent(Pressed);
+    if (play && !this.wasPlay) startDay(time);
+    this.wasPlay = play;
+    tickDay(time, delta);
+
+    // the neighbours wave when they can see what they should not
+    const wave = (g: Group, on: boolean) => {
+      const arm = g.getObjectByName('arm');
+      if (arm) arm.rotation.z = on ? 2.6 + 0.4 * Math.sin(time * 9) : 0.1;
+    };
+    wave(neighbourAtWindow, waving.window);
+    wave(neighbourOnTerrace, waving.terrace);
 
     WIND.value = time;
     motes.update(delta, time);
-    neighbourBeam.pulse(time, !solved);
-    for (const b of sunBeams.values()) b.pulse(time, false);
+    for (const b of beams.values()) b.pulse(time, !solved);
 
-    // Tiki: pinch to continue
     const pressed = tikiEntity.hasComponent(Pressed);
     const tapped = (pressed && !this.wasPressed) || pendingTap;
     this.wasPressed = pressed;

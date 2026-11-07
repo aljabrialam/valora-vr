@@ -3,7 +3,8 @@
 
 import {CanvasTexture, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace} from '@iwsdk/core';
 import {BRONZE, drawIcon, FAIL, INK, PASS, roundRect} from './feedback.ts';
-import type {Level, RuleResult} from './sim/levels.ts';
+import type {Level, RuleResult} from './sim/play.ts';
+import {LEVELS} from './sim/play.ts';
 
 const W = 1024;
 const H = 600;
@@ -38,7 +39,7 @@ export class LevelCard {
     g.textBaseline = 'alphabetic';
     g.fillStyle = BRONZE;
     g.font = '600 26px Inter, -apple-system, sans-serif';
-    g.fillText(`LEVEL ${index + 1} OF 3`, 56, 78);
+    g.fillText(`LEVEL ${index + 1} OF ${LEVELS.length}`, 56, 78);
     g.fillStyle = INK;
     g.font = '500 60px "Cormorant Garamond", Georgia, serif';
     g.fillText(level.title, 56, 146);
@@ -48,20 +49,21 @@ export class LevelCard {
     wrap(g, level.brief, 56, 196, W - 112, 38);
 
     let y = 318;
+    const step = results.length > 3 ? 50 : 70; // six rules still fit the card
     for (const r of results) {
-      drawIcon(g, r.pass ? 'check' : 'cross', 52, y - 34, 50, r.pass ? PASS : FAIL);
+      drawIcon(g, r.pass ? 'check' : 'cross', 52, y - 34, step > 60 ? 50 : 40, r.pass ? PASS : FAIL);
       g.fillStyle = INK;
-      g.font = '500 30px Inter, -apple-system, sans-serif';
+      g.font = `500 ${step > 60 ? 30 : 26}px Inter, -apple-system, sans-serif`;
       g.fillText(r.rule.text, 120, y);
       g.fillStyle = r.pass ? PASS : FAIL;
       g.font = '600 22px Inter, -apple-system, sans-serif';
       g.fillText(r.pass ? 'DONE' : 'NOT YET', W - 56 - g.measureText(r.pass ? 'DONE' : 'NOT YET').width, y);
-      y += 70;
+      y += step;
     }
 
     g.fillStyle = solved ? PASS : '#6b6a66';
     g.font = '500 24px Inter, -apple-system, sans-serif';
-    g.fillText(solved ? 'Solved. Pinch Tiki for the next level.' : 'Illustrative sunlight and visibility checks.', 56, H - 48);
+    g.fillText(solved ? 'Solved. Pinch Tiki for the next level, or play the day.' : 'Illustrative sunlight and visibility checks.', 56, H - 48);
     this.tex.needsUpdate = true;
   }
 }

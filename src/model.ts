@@ -356,8 +356,6 @@ const green = (h: number, s: number, l: number) => new Color().setHSL(h / 360, s
  */
 export const GARDEN: [string, number, number, number][] = [
   // courtyard: palms in the west corners, foam planting along the south bed and the west edge
-  ['palm-a', -4.2, 3.2, 5.2],
-  ['palm-b', -4.3, -0.2, 4.4],
   ['shrub-a', -4.3, 3.55, 0.6],
   ['shrub-c', -3.1, 3.5, 0.55],
   ['shrub-b', -1.9, 3.55, 0.5],

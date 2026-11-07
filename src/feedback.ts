@@ -14,7 +14,7 @@ import {
   SRGBColorSpace,
   Vector3,
 } from '@iwsdk/core';
-import type {Look} from './sim/world.ts';
+import type {Look} from './sim/play.ts';
 import type {V3} from './sim/geom.ts';
 
 export const INK = '#1d1d1f';

@@ -19,7 +19,7 @@ export const LAYOUT = {
   screen: {pivot: [2.8, 0, -0.8] as V3, len: 2.2, h: 2.6, t: 0.08},
   overhang: {min: 0, max: 2.4, step: 0.6},
   screenSteps: {min: -165, max: 180, step: 15},
-  neighbour: {window: [8.5, 3.6, 1.5] as V3, house: {x0: 7.8, x1: 12, z0: -4, z1: 2.4, h: 4.6}},
+  neighbour: {window: [7.75, 3.6, 1.5] as V3, house: {x0: 7.8, x1: 12, z0: -4, z1: 2.4, h: 4.6}},
   seat: [1.6, 1.05, -3.5] as V3, // eye of someone sitting in the reading chair
   plant: [-1.5, 0.55, -2.4] as V3, // top of the courtyard plant
 };

@@ -4,7 +4,7 @@
 // Styling follows Apple's HIG: system font, 17 px body, translucent material, quiet colour.
 
 import {animate} from 'motion';
-import type {Level, RuleResult} from './sim/levels.ts';
+import type {Level, RuleResult} from './sim/play.ts';
 
 const CSS = `
 .vh{position:fixed;inset:0;pointer-events:none;font:17px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;color:#1d1d1f;-webkit-font-smoothing:antialiased;z-index:5}
@@ -20,6 +20,16 @@ const CSS = `
 .vh-state{font-size:12px;font-weight:600;letter-spacing:.04em}
 .vh-pass{color:#2f6f4f}.vh-fail{color:#a2452e}
 .vh-note{font-size:12px;color:#6b6a66;margin-top:10px}
+.vh-meta{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:#4a4945}
+.vh-stars{font-size:18px;letter-spacing:2px;color:#a8835a}
+.vh-actions{display:flex;gap:8px;margin-top:12px;pointer-events:auto}
+.vh-btn{font:600 15px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;border:0;border-radius:12px;padding:11px 16px;min-height:44px;cursor:pointer}
+.vh-primary{background:#1d1d1f;color:#fff;flex:1}
+.vh-secondary{background:rgba(0,0,0,.06);color:#1d1d1f}
+.vh-btn:focus-visible{outline:3px solid #a8835a;outline-offset:2px}
+.vh-levels{display:flex;gap:6px;margin-top:10px;pointer-events:auto}
+.vh-dot{width:28px;height:28px;border-radius:8px;border:0;background:rgba(0,0,0,.06);font:600 12px/28px Inter,system-ui,sans-serif;color:#4a4945;cursor:pointer;padding:0}
+.vh-dot[aria-current=true]{background:#1d1d1f;color:#fff}
 .vh-tiki{position:absolute;left:0;right:0;margin:0 auto;bottom:20px;width:min(560px,calc(100vw - 32px));padding:14px 18px}
 .vh-name{font-size:12px;font-weight:600;letter-spacing:.06em;color:#8a6a43;text-transform:uppercase}
 .vh-say{font-size:17px;margin:2px 0 0}
@@ -63,11 +73,24 @@ export class Hud {
     this.root.hidden = !v;
   }
 
-  level(index: number, level: Level, results: RuleResult[], solved: boolean) {
+  onPlay: () => void = () => {};
+  onReset: () => void = () => {};
+  onLevel: (i: number) => void = () => {};
+
+  level(index: number, total: number, level: Level, results: RuleResult[], solved: boolean, info: {used: number; par: number; stars: number; best: number}) {
     const rules = results
       .map((r) => `<li class="vh-rule">${r.pass ? ICON.pass : ICON.fail}<span>${esc(r.rule.text)}</span><span class="vh-state ${r.pass ? 'vh-pass' : 'vh-fail'}">${r.pass ? 'DONE' : 'NOT YET'}</span></li>`)
       .join('');
-    this.card.innerHTML = `<div class="vh-over">Level ${index + 1} of 3</div><h1 class="vh-title">${esc(level.title)}</h1><p class="vh-brief">${esc(level.brief)}</p><ul class="vh-rules">${rules}</ul><div class="vh-note">${solved ? '<span class="vh-pass">Solved.</span> Click Tiki for the next level.' : 'Illustrative sunlight and visibility checks.'}</div>`;
+    const starStr = (n: number) => '\u2605'.repeat(n) + '\u2606'.repeat(3 - n);
+    const dots = Array.from({length: total}, (_, i) => `<button class="vh-dot" data-level="${i}" aria-label="Level ${i + 1}" aria-current="${i === index}">${i + 1}</button>`).join('');
+    this.card.innerHTML = `<div class="vh-over">Level ${index + 1} of ${total}</div><h1 class="vh-title">${esc(level.title)}</h1><p class="vh-brief">${esc(level.brief)}</p><ul class="vh-rules">${rules}</ul>
+      <div class="vh-meta"><span>Pieces used ${info.used} \u00b7 three stars with ${info.par}</span><span class="vh-stars" aria-label="${solved ? info.stars : info.best} stars">${starStr(solved ? info.stars : info.best)}</span></div>
+      <div class="vh-actions"><button class="vh-btn vh-primary" data-act="play">Live the day</button><button class="vh-btn vh-secondary" data-act="reset">Reset</button></div>
+      <div class="vh-levels">${dots}</div>
+      <div class="vh-note">${solved ? '<span class="vh-pass">Solved.</span> Live the day, or click Tiki for the next level.' : 'Illustrative sunlight and visibility checks.'}</div>`;
+    this.card.querySelector('[data-act=play]')!.addEventListener('click', () => this.onPlay());
+    this.card.querySelector('[data-act=reset]')!.addEventListener('click', () => this.onReset());
+    this.card.querySelectorAll<HTMLButtonElement>('.vh-dot').forEach((b) => b.addEventListener('click', () => this.onLevel(Number(b.dataset.level))));
     if (solved && !this.lastSolved && !reduced()) animate(this.card, {scale: [1, 1.03, 1]}, {duration: 0.45, ease: 'easeOut'});
     this.lastSolved = solved;
   }
