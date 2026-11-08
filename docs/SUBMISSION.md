@@ -22,7 +22,7 @@
 
 **Hand interactions:** every action is a ray pinch: pick a piece from the raft, point it onto the courtyard, pinch it to turn it, drag the sun, press play. No controller is needed at any point, and the view is set up once for a seated player. Touch controllers also work: the trigger stands in for the pinch.
 
-**Demo video:** `valora-demo-16x9.mp4` (1:40): a 22-second trailer, then the game in the headset view with a hand pointing and pinching, labelled as captured in Meta's IWER emulator. Add or swap in a Quest recording after the headset test ([VIDEO](VIDEO.md)).
+**Demo video:** `valora-demo-16x9.mp4` (2:40, under the 3-minute limit), narrated: a 27-second trailer, our entry card, the goal (single player; the two watchers are the sun and whoever looks in), choosing a place on the globe, then the game in the headset view with hands and with Touch controllers, how scoring works (rules, stars, par, live the day), one twist per capital, the proof and the maker. Headset footage is labelled as captured in Meta's IWER emulator; the narration is a synthetic voice (Kokoro, open weights) and should be declared if the form asks about AI-generated content. Add or swap in a Quest recording after the headset test ([VIDEO](VIDEO.md)).
 
 **Target launch date:** to decide.
 
