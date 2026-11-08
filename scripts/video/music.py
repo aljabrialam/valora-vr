@@ -7,7 +7,9 @@ import sys, wave
 import numpy as np
 
 SR = 44100
-DUR = 61.0
+import os
+DUR = float(os.environ.get('MUSIC_DUR', '61.0'))  # the demo cut sets its own length
+END = DUR - 4.0
 BPM = 96
 BEAT = 60 / BPM
 N = int(SR * DUR)
@@ -138,7 +140,7 @@ pad([50, 57, 62, 66, 69], 18.6, 3.2, 0.13)
 
 # ---------------- features groove: 22.0 .. 64.5
 start = 22.0
-bars = int((57.0 - start) / (4 * BEAT))
+bars = int((END - start) / (4 * BEAT))
 prog = ['D', 'A', 'Bm', 'G']
 arp = [0, 1, 2, 1, 2, 0, 1, 2]
 for b in range(bars):
@@ -155,13 +157,13 @@ for b in range(bars):
     kick(t0, 0.45)
     kick(t0 + 2 * BEAT, 0.35)
 # a little lift into the VR section (57.5)
-bell(86, 51.0, 0.08)
+bell(86, END - 6.0, 0.08)
 
 # ---------------- end: tonic rings out
-pad([50, 57, 62, 66, 69, 74], 57.0, 3.0, 0.12)
-bell(74, 57.0, 0.12)
-marimba(78, 57.0, 0.15)
-marimba(81, 57.0 + BEAT / 2, 0.12)
+pad([50, 57, 62, 66, 69, 74], END, 3.0, 0.12)
+bell(74, END, 0.12)
+marimba(78, END, 0.15)
+marimba(81, END + BEAT / 2, 0.12)
 
 # ---------------- master: gentle glue, fade out, loudness to about -16 LUFS (RMS proxy), peak -1 dB
 st = np.stack([L, Rr], axis=1)

@@ -1,9 +1,10 @@
 # Video
 
-Two cuts, each in 16:9 (YouTube, the submission) and 9:16 (Reels, TikTok, Shorts):
+Three cuts, each in 16:9 and 9:16 (Reels, TikTok, Shorts):
 
 | Cut | Length | File |
 |---|---|---|
+| **Demo for the submission:** the trailer, then the game in the headset view, then a proof card | 1:40 | `video/valora-demo-16x9.mp4`, `video/valora-demo-9x16.mp4` |
 | Trailer | about 26 s | `video/valora-trailer-16x9.mp4`, `video/valora-trailer-9x16.mp4` |
 | Showcase: the trailer, then the features | about 61 s | `video/valora-showcase-16x9.mp4`, `video/valora-showcase-9x16.mp4` |
 
@@ -11,7 +12,34 @@ All footage is the real game, rendered frame by frame. Headset footage comes fro
 
 > **8 November:** every shot re-captured on the smooth-art islands and the new Bangkok house; trailer shots hide the tutorial arrow (`VR.chrome(false)`); feature captions sit above Tiki's card (`hi=1` in `make-titles.sh`). Integrated loudness −13.3 LUFS.
 
-## Shot list
+## The demo cut (CUT=demo)
+
+The submission is for a VR competition, so after the 22-second trailer everything is the headset view: a seated player at the desk, the right hand pointing and pinching, filmed in Meta's IWER emulator and labelled so on every shot ("Headset view · Meta IWER emulator"). Replace or add a real Quest recording once the headset test is done.
+
+| Time | Shot | What the hand does |
+|---|---|---|
+| 0:00 | Trailer | Same sun, four capitals, the watchers, the logo |
+| 0:22 | "Now, in the headset." | Seated · hands only · no controllers |
+| 0:25 | `v_ph` | Looks down at the desk; pinches Tiki; carries a screen from the raft to the courtyard (the neighbour's line stops at it); turns it with a short pinch |
+| 0:40 | `v_look` | Looks around the Bangkok island: the neighbour, the boats, the sun |
+| 0:48 | `v_sun` | Pinches the sun and drags it from morning to late afternoon |
+| 0:58 | `v_day` | Presses play; the day runs, every watcher checked hour by hour |
+| 1:09 | `v_th`, `v_id`, `v_sg` | Bangkok: a hedge against the boats; Jakarta: a pergola against the rain; Singapore: a tree against the high-rise |
+| 1:33 | Proof card | 12 levels, 4 capitals, every level proven solvable |
+| 1:36 | End card | The link |
+
+`v_th2` (Lunch by the Water, two screens) is scripted but not in the cut yet: the second pinch picks up the first screen again instead of the one on the raft. Fix before adding it.
+
+Headset shots: `node scripts/video/vrshots.mjs <shot>` (`TEST=1` for a quick quarter-size check). The emulated hand is placed by its pointing ray through the emulator's remote control (the same calls as `iwsdk xr`), held under programmatic control each frame; the head stays still while the hand works, because the emulated hand moves with the head. The hand model comes from the webxr-input-profiles package served locally (`PROFILES_DIR`), since the capture sandbox cannot reach its CDN. The player leans in 14 cm (`VR.lean`) so pieces read at video size.
+
+```bash
+bash scripts/video/make-demo-titles.sh
+MUSIC_DUR=99.95 python3 scripts/video/music.py video/music-demo.wav
+for s in v_ph v_look v_sun v_day v_th v_id v_sg; do node scripts/video/vrshots.mjs $s; done
+CUT=demo MUSIC=video/music-demo.wav python3 scripts/video/edit.py
+```
+
+## Shot list (trailer and showcase)
 
 | Part | Shot | What it shows |
 |---|---|---|

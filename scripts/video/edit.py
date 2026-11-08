@@ -49,19 +49,39 @@ NAME = 'showcase'
 if os.environ.get('CUT') == 'trailer':
     SEG = SEG[:9] + [SEG[-1]]
     NAME = 'trailer'
+# CUT=demo: the VR demo for the submission: the trailer, then the headset view (emulator), a proof card
+if os.environ.get('CUT') == 'demo':
+    SEG = SEG[:9] + [
+        ('titles/vr', 2.6, None, 'in-out'),
+        ('frames/v_ph', 4.3, 'titles/d_tiki', 'in', 0.0),
+        ('frames/v_ph', 5.9, 'titles/d_place', '', 4.3),
+        ('frames/v_ph', 1.8, 'titles/d_private', '', 10.2),
+        ('frames/v_ph', 3.75, 'titles/d_turn', '', 12.0),
+        ('frames/v_look', 7.4, 'titles/d_look', ''),
+        ('frames/v_sun', 10.1, 'titles/d_sun', '', 1.8),
+        ('frames/v_day', 11.0, 'titles/d_day', ''),
+        ('frames/v_th', 7.9, 'titles/d_th', '', 1.9),
+        ('frames/v_id', 7.9, 'titles/d_id', '', 1.9),
+        ('frames/v_sg', 7.9, 'titles/d_sg', '', 1.9),
+        ('titles/proof', 3.4, None, 'in-out'),
+        SEG[-1],
+    ]
+    NAME = 'demo'
 # LIMIT=n assembles only the first n segments (a quick check while shots are still rendering)
 if os.environ.get('LIMIT'):
     SEG = SEG[: int(os.environ['LIMIT'])]
 os.makedirs(f'{V}/seg', exist_ok=True)
 parts = []
-for i, (src, secs, ov, fade) in enumerate(SEG):
+for i, seg in enumerate(SEG):
+    src, secs, ov, fade = seg[:4]
+    start = seg[4] if len(seg) > 4 else 0.0  # seconds into the shot's frames
     d = f'{V}/{src}'
     if not os.path.isdir(d) or not os.listdir(d):
         print('missing', d)
         sys.exit(1)
     out = f'{V}/seg/{i:02d}.mp4'
     n = int(round(secs * FPS))
-    inputs = ['-framerate', str(FPS), '-i', frames_pattern(d)]
+    inputs = ['-framerate', str(FPS), '-start_number', str(int(round(start * FPS))), '-i', frames_pattern(d)]
     # hold the last frame if a shot is a little short, then trim to the exact length
     fil = f'[0:v]scale=1280:720,tpad=stop_mode=clone:stop=120,trim=end_frame={n},setpts=PTS-STARTPTS[v0]'
     last = 'v0'
@@ -84,8 +104,9 @@ with open(f'{V}/seg/list.txt', 'w') as f:
         f.write(f"file '{os.path.abspath(p)}'\n")
 run(['ffmpeg', '-y', '-hide_banner', '-f', 'concat', '-safe', '0', '-i', f'{V}/seg/list.txt', '-c', 'copy', f'{V}/seg/picture.mp4'])
 total = sum(s[1] for s in SEG)
+MUSIC = os.environ.get('MUSIC', f'{V}/music.wav')
 master = f'{V}/valora-{NAME}-16x9.mp4'
-run(['ffmpeg', '-y', '-hide_banner', '-i', f'{V}/seg/picture.mp4', '-i', f'{V}/music.wav', '-filter_complex', f'[1:a]atrim=0:{total:.2f},afade=t=out:st={total - 2.5:.2f}:d=2.5,loudnorm=I=-14:TP=-1:LRA=11[a]', '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-t', f'{total:.2f}', '-movflags', '+faststart', master])
+run(['ffmpeg', '-y', '-hide_banner', '-i', f'{V}/seg/picture.mp4', '-i', MUSIC, '-filter_complex', f'[1:a]atrim=0:{total:.2f},afade=t=out:st={total - 2.5:.2f}:d=2.5,loudnorm=I=-14:TP=-1:LRA=11[a]', '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-t', f'{total:.2f}', '-movflags', '+faststart', master])
 print('master', master, total, 's')
 
 # ---------------- 9:16 social cut: blurred fill, the 16:9 picture centred, a header and a footer

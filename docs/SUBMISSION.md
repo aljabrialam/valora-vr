@@ -22,6 +22,8 @@
 
 **Hand interactions:** every action is a ray pinch: pick a piece from the raft, point it onto the courtyard, pinch it to turn it, drag the sun, press play. No controller is needed at any point, and the view is set up once for a seated player.
 
+**Demo video:** `valora-demo-16x9.mp4` (1:40): a 22-second trailer, then the game in the headset view with a hand pointing and pinching, labelled as captured in Meta's IWER emulator. Add or swap in a Quest recording after the headset test ([VIDEO](VIDEO.md)).
+
 **Target launch date:** to decide.
 
 **Team:** names, emails and roles to fill in.

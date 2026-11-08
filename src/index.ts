@@ -820,6 +820,11 @@ const toScreen = (v: Vector3) => {
     });
   },
   rig: () => world.player.position.toArray(),
+  /** Video capture: lean the seated player in (move the rig, in metres); returns the new rig position. */
+  lean(dx: number, dy: number, dz: number) {
+    world.player.position.add(new Vector3(dx, dy, dz));
+    return world.player.position.toArray();
+  },
   /** Video capture: recentre now (software rendering is too slow to wait for the frame count). */
   recentreNow() {
     recentreAt = -1;
