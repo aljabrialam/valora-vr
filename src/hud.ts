@@ -3,6 +3,7 @@
 // carries the same words at normal reading size. Hidden while an immersive session is running.
 // Styling follows Apple's HIG: system font, 17 px body, translucent material, quiet colour.
 
+import {Globe} from './globe.ts';
 import {animate} from 'motion';
 import type {Level, RuleResult} from './sim/play.ts';
 
@@ -36,7 +37,10 @@ const CSS = `
 .vh-maptitle{font:600 28px/1.15 -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,system-ui,sans-serif;margin:2px 0 4px}
 .vh-mapsub{font-size:15px;color:#4a4945;margin:0 0 14px}
 .vh-mapgrid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:start}
-.vh-mapsvg{width:100%;height:auto;background:linear-gradient(180deg,#bfe6f2,#8fd0e4);border-radius:14px}
+.vh-globewrap{display:grid;place-items:center}
+.vh-globe{width:100%;max-width:420px;height:auto;display:block;touch-action:none}
+.vh-globe [data-country]:focus{outline:none}
+.vh-place.vh-picked{outline:2px solid #c8643c;outline-offset:-2px}
 .vh-places{display:grid;gap:8px}
 .vh-place{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;border:0;border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.05);cursor:pointer;font:inherit;color:inherit;min-height:44px}
 .vh-place:hover,.vh-place:focus-visible{background:rgba(0,0,0,.09);outline:none}
@@ -51,6 +55,9 @@ const CSS = `
 .vh-say{font-size:17px;margin:2px 0 0}
 .vh-hint{font-size:15px;font-weight:600;color:#8a6a43;margin-top:6px}
 .vh-hint:empty{display:none}
+.vh-tikirow{display:flex;align-items:flex-end;gap:14px}
+.vh-tikirow>div{flex:1;min-width:0}
+.vh-next{pointer-events:auto;flex:none;background:#1d1d1f;color:#fff}
 @media (max-width:600px){.vh-card{top:8px;left:8px;width:calc(100vw - 16px);padding:12px 14px}.vh-brief{display:none}.vh-tiki{bottom:10px}}
 @media (prefers-reduced-transparency:reduce){.vh-glass{background:#faf9f6;-webkit-backdrop-filter:none;backdrop-filter:none}}
 `;
@@ -117,29 +124,43 @@ export class Hud {
       {name: 'Indonesia', place: 'Jakarta', lon: 106.8, lat: -6.2, id: 'id'},
       {name: 'Timor-Leste', place: 'Dili', lon: 125.6, lat: -8.6},
     ];
-    const X = (lon: number) => ((lon - 92) / 38) * 520 + 20;
-    const Y = (lat: number) => ((24 - lat) / 36) * 400 + 20;
-    const dots = all
-      .map((p) => {
-        const on = !!p.id;
-        return `<g ${on ? `data-country="${p.id}" style="cursor:pointer"` : ''}><circle cx="${X(p.lon)}" cy="${Y(p.lat)}" r="${on ? 11 : 6}" fill="${on ? '#c8643c' : '#ffffff'}" stroke="${on ? '#fff' : '#7aa9bb'}" stroke-width="3"/><text x="${X(p.lon) + (p.lon > 118 ? -14 : 14)}" y="${Y(p.lat) + 5}" text-anchor="${p.lon > 118 ? 'end' : 'start'}" font-size="${on ? 17 : 13}" font-weight="${on ? 600 : 400}" fill="${on ? '#1d1d1f' : '#47707f'}" font-family="-apple-system,Inter,system-ui,sans-serif">${p.name}</text></g>`;
-      })
-      .join('');
     const cards = playable
       .map((c) => `<button class="vh-place" data-country="${c.id}"><b>${esc(c.name)}</b><span class="vh-soon">${esc(c.place)}</span><small>${esc(c.house)}</small></button>`)
       .join('');
     const soon = all.filter((p) => !p.id).map((p) => p.name).join(', ');
     this.map.className = 'vh-map';
     this.map.innerHTML = `<section class="vh-glass vh-mapcard" role="dialog" aria-label="Choose a place"><div class="vh-over">VaLora: Two Watchers</div><h1 class="vh-maptitle">Choose a place</h1><p class="vh-mapsub">Same sun, different skies. Each country has its own house, its own sun path for today, and its own watchers.</p>
-      <div class="vh-mapgrid"><svg class="vh-mapsvg" viewBox="0 0 560 440" role="img" aria-label="Map of South-east Asia">${dots}</svg><div class="vh-places">${cards}<p class="vh-soon">Coming soon: ${esc(soon)}.</p></div></div></section>`;
+      <div class="vh-mapgrid"><div class="vh-globewrap"></div><div class="vh-places">${cards}<p class="vh-soon">Coming soon: ${esc(soon)}.</p></div></div></section>`;
     this.map.hidden = false;
     if (!this.map.isConnected) document.body.append(this.map);
-    this.map.querySelectorAll<HTMLElement>('[data-country]').forEach((el) =>
-      el.addEventListener('click', () => {
-        this.map.hidden = true;
-        this.onCountry(el.dataset.country!);
-      }),
-    );
+    const globe = new Globe(all);
+    this.map.querySelector('.vh-globewrap')!.append(globe.svg);
+    let leaving = false;
+    const pick = async (id: string) => {
+      if (leaving) return;
+      leaving = true;
+      const p = all.find((x) => x.id === id)!;
+      globe.highlight(id);
+      this.map.querySelectorAll<HTMLElement>('.vh-place').forEach((b) => b.classList.toggle('vh-picked', b.dataset.country === id));
+      await globe.turnTo(p.lon, p.lat, 1.6, 3.2); // turn to the place, then lean in towards it
+      await new Promise((r) => setTimeout(r, reduced() ? 0 : 350));
+      this.map.hidden = true;
+      this.onCountry(id);
+    };
+    globe.onPick = pick;
+    this.map.querySelectorAll<HTMLElement>('.vh-place[data-country]').forEach((el) => {
+      const id = el.dataset.country!;
+      const p = all.find((x) => x.id === id)!;
+      el.addEventListener('click', () => pick(id));
+      // pointing at a card turns the globe to that place
+      const preview = () => {
+        if (leaving) return;
+        globe.highlight(id);
+        globe.turnTo(p.lon, p.lat, 0.8);
+      };
+      el.addEventListener('pointerenter', preview);
+      el.addEventListener('focus', preview);
+    });
     if (!reduced()) animate(this.map.firstElementChild as HTMLElement, {opacity: [0, 1], y: [12, 0]}, {duration: 0.35, ease: 'easeOut'});
   }
   onReset: () => void = () => {};
@@ -164,7 +185,26 @@ export class Hud {
     this.lastSolved = solved;
   }
 
-  say(text: string, hint: string) {
+  /** Pressed Continue under Tiki's line. */
+  onNext: () => void = () => {};
+  /** The part of the window the panels leave free, so the 3D view can be fitted into it. */
+  freeArea(): {x0: number; y0: number; x1: number; y1: number} {
+    const W = innerWidth;
+    const H = innerHeight;
+    const a = {x0: 0, y0: 0, x1: W, y1: H};
+    if (this.root.hidden) return a;
+    const c = this.card.getBoundingClientRect();
+    if (c.width > 0) {
+      if (c.width < W * 0.55) a.x0 = c.right + 8; // a side panel
+      else a.y0 = c.bottom + 8; // a narrow screen: the card is a band across the top
+    }
+    if (!this.tiki.hidden) {
+      const t = this.tiki.getBoundingClientRect();
+      if (t.height > 0) a.y1 = t.top - 8;
+    }
+    return a;
+  }
+  say(text: string, hint: string, canContinue = false) {
     if (!text) {
       this.tiki.hidden = true;
       this.lastSay = '';
@@ -174,7 +214,9 @@ export class Hud {
     if (text === this.lastSay) return;
     this.lastSay = text;
     const extra = hint && !text.includes(hint) ? hint : ''; // skip a hint the sentence already says
-    this.tiki.innerHTML = `<div class="vh-name">Tiki</div><p class="vh-say">${esc(text)}</p><div class="vh-hint">${esc(extra)}</div>`;
+    const next = canContinue ? '<button class="vh-btn vh-next" data-act="next">Continue</button>' : '';
+    this.tiki.innerHTML = `<div class="vh-tikirow"><div><div class="vh-name">Tiki</div><p class="vh-say">${esc(text)}</p><div class="vh-hint">${esc(extra)}</div></div>${next}</div>`;
+    this.tiki.querySelector<HTMLElement>('[data-act="next"]')?.addEventListener('click', () => this.onNext());
     if (!reduced()) animate(this.tiki, {opacity: [0, 1], y: [8, 0]}, {duration: 0.3, ease: 'easeOut'});
   }
 }

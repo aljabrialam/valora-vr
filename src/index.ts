@@ -7,6 +7,7 @@
 
 import {
   Box3,
+  type PerspectiveCamera,
   ConeGeometry,
   Color,
   createSystem,
@@ -131,7 +132,10 @@ model.desk.add(motes.points);
 
 // ---------- Tiki ----------
 const tiki = new Gecko();
-const TIKI_HOME = new Vector3(-0.38, 0.002, 0.3);
+// Tiki lives on the walls: he sits on the cap of the front garden wall, left of the gate gap, so he
+// never stands inside a wall. (The baked garden walls are 2.2 m tall with a cap to 2.24 m.)
+model.desk.updateWorldMatrix(true, true);
+const TIKI_HOME = model.desk.worldToLocal(siteToWorld([-3.6, 2.24, LAYOUT.court.z1 + LAYOUT.court.wallT / 2]));
 tiki.group.position.copy(TIKI_HOME);
 const tikiEntity = world.createTransformEntity(tiki.group, deskEntity);
 tikiEntity.addComponent(RayInteractable);
@@ -439,6 +443,7 @@ function refresh() {
   stars = res.stars;
   card.draw(levelIndex, level, res.results, solved);
   hud.level(levelIndex, LEVELS.length, level, res.results, solved, {used: design.pieces.length, par: level.par, stars, best: bestStars(level.id)});
+  requestAnimationFrame(frameFlat);
   for (const b of beams.values()) b.group.visible = false;
   for (const l of labels.values()) l.sprite.visible = false;
   const perTarget = new Map<string, number>();
@@ -588,7 +593,9 @@ class Tutorial {
     if (inXR() && IN_EMULATOR()) hint = 'Emulator: drag a controller arrow to aim, then set Trig to 1 to pinch. Easier: exit VR and use the mouse.';
     setFlatView(!inXR());
     tiki.say(text, hint, now);
-    hud.say(text, hint);
+    // on a screen, Continue does the same as clicking Tiki, who may be small or off to one side
+    hud.say(text, st.until === 'tap' ? hint.replace(/^Click Tiki to continue$/, 'Or click Tiki') : hint, st.until === 'tap');
+    requestAnimationFrame(frameFlat);
   }
   next(now: number) {
     const st = this.steps[this.i];
@@ -874,6 +881,7 @@ function setFlatView(flatView: boolean) {
   console.info('[VR] view', flatView ? 'flat' : 'headset');
 }
 hud.onPlay = () => startDay(lastTime);
+hud.onNext = () => (pendingTap = true);
 hud.onReset = () => {
   for (const o of pieceObjs) homeInTray(o);
   design.overhang = 0;
@@ -894,6 +902,22 @@ function forDevice(text: string): string {
 }
 
 // ---------- per frame ----------
+
+// ---------- fit the screen view into the space the page panels leave free ----------
+// The level card sits on the left and Tiki's line along the bottom. Shift and widen the camera's view
+// so the island and the raft land in the open area instead of behind the panels.
+function frameFlat() {
+  const cam = world.camera as PerspectiveCamera;
+  if (inXR()) return;
+  const W = innerWidth;
+  const H = innerHeight;
+  const a = hud.freeArea();
+  const fit = Math.min((a.x1 - a.x0) / W, (a.y1 - a.y0) / H);
+  cam.zoom = Math.min(1, Math.max(0.55, fit * 1.08));
+  cam.setViewOffset(W, H, W / 2 - (a.x0 + a.x1) / 2, H / 2 - (a.y0 + a.y1) / 2, W, H);
+  cam.updateProjectionMatrix();
+}
+addEventListener('resize', () => requestAnimationFrame(frameFlat));
 
 // ---------- seated recentring ----------
 // When a headset session starts, place the player just behind the courtyard so the board sits low in
@@ -925,6 +949,12 @@ class PlaySystem extends createSystem({}) {
     // actually renders in the new mode; session events can fire before presenting starts
     if (xr !== this.wasXR) {
       this.wasXR = xr;
+      if (xr) {
+        const cam = world.camera as PerspectiveCamera;
+        cam.clearViewOffset();
+        cam.zoom = 1;
+        cam.updateProjectionMatrix();
+      }
       tutorial.sayNow(time);
     }
     if (xr && recentreAt >= 0 && time >= recentreAt) {
