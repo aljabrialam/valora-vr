@@ -375,6 +375,13 @@ export const GARDEN_PH: [string, number, number, number][] = [
   ['shrub-c', 12.8, 2.2, 0.9],
   ['shrub-b', 7.0, 4.6, 0.8],
 ];
+/** Indonesia and Singapore plant their own trees in their models; palms only where shadows stay off the yard. */
+export const GARDEN_SAFE: [string, number, number, number][] = [
+  ['palm-a', -7.6, -7.4, 6.2],
+  ['palm-a', 14.4, -2.4, 5.4],
+  ['palm-b', 13.6, -6.8, 6.0],
+  ['shrub-c', 12.8, 2.2, 0.9],
+];
 export const GARDEN: [string, number, number, number][] = [
   // courtyard: palms in the west corners, foam planting along the south bed and the west edge
   ['shrub-a', -4.3, 3.55, 0.6],

@@ -252,7 +252,7 @@ def jitter(c, amt):
     return tuple(min(1, max(0, v * k)) for v in c)
 
 
-# ================================================================ PHILIPPINES v3: bahay kubo and bakuran
+# ================================================================ shared modelling helpers for country houses
 # Stays inside what src/sim checks: the room footprint x -5..5, z -7..-3 has solid north, west and
 # east sides to 3 m, a roof plane at 3 m, and an open courtyard face; the reader's eye is 1.05 m at
 # (1.6, -3.5); the garden fence is 1.0 m; the neighbour's house fits its box below 4.6 m.
@@ -529,15 +529,8 @@ def slats(a, b, y0, y1, step, r, mat='bamboo', name='slat'):
         pole((x, y0, z), (x, y1 - rnd.uniform(0, 0.04), z), r, mat, seg=6, tint_c=bamboo_tone(), name=name)
 
 
-R = LAY['room']
-C = LAY['court']
-N = LAY['neighbour']
-sx, _, sz = LAY['seat']
 
-# ================================================================ the bakuran (yard)
-pool = {'x0': -4.3, 'x1': -1.6, 'z0': 0.3, 'z1': 2.9}
-box(C['x0'], C['x1'], -0.04, 0.02, C['z0'], C['z1'], 'grass', bevel=0.0, name='yard')
-# a worn dirt path: ladder -> table, with a spur to the pond and the kitchen
+# ---- shared props
 PATH_Y = [0.022]
 
 
@@ -577,6 +570,107 @@ def path(pts, w=0.9):
     _finish(bpy.data.objects.new('path', me), me, 'earth', (1.2, 1.15, 1.1))
 
 
+
+def blob(x, y, z, r, mat, tint_c, squash=0.85, seed=0, name='blob'):
+    """A faceted, slightly lumpy ball: leaves, fruit, stones."""
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    k = random.Random(seed)
+    off = Vector((k.uniform(0, 50), k.uniform(0, 50), 0))
+    for v in bm.verts:
+        v.co *= 1 + 0.16 * mnoise.noise(v.co * 1.8 + off)
+        v.co.x *= r
+        v.co.y *= r
+        v.co.z *= r * squash
+    bmesh.ops.transform(bm, matrix=Matrix.Translation(P(x, y, z)), verts=bm.verts)
+    bm.to_mesh(me)
+    bm.free()
+    return _finish(bpy.data.objects.new(name, me), me, mat, tint_c)
+
+
+def shrub(x, z, r, flowers=True):
+    s0 = rnd.randint(0, 999)
+    blob(x, r * 0.75, z, r, 'leaf', jitter((1, 1, 1), 0.12), seed=s0, name='shrub')
+    blob(x + r * 0.45, r * 0.55, z + r * 0.2, r * 0.7, 'leaf', jitter((1.08, 1.12, 1.0), 0.1), seed=s0 + 1, name='shrub')
+    blob(x - r * 0.4, r * 0.5, z - r * 0.25, r * 0.65, 'leaf', jitter((0.92, 1.0, 0.9), 0.1), seed=s0 + 2, name='shrub')
+    if flowers:
+        for _ in range(int(6 * r / 0.3)):
+            a = rnd.uniform(0, math.tau)
+            fx, fz = x + math.cos(a) * r * 0.85, z + math.sin(a) * r * 0.85
+            fy = rnd.uniform(r * 0.6, r * 1.8)
+            blob(fx, fy, fz, 0.075, 'flower', jitter((1, 1, 1), 0.1), squash=0.6, seed=rnd.randint(0, 999), name='gumamela')
+
+
+
+def banana(x, z, h=2.6, seed=0):
+    k = random.Random(seed)
+    pole((x, 0.0, z), (x, h * 0.65, z), 0.16, 'trunk', seg=9, r2=0.11, name='banana-trunk')
+    for i in range(7):
+        a = i / 7 * 360 + k.uniform(-20, 20)
+        tilt = k.uniform(25, 55)
+        L = k.uniform(1.0, 1.4)
+        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        cxl = x + ca * L * 0.45 * math.cos(math.radians(tilt))
+        czl = z + sa * L * 0.45 * math.cos(math.radians(tilt))
+        cy = h * 0.65 + L * 0.45 * math.sin(math.radians(tilt)) * 0.6
+        obox((cxl, cy, czl), (L, 0.025, 0.38), (0, -a, tilt * 0.6), 'banana', tint_c=jitter((1, 1, 1), 0.12), name='banana-leaf', taper=0.55)
+    obox((x + 0.15, h * 0.55, z), (0.18, 0.3, 0.18), (0, 0, 0), 'banana', tint_c=(0.9, 1.1, 0.6), bevel=0.06, name='banana-bunch')
+    pole((x + 0.15, h * 0.45, z), (x + 0.15, h * 0.32, z), 0.08, 'red', seg=8, r2=0.03, tint_c=(0.6, 0.2, 0.35), name='banana-heart')
+
+
+def papaya(x, z, h=3.2, seed=0):
+    k = random.Random(seed)
+    pole((x, 0.0, z), (x, h, z), 0.1, 'trunk', seg=8, r2=0.07, tint_c=(1.1, 1.0, 0.85), name='papaya-trunk')
+    for i in range(8):
+        a = i / 8 * 360 + k.uniform(-15, 15)
+        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        obox((x + ca * 0.55, h + 0.05, z + sa * 0.55), (0.9, 0.03, 0.5), (0, -a, -18), 'leaf', tint_c=jitter((1.05, 1.1, 0.95), 0.1), name='papaya-leaf', taper=1.2)
+    for i in range(5):
+        a = i / 5 * math.tau
+        fx, fz = x + math.cos(a) * 0.14, z + math.sin(a) * 0.14
+        fy = h - 0.25 - (i % 2) * 0.15
+        box(fx - 0.08, fx + 0.08, fy - 0.13, fy + 0.13, fz - 0.08, fz + 0.08, 'banana', bevel=0.07, tint_c=(1.2, 0.9, 0.35) if i % 2 else (0.85, 1.05, 0.55), name='papaya-fruit')
+
+
+def carabao(x, z, yaw=0):
+    # a resting water buffalo: body, belly, head, swept horns, legs, tail
+    def part(c, s, rot=(0, 0, 0), mat='carabao', b=0.08):
+        ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+        px, pz = c[0] * ca - c[2] * sa, c[0] * sa + c[2] * ca
+        obox((x + px, c[1], z + pz), s, (rot[0], rot[1] - yaw, rot[2]), mat, bevel=b, name='carabao')
+    part((0, 0.95, 0), (1.9, 0.75, 0.85))
+    part((0.05, 0.62, 0), (1.5, 0.3, 0.7))
+    part((1.15, 0.95, 0), (0.55, 0.45, 0.42), (0, 0, -18))
+    part((1.42, 0.82, 0), (0.25, 0.25, 0.32), (0, 0, -18), b=0.06)
+    for s in (-1, 1):
+        part((1.05, 1.25, s * 0.38), (0.6, 0.09, 0.09), (s * -25, s * 30, 18), 'horn', 0.03)
+    for (dx, dz) in ((0.7, -0.27), (0.7, 0.27), (-0.7, -0.27), (-0.7, 0.27)):
+        part((dx, 0.3, dz), (0.17, 0.62, 0.17), b=0.04)
+    part((-1.0, 0.75, 0), (0.06, 0.55, 0.06), (0, 0, 12), 'horn', 0.02)
+
+
+def hen(x, z, yaw=0, white=False):
+    tc = (1.6, 1.6, 1.6) if white else (1, 1, 1)
+    obox((x, 0.18, z), (0.3, 0.2, 0.18), (0, -yaw, 0), 'hen', tint_c=tc, bevel=0.07, name='hen')
+    ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    obox((x + ca * 0.17, 0.33, z + sa * 0.17), (0.11, 0.12, 0.1), (0, -yaw, 0), 'hen', tint_c=tc, bevel=0.04, name='hen-head')
+    obox((x + ca * 0.18, 0.41, z + sa * 0.18), (0.08, 0.05, 0.03), (0, -yaw, 0), 'red', name='hen-comb')
+    obox((x - ca * 0.16, 0.3, z - sa * 0.16), (0.08, 0.2, 0.14), (0, -yaw, -25), 'hen', tint_c=(0.5, 0.35, 0.25) if not white else tc, bevel=0.03, name='hen-tail')
+
+
+
+# ================================================================ PHILIPPINES v3: bahay kubo and bakuran
+# (helpers and materials: parts/common.py)
+R = LAY['room']
+C = LAY['court']
+N = LAY['neighbour']
+sx, _, sz = LAY['seat']
+
+# ================================================================ the bakuran (yard)
+pool = {'x0': -4.3, 'x1': -1.6, 'z0': 0.3, 'z1': 2.9}
+box(C['x0'], C['x1'], -0.04, 0.02, C['z0'], C['z1'], 'grass', bevel=0.0, name='yard')
+# a worn dirt path: ladder -> table, with a spur to the pond and the kitchen
 path([(2.0, -2.4), (1.6, -0.8), (2.2, 0.8), (2.6, 2.0)])
 path([(1.6, -0.8), (-0.4, -0.3), (-1.2, 0.0)], 0.75)
 path([(-0.4, -0.3), (-2.6, -1.6), (-3.2, -2.6)], 0.75)
@@ -615,37 +709,6 @@ for x in (0.45, 1.95):
     for z in (-2.9, -2.1):
         pole((x, 0.0, z), (x, 0.42, z), 0.05, 'bamboo', name='papag-leg')
 # gumamela (hibiscus) and low shrubs in the yard corners, all below 0.9 m
-def blob(x, y, z, r, mat, tint_c, squash=0.85, seed=0, name='blob'):
-    """A faceted, slightly lumpy ball: leaves, fruit, stones."""
-    me = bpy.data.meshes.new(name)
-    bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
-    k = random.Random(seed)
-    off = Vector((k.uniform(0, 50), k.uniform(0, 50), 0))
-    for v in bm.verts:
-        v.co *= 1 + 0.16 * mnoise.noise(v.co * 1.8 + off)
-        v.co.x *= r
-        v.co.y *= r
-        v.co.z *= r * squash
-    bmesh.ops.transform(bm, matrix=Matrix.Translation(P(x, y, z)), verts=bm.verts)
-    bm.to_mesh(me)
-    bm.free()
-    return _finish(bpy.data.objects.new(name, me), me, mat, tint_c)
-
-
-def shrub(x, z, r, flowers=True):
-    s0 = rnd.randint(0, 999)
-    blob(x, r * 0.75, z, r, 'leaf', jitter((1, 1, 1), 0.12), seed=s0, name='shrub')
-    blob(x + r * 0.45, r * 0.55, z + r * 0.2, r * 0.7, 'leaf', jitter((1.08, 1.12, 1.0), 0.1), seed=s0 + 1, name='shrub')
-    blob(x - r * 0.4, r * 0.5, z - r * 0.25, r * 0.65, 'leaf', jitter((0.92, 1.0, 0.9), 0.1), seed=s0 + 2, name='shrub')
-    if flowers:
-        for _ in range(int(6 * r / 0.3)):
-            a = rnd.uniform(0, math.tau)
-            fx, fz = x + math.cos(a) * r * 0.85, z + math.sin(a) * r * 0.85
-            fy = rnd.uniform(r * 0.6, r * 1.8)
-            blob(fx, fy, fz, 0.075, 'flower', jitter((1, 1, 1), 0.1), squash=0.6, seed=rnd.randint(0, 999), name='gumamela')
-
-
 for (x, z, r) in ((-4.5, 3.6, 0.42), (-3.7, 3.7, 0.3), (4.5, 3.55, 0.45), (3.75, 3.7, 0.32), (4.55, -0.6, 0.36)):
     shrub(x, z, r)
 
@@ -914,62 +977,6 @@ for k in range(4):
     pole((nx1 - 0.4, y, nz1 - 0.95 + k * 0.05), (nx1 - 0.4, y, nz1 - 0.25 - k * 0.05), 0.012, 'steel', seg=4, name='antenna-bar')
 
 # ================================================================ around the yard: life
-def banana(x, z, h=2.6, seed=0):
-    k = random.Random(seed)
-    pole((x, 0.0, z), (x, h * 0.65, z), 0.16, 'trunk', seg=9, r2=0.11, name='banana-trunk')
-    for i in range(7):
-        a = i / 7 * 360 + k.uniform(-20, 20)
-        tilt = k.uniform(25, 55)
-        L = k.uniform(1.0, 1.4)
-        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
-        cxl = x + ca * L * 0.45 * math.cos(math.radians(tilt))
-        czl = z + sa * L * 0.45 * math.cos(math.radians(tilt))
-        cy = h * 0.65 + L * 0.45 * math.sin(math.radians(tilt)) * 0.6
-        obox((cxl, cy, czl), (L, 0.025, 0.38), (0, -a, tilt * 0.6), 'banana', tint_c=jitter((1, 1, 1), 0.12), name='banana-leaf', taper=0.55)
-    obox((x + 0.15, h * 0.55, z), (0.18, 0.3, 0.18), (0, 0, 0), 'banana', tint_c=(0.9, 1.1, 0.6), bevel=0.06, name='banana-bunch')
-    pole((x + 0.15, h * 0.45, z), (x + 0.15, h * 0.32, z), 0.08, 'red', seg=8, r2=0.03, tint_c=(0.6, 0.2, 0.35), name='banana-heart')
-
-
-def papaya(x, z, h=3.2, seed=0):
-    k = random.Random(seed)
-    pole((x, 0.0, z), (x, h, z), 0.1, 'trunk', seg=8, r2=0.07, tint_c=(1.1, 1.0, 0.85), name='papaya-trunk')
-    for i in range(8):
-        a = i / 8 * 360 + k.uniform(-15, 15)
-        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
-        obox((x + ca * 0.55, h + 0.05, z + sa * 0.55), (0.9, 0.03, 0.5), (0, -a, -18), 'leaf', tint_c=jitter((1.05, 1.1, 0.95), 0.1), name='papaya-leaf', taper=1.2)
-    for i in range(5):
-        a = i / 5 * math.tau
-        fx, fz = x + math.cos(a) * 0.14, z + math.sin(a) * 0.14
-        fy = h - 0.25 - (i % 2) * 0.15
-        box(fx - 0.08, fx + 0.08, fy - 0.13, fy + 0.13, fz - 0.08, fz + 0.08, 'banana', bevel=0.07, tint_c=(1.2, 0.9, 0.35) if i % 2 else (0.85, 1.05, 0.55), name='papaya-fruit')
-
-
-def carabao(x, z, yaw=0):
-    # a resting water buffalo: body, belly, head, swept horns, legs, tail
-    def part(c, s, rot=(0, 0, 0), mat='carabao', b=0.08):
-        ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
-        px, pz = c[0] * ca - c[2] * sa, c[0] * sa + c[2] * ca
-        obox((x + px, c[1], z + pz), s, (rot[0], rot[1] - yaw, rot[2]), mat, bevel=b, name='carabao')
-    part((0, 0.95, 0), (1.9, 0.75, 0.85))
-    part((0.05, 0.62, 0), (1.5, 0.3, 0.7))
-    part((1.15, 0.95, 0), (0.55, 0.45, 0.42), (0, 0, -18))
-    part((1.42, 0.82, 0), (0.25, 0.25, 0.32), (0, 0, -18), b=0.06)
-    for s in (-1, 1):
-        part((1.05, 1.25, s * 0.38), (0.6, 0.09, 0.09), (s * -25, s * 30, 18), 'horn', 0.03)
-    for (dx, dz) in ((0.7, -0.27), (0.7, 0.27), (-0.7, -0.27), (-0.7, 0.27)):
-        part((dx, 0.3, dz), (0.17, 0.62, 0.17), b=0.04)
-    part((-1.0, 0.75, 0), (0.06, 0.55, 0.06), (0, 0, 12), 'horn', 0.02)
-
-
-def hen(x, z, yaw=0, white=False):
-    tc = (1.6, 1.6, 1.6) if white else (1, 1, 1)
-    obox((x, 0.18, z), (0.3, 0.2, 0.18), (0, -yaw, 0), 'hen', tint_c=tc, bevel=0.07, name='hen')
-    ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
-    obox((x + ca * 0.17, 0.33, z + sa * 0.17), (0.11, 0.12, 0.1), (0, -yaw, 0), 'hen', tint_c=tc, bevel=0.04, name='hen-head')
-    obox((x + ca * 0.18, 0.41, z + sa * 0.18), (0.08, 0.05, 0.03), (0, -yaw, 0), 'red', name='hen-comb')
-    obox((x - ca * 0.16, 0.3, z - sa * 0.16), (0.08, 0.2, 0.14), (0, -yaw, -25), 'hen', tint_c=(0.5, 0.35, 0.25) if not white else tc, bevel=0.03, name='hen-tail')
-
-
 # tall plants only where their shadows cannot reach the yard in the levels' hours: behind the house
 # (north), or far out at the island's sides
 banana(6.8, -7.6, seed=1)

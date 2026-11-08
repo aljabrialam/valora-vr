@@ -35,7 +35,7 @@ import {
   type Object3D,
 } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
-import {buildModel, DESK, GARDEN, GARDEN_PH, SCALE, setOverhang, WIND} from './model.ts';
+import {buildModel, DESK, GARDEN, GARDEN_PH, GARDEN_SAFE, SCALE, setOverhang, WIND} from './model.ts';
 import {Motes} from './motes.ts';
 import {loadHouse, loadIsland, loadPlant, loadTrees} from './look/assets.ts';
 import {Clouds} from './clouds.ts';
@@ -74,7 +74,7 @@ model.screen.removeFromParent();
 const deskEntity = world.createTransformEntity(model.desk);
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
 // Each country has its own island and house where one has been modelled; the shared ones stand in.
-const OWN_HOUSE = new Set(['ph']);
+const OWN_HOUSE = new Set(['ph', 'id', 'sg']);
 /** Height of the visible garden wall or fence top, site metres (Tiki sits on it). */
 const wallTop = (id: string) => (OWN_HOUSE.has(id) ? COUNTRIES.find((c) => c.id === id)!.wallH : 2.24);
 const countryArt: {island?: Group; house?: Group; trees?: Group; id?: string} = {};
@@ -89,7 +89,7 @@ function loadCountryArt(id: string) {
       model.site.add(i);
     })
     .catch((e) => console.warn('[VR] island', e));
-  loadTrees(id === 'ph' ? GARDEN_PH : GARDEN)
+  loadTrees(id === 'ph' ? GARDEN_PH : OWN_HOUSE.has(id) ? GARDEN_SAFE : GARDEN)
     .then((t) => {
       if (countryArt.id !== id) return;
       countryArt.trees?.removeFromParent();
