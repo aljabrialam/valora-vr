@@ -9,7 +9,7 @@ Two cuts, each in 16:9 (YouTube, the submission) and 9:16 (Reels, TikTok, Shorts
 
 All footage is the real game, rendered frame by frame. Headset footage comes from Meta's IWER emulator and is labelled "Emulator" on screen; nothing is presented as recorded on a Quest until it is. `video/` is not committed (large files); the scripts that make it are.
 
-> **8 November:** the footage was captured before the smooth-art pass and the new Bangkok house. Re-shoot before using the cuts: `scripts/video/run-all.sh` (all shots), then `make-titles.sh` only if the words changed, then `edit.py`.
+> **8 November:** every shot re-captured on the smooth-art islands and the new Bangkok house; trailer shots hide the tutorial arrow (`VR.chrome(false)`); feature captions sit above Tiki's card (`hi=1` in `make-titles.sh`). Integrated loudness −13.3 LUFS.
 
 ## Shot list
 

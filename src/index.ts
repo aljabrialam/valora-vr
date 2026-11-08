@@ -605,6 +605,8 @@ function tickDay(now: number, dt: number) {
 
 // ---------- the tutorial ----------
 // ---------- the arrow: shows what to touch for the current tutorial step ----------
+/** Video and stills: hide the tutorial arrow along with the page overlays (VR.chrome(false)). */
+let hideGuides = false;
 class Pointer {
   target: Look | null = null;
   readonly group = new Group();
@@ -622,7 +624,7 @@ class Pointer {
   }
   update(time: number) {
     const p = this.target ? lookAt(this.target) : null;
-    this.group.visible = !!p;
+    this.group.visible = !!p && !hideGuides;
     if (!p) return;
     this.at.copy(p);
     // ride above pieces and handles; bob so it catches the eye
@@ -812,6 +814,7 @@ const toScreen = (v: Vector3) => {
   /** Video capture: show or hide the page panels and the Enter XR button. */
   chrome(show: boolean) {
     hud.visible = show;
+    hideGuides = !show;
     document.querySelectorAll<HTMLElement>('button, a').forEach((b) => {
       if (/Enter XR/i.test(b.textContent ?? '')) b.style.visibility = show ? '' : 'hidden';
     });

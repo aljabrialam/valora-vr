@@ -44,7 +44,7 @@ const S = {
 // overlays: ?scene=ov&chip=..&label=..&cap=..&badge=..  or  ?scene=place&name=..&sub=..
 if (scene === 'ov') {
   const chip = q.get('chip'), label = q.get('label'), cap = q.get('cap'), badge = q.get('badge');
-  S.ov = {cls: 'overlay', html: `${chip ? `<div class="chip anim" data-in="0.15"><b>${chip}</b>${label || ''}</div>` : ''}${badge ? `<div class="badge anim" data-in="0.3">${badge}</div>` : ''}${cap ? `<div class="cap anim" data-in="0.45">${cap}</div>` : ''}`};
+  S.ov = {cls: 'overlay', html: `${chip ? `<div class="chip anim" data-in="0.15"><b>${chip}</b>${label || ''}</div>` : ''}${badge ? `<div class="badge anim" data-in="0.3">${badge}</div>` : ''}${cap ? `<div class="cap anim" data-in="0.45"${q.get('hi') ? ' style="bottom: 212px"' : ''}>${cap}</div>` : ''}`};
 }
 if (scene === 'place') S.place = {cls: 'overlay', html: `<div class="place anim" data-in="0.3">${q.get('name')}<small>${q.get('sub') || ''}</small></div>`};
 const s = S[scene];
