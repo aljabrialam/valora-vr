@@ -4,4 +4,4 @@ dist
 *.log
 .DS_Store
 art/build
-video/
+/video/
