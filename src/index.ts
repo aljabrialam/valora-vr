@@ -7,6 +7,7 @@
 
 import {
   Box3,
+  Quaternion,
   type PerspectiveCamera,
   ConeGeometry,
   Color,
@@ -74,7 +75,7 @@ model.screen.removeFromParent();
 const deskEntity = world.createTransformEntity(model.desk);
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
 // Each country has its own island and house where one has been modelled; the shared ones stand in.
-const OWN_HOUSE = new Set(['ph', 'id', 'sg']);
+const OWN_HOUSE = new Set(['ph', 'th', 'id', 'sg']);
 /** Height of the visible garden wall or fence top, site metres (Tiki sits on it). */
 const wallTop = (id: string) => (OWN_HOUSE.has(id) ? COUNTRIES.find((c) => c.id === id)!.wallH : 2.24);
 const countryArt: {island?: Group; house?: Group; trees?: Group; id?: string} = {};
@@ -107,6 +108,8 @@ function loadCountryArt(id: string) {
       const own = OWN_HOUSE.has(id);
       if (model.roof) model.roof.visible = !own;
       model.glass.visible = !own;
+      // Thailand models the neighbour's balcony where the figure stands; the others keep the drawn one
+      balcony.visible = id !== 'th';
       placeTiki();
     })
     .catch((e) => console.warn('[VR] house', e));
@@ -814,6 +817,21 @@ const toScreen = (v: Vector3) => {
     });
   },
   rig: () => world.player.position.toArray(),
+  /** Video capture: recentre now (software rendering is too slow to wait for the frame count). */
+  recentreNow() {
+    recentreAt = -1;
+    recentre(world.player.head.getWorldPosition(new Vector3()));
+  },
+  /** Video capture: tilt the seated view down by `deg` about the head (the emulator holds the head level). */
+  tilt(deg: number) {
+    const head = world.player.head.getWorldPosition(new Vector3());
+    const q = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), (-deg * Math.PI) / 180);
+    world.player.position.sub(head).applyQuaternion(q).add(head);
+    world.player.quaternion.premultiply(q);
+    world.player.updateMatrixWorld(true);
+  },
+  /** Video capture: a world point in the player's rig space (where emulator poses live). */
+  toRig: (p: number[]) => world.player.worldToLocal(new Vector3(p[0], p[1], p[2])).toArray(),
   pieceWorld(kind: Kind, n = 0) {
     const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
     return o ? o.root.getWorldPosition(new Vector3()).toArray() : null;
@@ -994,7 +1012,7 @@ hud.onMap = () => hud.showMap(COUNTRIES.map((c) => ({id: c.id, name: c.name, pla
 /** Tiki's words for the device in use: pinch in a headset, click or drag on a screen. */
 // A real headset browser, or Meta's emulator running in a computer browser.
 // IWER (the emulator) reports a Quest user agent, so look for the device it installs instead.
-const IN_EMULATOR = () => !!(window as any).IWER_DEVICE;
+const IN_EMULATOR = () => !!(window as any).IWER_DEVICE && !(window as any).__capture; // video capture labels footage itself
 function forDevice(text: string): string {
   if (inXR()) return text;
   return text.replace(/Pinch and drag/g, 'Drag').replace(/pinch and drag/g, 'drag').replace(/Pinch/g, 'Click').replace(/pinch/g, 'click');
@@ -1025,7 +1043,8 @@ addEventListener('resize', () => requestAnimationFrame(frameFlat));
 // a recentre, not locomotion; nothing moves the player after it.
 const SEAT_HEAD = new Vector3(-0.18, DESK.y + 0.3, 0.3);
 let recentreAt = -1;
-world.renderer.xr.addEventListener('sessionstart', () => (recentreAt = lastTime + 0.5));
+// counted in headset frames, not seconds: the session's frame clock can differ from the page's
+world.renderer.xr.addEventListener('sessionstart', () => (recentreAt = 30));
 world.renderer.xr.addEventListener('sessionend', () => {
   recentreAt = -1;
   world.player.position.set(0, 0, 0);

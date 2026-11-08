@@ -233,9 +233,11 @@ def box(x0, x1, y0, y1, z0, z1, mat, bevel=0.015, tint_c=(1, 1, 1), name='part')
         sz = (z0 + z1) / 2 + v.co.y * -(z1 - z0)
         v.co.y = -sz
         v.co.z = sy
+    lim = min(x1 - x0, y1 - y0, z1 - z0) * 0.45
+    if bevel <= 0 and lim > 0.025:
+        bevel = 0.012  # every solid part gets a soft edge that catches the light
     if bevel > 0:
-        lim = min(x1 - x0, y1 - y0, z1 - z0) * 0.45
-        bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(bevel, lim), segments=2, profile=0.6, affect='EDGES')
+        bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(bevel * 1.6, lim), segments=2, profile=0.5, affect='EDGES')
     bm.to_mesh(me)
     bm.free()
     ob = bpy.data.objects.new(name, me)
@@ -579,7 +581,7 @@ def blob(x, y, z, r, mat, tint_c, squash=0.85, seed=0, name='blob'):
     k = random.Random(seed)
     off = Vector((k.uniform(0, 50), k.uniform(0, 50), 0))
     for v in bm.verts:
-        v.co *= 1 + 0.16 * mnoise.noise(v.co * 1.8 + off)
+        v.co *= 1 + 0.11 * mnoise.noise(v.co * 1.5 + off)
         v.co.x *= r
         v.co.y *= r
         v.co.z *= r * squash
@@ -1029,6 +1031,17 @@ bmesh.ops.delete(bm, geom=gone, context='FACES')
 bm.to_mesh(house.data)
 bm.free()
 print('[house] polygons', len(house.data.polygons), 'removed', len(gone))
+
+# soft shading: every face smooth, edges sharper than 38 degrees stay crisp, so bevels, poles,
+# foliage and jars read round while walls stay flat
+bm = bmesh.new()
+bm.from_mesh(house.data)
+for f in bm.faces:
+    f.smooth = True
+for e in bm.edges:
+    e.smooth = not (len(e.link_faces) == 2 and e.calc_face_angle(0) > math.radians(38))
+bm.to_mesh(house.data)
+bm.free()
 
 bpy.ops.object.select_all(action='DESELECT')
 house.select_set(True)

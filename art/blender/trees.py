@@ -29,11 +29,12 @@ def material(name, hexcol, rough, flat=False):
     return m
 
 
-TRUNK = material('trunk', '#9b6a3f', 0.85)
-LEAF = material('leaf', '#3fa34d', 0.45)
+TRUNK = material('trunk', '#b08456', 0.85)
+LEAF = material('leaf', '#4caf4a', 0.55)
 LEAF2 = material('leaf-light', '#6cc04a', 0.5)
 BLOOM = material('bougainvillea', '#e8458f', 0.6)
 SHRUB = material('shrub', '#4f9a3a', 0.8)
+NUT = material('nut', '#7a5a2a', 0.6)
 
 
 def obj(name, bm, mat, smooth=True):
@@ -61,49 +62,63 @@ def join(objs, name):
 
 
 def palm(name, lean, fronds):
+    """A storybook palm: a curving trunk of stacked, flared rings and broad, drooping fronds with
+    a folded midrib and notched edges, shaded dark at the heart to light at the tips."""
     parts = []
-    # trunk: a curve of slightly bulging rings, like a real palm, thicker at the base
     bm = bmesh.new()
-    seg, ring = 22, 12
-    rings = []
-    for i in range(seg + 1):
-        t = i / seg
-        c = Vector((lean[0] * t ** 1.8, lean[1] * t ** 1.8, t * 0.9))
-        r = 0.032 * (1 - 0.4 * t) * (1.08 if i % 2 == 0 else 0.95)
-        if i == 0:
-            r *= 1.5
-        rings.append([bm.verts.new(c + Vector((math.cos(a) * r, math.sin(a) * r, 0))) for a in [k * 2 * math.pi / ring for k in range(ring)]])
-    for a, b in zip(rings, rings[1:]):
-        for k in range(ring):
-            bm.faces.new((a[k], a[(k + 1) % ring], b[(k + 1) % ring], b[k]))
+    cl = bm.loops.layers.color.new('Col')
+    seg, sides = 11, 14
+    def centre(t):
+        return Vector((lean[0] * t ** 1.7, lean[1] * t ** 1.7, t * 0.9))
+    for i in range(seg):
+        t0, t1 = i / seg, (i + 1) / seg
+        r = 0.05 * (1 - 0.45 * t0) * (1.25 if i == 0 else 1.0)
+        lo = [bm.verts.new(centre(t0) + Vector((math.cos(a) * r * 0.86, math.sin(a) * r * 0.86, 0))) for a in [k * 2 * math.pi / sides for k in range(sides)]]
+        mid = [bm.verts.new(centre(t0 + (t1 - t0) * 0.8) + Vector((math.cos(a) * r * 1.08, math.sin(a) * r * 1.08, 0))) for a in [k * 2 * math.pi / sides for k in range(sides)]]
+        hi = [bm.verts.new(centre(t1) + Vector((math.cos(a) * r * 0.9, math.sin(a) * r * 0.9, 0))) for a in [k * 2 * math.pi / sides for k in range(sides)]]
+        for (A, B, ca, cb) in ((lo, mid, 0.72, 0.95), (mid, hi, 0.95, 0.7)):
+            for k in range(sides):
+                f = bm.faces.new((A[k], A[(k + 1) % sides], B[(k + 1) % sides], B[k]))
+                for loop in f.loops:
+                    c = ca if loop.vert in A else cb
+                    loop[cl] = (c, c, c, 1)
     parts.append(obj(name + '-trunk', bm, TRUNK))
-    top = Vector((lean[0], lean[1], 0.9))
-    # fronds: a midrib that rises and arches down, with leaflets either side (one mesh per frond)
+    top = centre(1.0) + Vector((0, 0, 0.01))
     bm = bmesh.new()
+    cl = bm.loops.layers.color.new('Col')
     for f in range(fronds):
-        az = f / fronds * 2 * math.pi + rnd.uniform(-0.15, 0.15)
-        length = rnd.uniform(0.42, 0.55)
-        lift = rnd.uniform(0.08, 0.2)
+        az = f / fronds * 2 * math.pi + rnd.uniform(-0.2, 0.2)
+        length = rnd.uniform(0.5, 0.64)
+        lift = rnd.uniform(0.1, 0.2)
+        droop = rnd.uniform(0.3, 0.42)
         d = Vector((math.cos(az), math.sin(az), 0))
         side = Vector((-d.y, d.x, 0))
-        n = 14
-        spine = [top + d * (length * t) + Vector((0, 0, lift * math.sin(math.pi * t * 0.7) - 0.3 * t * t)) for t in [i / n for i in range(n + 1)]]
-        for i in range(1, n):
+        n = 16
+        rows = []
+        for i in range(n + 1):
             t = i / n
-            w = 0.13 * math.sin(math.pi * t) + 0.02
-            for s in (-1, 1):
-                a = bm.verts.new(spine[i])
-                b = bm.verts.new(spine[i + 1])
-                tip = spine[i] + side * s * w + d * 0.04 + Vector((0, 0, -0.05 * t - 0.02))
-                c = bm.verts.new(tip)
-                bm.faces.new((a, b, c) if s > 0 else (b, a, c))
+            p = top + d * (length * t) + Vector((0, 0, lift * math.sin(math.pi * t * 0.75) - droop * t * t))
+            w = 0.16 * math.sin(math.pi * min(1, t * 1.08) ** 0.85) + 0.012
+            if i % 2 == 1 and 0.15 < t < 0.95:
+                w *= 0.72  # notches: the leaflets split at the edge
+            fold = Vector((0, 0, 0.035 * math.sin(math.pi * t)))
+            rows.append((bm.verts.new(p + side * w - fold * 0.6 + Vector((0, 0, -0.03 * t))), bm.verts.new(p + fold), bm.verts.new(p - side * w - fold * 0.6 + Vector((0, 0, -0.03 * t))), t))
+        for (A, B) in zip(rows, rows[1:]):
+            for (u, v) in ((0, 1), (1, 2)):
+                face = bm.faces.new((A[u], A[v], B[v], B[u]))
+                for loop in face.loops:
+                    t = A[3] if loop.vert in A[:3] else B[3]
+                    edge = loop.vert in (A[0], A[2], B[0], B[2])
+                    c = (0.55 + 0.6 * t, 0.75 + 0.35 * t, 0.55 + 0.25 * t)
+                    if edge:
+                        c = tuple(min(1.25, ch * 1.08) for ch in c)
+                    loop[cl] = (*c, 1)
     parts.append(obj(name + '-fronds', bm, LEAF))
-    # coconuts
     bm = bmesh.new()
-    for k in range(3):
-        a = k * 2.1
-        bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=7, radius=0.028, matrix=Matrix.Translation(top + Vector((math.cos(a) * 0.035, math.sin(a) * 0.035, -0.04))))
-    parts.append(obj(name + '-nuts', bm, TRUNK))
+    for k in range(4):
+        a = k * 1.6
+        bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=8, radius=0.032, matrix=Matrix.Translation(top + Vector((math.cos(a) * 0.045, math.sin(a) * 0.045, -0.05))))
+    parts.append(obj(name + '-nuts', bm, NUT))
     return join(parts, name)
 
 
@@ -128,10 +143,10 @@ def blob(name, blobs, flat, mat, flowers=None, seed=0):
     out = bpy.data.objects.new(name, me)
     bpy.context.collection.objects.link(out)
     for v in me.vertices:
-        v.co += v.normal * noise.noise(v.co * 4 + Vector((seed, 0, 0))) * 0.06
+        v.co += v.normal * noise.noise(v.co * 2.5 + Vector((seed, 0, 0))) * 0.04
         v.co.z = max(v.co.z, 0.02)
     dec = out.modifiers.new('dec', 'DECIMATE')
-    dec.ratio = 0.3
+    dec.ratio = 0.6
     bpy.context.view_layer.objects.active = out
     out.select_set(True)
     bpy.ops.object.modifier_apply(modifier='dec')
@@ -140,7 +155,7 @@ def blob(name, blobs, flat, mat, flowers=None, seed=0):
     for v in me.vertices:
         v.co *= k
     for p in me.polygons:
-        p.use_smooth = False  # faceted leaves catch the light
+        p.use_smooth = True  # soft, rounded clumps
     me.materials.append(mat)
     parts = [out]
     if flowers:
@@ -149,8 +164,8 @@ def blob(name, blobs, flat, mat, flowers=None, seed=0):
         surf = [v.co.copy() for v in me.vertices if v.co.z > 0.25]
         for i in range(flowers):
             p = rnd.choice(surf)
-            bmesh.ops.create_icosphere(bm, subdivisions=1, radius=rnd.uniform(0.07, 0.12), matrix=Matrix.Translation(p * 1.02))
-        parts.append(obj(name + '-flowers', bm, BLOOM, smooth=False))
+            bmesh.ops.create_icosphere(bm, subdivisions=2, radius=rnd.uniform(0.07, 0.12), matrix=Matrix.Translation(p * 1.02))
+        parts.append(obj(name + '-flowers', bm, BLOOM, smooth=True))
         return join(parts, name)
     return out
 
@@ -166,5 +181,5 @@ for i, o in enumerate(made):
     o.location = (i * 3.0, 0, 0)
 for o in made:
     print('[trees]', o.name, len(o.data.polygons), 'faces')
-bpy.ops.export_scene.gltf(filepath=OUT, export_format='GLB', export_yup=True, export_apply=True, export_materials='EXPORT')
+bpy.ops.export_scene.gltf(filepath=OUT, export_format='GLB', export_yup=True, export_apply=True, export_materials='EXPORT', export_vertex_color='ACTIVE')
 print('[trees] wrote', OUT, os.path.getsize(OUT) // 1024, 'KB')

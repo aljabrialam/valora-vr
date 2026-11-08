@@ -4,6 +4,7 @@ import {chromium} from '../../node_modules/playwright/index.mjs';
 
 export const FPS = 24;
 const CLOCK = `(() => {
+  window.__capture = true;
   // capture only: no multisampling (very slow in software GL); frames are supersampled later instead
   const getContext = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function (type, attrs) {

@@ -139,7 +139,7 @@ export async function loadIsland(country?: string): Promise<Group> {
     m.castShadow = false;
     m.raycast = () => {};
     const mat = m.material as MeshStandardMaterial;
-    mat.flatShading = true;
+    mat.flatShading = false; // smooth normals from the model: rounded rocks, soft cliffs
     mat.envMapIntensity = 0.7;
     mat.side = DoubleSide; // open shapes (the banca's hull) show their inside
     if (mat.name === 'island-foam') {

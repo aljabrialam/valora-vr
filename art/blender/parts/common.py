@@ -323,7 +323,7 @@ def blob(x, y, z, r, mat, tint_c, squash=0.85, seed=0, name='blob'):
     k = random.Random(seed)
     off = Vector((k.uniform(0, 50), k.uniform(0, 50), 0))
     for v in bm.verts:
-        v.co *= 1 + 0.16 * mnoise.noise(v.co * 1.8 + off)
+        v.co *= 1 + 0.11 * mnoise.noise(v.co * 1.5 + off)
         v.co.x *= r
         v.co.y *= r
         v.co.z *= r * squash

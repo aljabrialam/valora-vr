@@ -2,11 +2,14 @@
 // Usage: node scripts/video/shots.mjs <shot> [base url]
 // Needs the dev server (npm run dev). Frames are exact 1/24 s steps of the page clock.
 import fs from 'node:fs';
-import {open, record} from './clock.mjs';
+import {open, record as recordFull} from './clock.mjs';
+const record = (page, dir, seconds, each, start) => recordFull(page, dir, process.env.PREVIEW ? 1 / 24 : seconds, each, start);
 
 const shot = process.argv[2];
 const BASE = process.argv[3] ?? 'https://localhost:8081/';
 const OUT = `video/frames/${shot}`;
+// PREVIEW=1 renders one frame per shot, to check framing before the long capture
+const PREVIEW = !!process.env.PREVIEW;
 fs.rmSync(OUT, {recursive: true, force: true});
 fs.mkdirSync(OUT, {recursive: true});
 
@@ -20,10 +23,18 @@ const move = (page, from, to, seconds, fov = 38) => async (t) => {
   await page.evaluate(([p, l, f]) => VR.cinema({pos: p, look: l, fov: f}), [lerp(from.pos, to.pos, k), lerp(from.look, to.look, k), fov]);
 };
 
-async function load(path, wait = 22000) {
-  const {browser, page} = await open(BASE + path);
+async function load(path, wait = 22000, cleanUi = true) {
+  const {browser, page} = await open(BASE + path, {w: +(process.env.VW || 1280), h: +(process.env.VH || 720)});
   await page.waitForTimeout(wait);
+  if (cleanUi) await hideXrButton(page);
   return {browser, page};
+}
+
+/** The Enter XR button sits in a shadow-DOM host directly under <body>. */
+async function hideXrButton(page) {
+  await page.evaluate(() => {
+    for (const el of document.body.children) if (el.shadowRoot) el.style.display = 'none';
+  });
 }
 
 /** A soft cursor drawn into the page so mouse actions read on video. */
@@ -65,35 +76,35 @@ const shots = {
   async t_ph() {
     const {browser, page} = await load('?country=ph&level=1');
     await page.evaluate(() => { VR.chrome(false); VR.setHour(7.25); });
-    await record(page, OUT, 3.5, async (t) => {
+    await record(page, OUT, 3.2, async (t) => {
       await page.evaluate((h) => VR.setHour(Math.round(h * 4) / 4), 7.25 + t * 0.6);
-      await move(page, {pos: [-1.35, 1.2, 0.35], look: ISLAND}, {pos: [-0.85, 1.12, 0.75], look: ISLAND}, 3.5)(t);
+      await move(page, {pos: [-1.35, 1.2, 0.35], look: ISLAND}, {pos: [-0.9, 1.12, 0.72], look: ISLAND}, 3.2)(t);
     });
     await browser.close();
   },
   async t_th() {
     const {browser, page} = await load('?country=th&level=1');
     await page.evaluate(() => VR.chrome(false));
-    await record(page, OUT, 3, move(page, {pos: [0.95, 0.86, 0.45], look: [-0.1, 0.79, -0.25]}, {pos: [0.55, 0.84, 0.55], look: [-0.25, 0.79, -0.3]}, 3, 36));
+    await record(page, OUT, 2.5, move(page, {pos: [1.05, 1.02, 0.45], look: [0.0, 0.8, -0.45]}, {pos: [0.85, 0.98, 0.62], look: [-0.05, 0.8, -0.45]}, 2.5, 40));
     await browser.close();
   },
   async t_id() {
     const {browser, page} = await load('?country=id&level=1');
     await page.evaluate(() => VR.chrome(false));
-    await record(page, OUT, 3, move(page, {pos: [-0.95, 1.05, 0.05], look: ISLAND}, {pos: [-0.75, 0.98, 0.35], look: [0, 0.8, -0.5]}, 3, 40));
+    await record(page, OUT, 2.5, move(page, {pos: [-0.95, 1.05, 0.05], look: ISLAND}, {pos: [-0.78, 0.99, 0.32], look: [0, 0.8, -0.5]}, 2.5, 40));
     await browser.close();
   },
   async t_sg() {
     const {browser, page} = await load('?country=sg&level=1');
     await page.evaluate(() => VR.chrome(false));
-    await record(page, OUT, 3, move(page, {pos: [-0.55, 0.9, 0.25], look: [0.3, 1.02, -0.75]}, {pos: [-0.35, 0.86, 0.32], look: [0.35, 1.12, -0.8]}, 3, 42));
+    await record(page, OUT, 2.5, move(page, {pos: [-0.55, 0.92, 0.25], look: [0.25, 1.0, -0.75]}, {pos: [-0.4, 0.88, 0.32], look: [0.3, 1.08, -0.8]}, 2.5, 44));
     await browser.close();
   },
   async t_watch() {
     // over the neighbour's shoulder: the red line of sight lands on the reading chair
     const {browser, page} = await load('?country=ph&level=1');
     await page.evaluate(() => VR.chrome(false));
-    await record(page, OUT, 3, move(page, {pos: [0.62, 1.04, -0.28], look: [-0.12, 0.8, -0.66]}, {pos: [0.5, 1.0, -0.34], look: [-0.12, 0.8, -0.66]}, 3, 34));
+    await record(page, OUT, 2.8, move(page, {pos: [0.345, 1.0, -0.13], look: [-0.011, 0.872, -0.649]}, {pos: [0.32, 0.99, -0.16], look: [-0.02, 0.87, -0.65]}, 2.8, 40));
     await browser.close();
   },
   // ---------------- walkthrough ----------------
@@ -103,8 +114,8 @@ const shots = {
     const th = await page.locator('.vh-place[data-country="th"]').boundingBox();
     const ph = await page.locator('.vh-place[data-country="ph"]').boundingBox();
     const c = (b) => ({x: b.x + b.width * 0.4, y: b.y + b.height / 2});
-    await record(page, OUT, 6.5, glide(page, [
-      {t: 0, x: 900, y: 700}, {t: 0.8, ...c(th)}, {t: 2.4, ...c(th)}, {t: 3.0, ...c(ph)}, {t: 3.4, ...c(ph), down: true}, {t: 3.5, ...c(ph), up: true}, {t: 6.5, ...c(ph)},
+    await record(page, OUT, 6, glide(page, [
+      {t: 0, x: 900, y: 700}, {t: 0.8, ...c(th)}, {t: 2.4, ...c(th)}, {t: 3.0, ...c(ph)}, {t: 3.4, ...c(ph), down: true}, {t: 3.5, ...c(ph), up: true}, {t: 6, ...c(ph)},
     ]));
     await browser.close();
   },
@@ -113,7 +124,7 @@ const shots = {
     await cursor(page);
     const b = await page.locator('[data-act="next"]').boundingBox();
     const x = b.x + b.width / 2, y = b.y + b.height / 2;
-    await record(page, OUT, 4.5, glide(page, [{t: 0, x: 1000, y: 380}, {t: 1.6, x, y}, {t: 2.0, x, y, down: true}, {t: 2.1, x, y, up: true}, {t: 4.5, x: x - 60, y: y - 160}]));
+    await record(page, OUT, 2.5, glide(page, [{t: 0, x: x + 300, y: y - 200}, {t: 1.0, x, y}, {t: 1.3, x, y, down: true}, {t: 1.4, x, y, up: true}, {t: 2.5, x: x - 60, y: y - 160}]));
     await browser.close();
   },
   async w_place() {
@@ -125,8 +136,8 @@ const shots = {
     const s = await page.evaluate(() => VR.socketScreen(2));
     const q = {x: p.x, y: p.y - 10};
     const z = {x: s.x, y: s.y - 9};
-    await record(page, OUT, 7, glide(page, [
-      {t: 0, x: 980, y: 560}, {t: 1.0, ...q}, {t: 1.3, ...q, down: true}, {t: 2.9, ...z, down: true}, {t: 3.1, ...z, up: true}, {t: 4.3, ...z}, {t: 4.5, ...z, down: true}, {t: 4.6, ...z, up: true}, {t: 7, x: z.x + 120, y: z.y + 120},
+    await record(page, OUT, 5, glide(page, [
+      {t: 0, x: q.x + 150, y: q.y - 80}, {t: 0.7, ...q}, {t: 0.9, ...q, down: true}, {t: 2.3, ...z, down: true}, {t: 2.5, ...z, up: true}, {t: 3.3, ...z}, {t: 3.5, ...z, down: true}, {t: 3.6, ...z, up: true}, {t: 5, x: z.x + 90, y: z.y + 90},
     ]));
     await browser.close();
   },
@@ -136,12 +147,12 @@ const shots = {
     await page.evaluate(() => { VR.tapTiki(); });
     const a = await page.evaluate(() => { const p = VR.worldPos('sun'); return VR.worldToScreen(p); });
     // sweep the sun from morning to late afternoon along its arc: follow the handle on screen
-    await record(page, OUT, 5.5, async (t, i) => {
+    await record(page, OUT, 3.5, async (t, i) => {
       if (i === 0) { await page.mouse.move(a.x, a.y); await page.mouse.down(); }
-      const h = 9 + Math.min(1, t / 5) * 7;
+      const h = 9 + Math.min(1, t / 3.2) * 7;
       const at = await page.evaluate((h) => { VR.setHour(h); return VR.worldToScreen(VR.worldPos('sun')); }, h);
       await page.mouse.move(at.x, at.y);
-      if (t > 5.3) await page.mouse.up();
+      if (t > 3.4) await page.mouse.up();
     });
     await browser.close();
   },
@@ -151,7 +162,7 @@ const shots = {
     await page.waitForTimeout(1500);
     await page.evaluate(() => VR.live());
     // time-lapse: two page frames per video frame (labelled 2x in the edit)
-    await record(page, OUT, 6.5, async () => { await page.evaluate(() => window.__frame(1000 / 24)); });
+    await record(page, OUT, 4, async () => { await page.evaluate(() => window.__frame(1000 / 24)); await page.evaluate(() => window.__frame(1000 / 24)); });
     await browser.close();
   },
   async w_ph3() { await twist('ph', 2, [-0.95, 1.15, 0.3]); },
@@ -159,23 +170,30 @@ const shots = {
   async w_id1() { await twist('id', 0, [-0.9, 1.1, 0.35]); },
   async w_sg1() { await twist('sg', 0, [-0.6, 1.05, 0.5]); },
   async w_vr() {
-    const {browser, page} = await load('?country=ph&level=1', 18000);
+    const {browser, page} = await load('?country=ph&level=1', 18000, false);
     await page.getByText('Enter XR').click();
-    await page.waitForTimeout(6000);
-    // hide the emulator's control panels for a clean view; the badge in the edit says it is the emulator
+    await page.waitForTimeout(8000);
+    // hide the emulator's panels, toolbar and gizmo overlay; keep the game's canvas and the page HUD
+    // (the edit labels this footage as the emulator)
     await page.evaluate(() => {
-      for (const el of document.body.children) if (!el.id?.includes('scene') && !el.classList.contains('vh') && el.tagName !== 'CANVAS' && el.tagName !== 'SCRIPT') el.style.visibility = 'hidden';
-      const d = window.IWER_DEVICE;
-      d.primaryInputMode = 'hand';
-      const pitch = (-24 * Math.PI) / 180;
-      d.quaternion.set(Math.sin(pitch / 2), 0, 0, Math.cos(pitch / 2));
+      const game = [...document.querySelectorAll('canvas')].find((c) => getComputedStyle(c).position !== 'fixed');
+      // walk up from the game's canvas: at each level, hide every sibling except the page HUD
+      let node = game;
+      while (node && node !== document.body) {
+        for (const sib of node.parentElement.children) {
+          if (sib === node || sib.classList.contains('vh') || sib.tagName === 'SCRIPT') continue;
+          sib.style.display = 'none';
+        }
+        node = node.parentElement;
+      }
+      window.IWER_DEVICE.primaryInputMode = 'hand';
     });
-    await page.waitForTimeout(4000);
-    const A = await page.evaluate(() => {
-      const v = (n) => VR.worldPos(n);
-      return {tiki: v('tiki'), piece: VR.pieceWorld ? VR.pieceWorld('screen', 0) : null, rig: null};
-    });
-    // aim the right hand at world points from a seated hand position (rig space)
+    await page.waitForTimeout(3000);
+    const ok = await page.evaluate(() => { VR.recentreNow(); return JSON.stringify(VR.rig()); });
+    console.log('rig after recentre', ok);
+    await page.evaluate(() => VR.tilt(26));
+    const info = await page.evaluate(() => ({tiki: VR.toRig(VR.worldPos('tiki')), piece: VR.toRig(VR.pieceWorld('screen', 0)), sock: VR.toRig(VR.socketWorld(2))}));
+    // the right hand rests low and forward of the head, in rig space; aim it at rig-space targets
     const HAND = [0.12, 1.3, -0.3];
     const aimQ = (from, to) => {
       const d = to.map((v, k) => v - from[k]);
@@ -184,13 +202,8 @@ const shots = {
       const cy = Math.cos(yaw / 2), sy = Math.sin(yaw / 2), cx = Math.cos(pitch / 2), sx = Math.sin(pitch / 2);
       return [cy * sx, sy * cx, -sy * sx, cy * cx];
     };
-    const info = await page.evaluate(() => {
-      const rig = VR.rig();
-      return {rig, tiki: VR.worldPos('tiki'), piece: VR.pieceWorld('screen', 0), sock: VR.socketWorld(2)};
-    });
-    const world = (p) => p.map((v, k) => v - info.rig[k]); // world target -> rig space
     const handPose = async (target, pinch) => {
-      const q = aimQ(HAND, world(target));
+      const q = aimQ(HAND, target);
       await page.evaluate(([h, q, pinch]) => {
         const r = window.IWER_DEVICE.hands.right;
         r.position.set(h[0], h[1], h[2]);
@@ -198,12 +211,13 @@ const shots = {
         r.updatePinchValue(pinch);
       }, [HAND, q, pinch]);
     };
-    await record(page, OUT, 8, async (t) => {
-      if (t < 1.6) return handPose(lerp([info.tiki[0] + 0.2, info.tiki[1], info.tiki[2]], info.tiki, ease(t / 1.6)), 0);
+    const off = (p, dx) => [p[0] + dx, p[1], p[2]];
+    await record(page, OUT, 6, async (t) => {
+      if (t < 1.6) return handPose(lerp(off(info.tiki, 0.25), info.tiki, ease(t / 1.6)), 0);
       if (t < 2.2) return handPose(info.tiki, 1);
       if (t < 3.6) return handPose(lerp(info.tiki, info.piece, ease((t - 2.2) / 1.4)), 0);
       if (t < 4.0) return handPose(info.piece, 1);
-      if (t < 5.6) return handPose(lerp(info.piece, info.sock, ease((t - 4.0) / 1.6)), 1);
+      if (t < 5.3) return handPose(lerp(info.piece, info.sock, ease((t - 4.0) / 1.3)), 1);
       return handPose(info.sock, 0);
     });
     await browser.close();
@@ -214,7 +228,7 @@ async function twist(country, level, pos) {
   const {browser, page} = await load(`?country=${country}&level=${level + 1}`);
   await page.evaluate(() => VR.tapTiki());
   await page.waitForTimeout(800);
-  await record(page, OUT, 3.2, async () => {});
+  await record(page, OUT, 2, async () => {});
   await browser.close();
 }
 

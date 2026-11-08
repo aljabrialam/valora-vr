@@ -8,18 +8,15 @@
 <img src="https://img.shields.io/badge/input-hands%20only-12805C?style=flat-square" alt="Hands only">
 <img src="https://img.shields.io/badge/play-seated-12805C?style=flat-square" alt="Seated">
 <img src="https://img.shields.io/badge/IWSDK-1.1.0--rc.2-0866FF?style=flat-square&logo=meta&logoColor=white" alt="IWSDK 1.1.0-rc.2">
-<img src="https://img.shields.io/badge/WebXR-Quest%20Browser-1d1d1f?style=flat-square" alt="WebXR on Quest Browser">
-<img src="https://img.shields.io/badge/levels%20proven%20solvable-3%2F3-12805C?style=flat-square" alt="Levels proven solvable: 3 of 3">
+<img src="https://img.shields.io/badge/levels%20proven%20solvable-12%2F12-12805C?style=flat-square" alt="Levels proven solvable: 12 of 12">
 <img src="https://img.shields.io/badge/license-MIT-2B47C9?style=flat-square" alt="MIT">
 </p>
 
-<h3 align="center">Two watchers look at your house: the sun and the neighbour.<br>Let one in. Keep the other out.</h3>
+<h3 align="center">Same sun, different skies.<br>Let the sun in, keep the watchers out, across South-east Asia.</h3>
 
-**VaLora: Two Watchers is a seated, hands-only VR puzzle game about designing a house.** A small architectural model of the VaLora courtyard house sits on the desk in front of you. You pinch and swing a privacy screen, slide the roof overhang and drag the sun across the sky until the reading chair is private, the garden gets its morning sun and the chair is shaded in the afternoon. Then you sit in that chair, at full size, and see the room you designed.
+**VaLora: Two Watchers is a seated, hands-only VR puzzle about sun, shade and privacy.** A small island diorama floats in front of you: a house, its courtyard and the neighbours. Pick a country on the globe, then point and pinch pieces from a bamboo raft (screens, hedges, trees, a pergola) onto the courtyard, drag the sun across the sky and live the day, until the sun reaches what it should and no watcher sees what it should not.
 
-> **Status (6 Nov 2026): playable alpha, live at [valora-vr.vercel.app](https://valora-vr.vercel.app).** Three levels, Tiki the gecko guide, the VaLora look (board-formed concrete, teak, deck, pool, palms), screen and overhang handles, and a hands-only playthrough verified in Meta's emulator. Items marked *planned* are on the [roadmap](docs/ROADMAP.md).
-
-**In a hurry?** [30-second version](#the-30-second-version) → [competition checklist](#competition-checklist) → [how it plays](#how-it-plays) → [how it works](#how-it-works) → [for judges](#for-judges-try-it-in-two-minutes) → [results](#results) → [documentation](#documentation)
+> **Status (8 Nov 2026): playable, live at [valora-vr.vercel.app](https://valora-vr.vercel.app).** Four countries with their own houses and twists, 12 levels, Tiki the gecko guide, hands in the headset and mouse on a computer. Hands-only play verified in Meta's IWER emulator; **not yet tested on a real Quest** (planned for 12 Nov).
 
 ---
 
@@ -27,46 +24,25 @@
 
 | | |
 |---|---|
-| **What** | A short puzzle game played with your hands, seated, in VR. You shape a courtyard house so two watchers see only what they should |
-| **The two watchers** | **The Sun** should see some places (the plant in the morning) and not others (the reading chair in the afternoon). **The Neighbour** must never see the reading chair |
-| **The idea** | Sunlight and privacy are the same test: *can something see this spot?* The sun is just a watcher very far away. We could not find another game that treats them as one puzzle |
-| **Your guide** | **Tiki**, a house gecko who lives on the courtyard walls and knows where every shadow falls. Pinch Tiki to continue; Tiki looks at whatever it is talking about |
-| **What you do** | Pinch and swing the privacy screen, slide the roof overhang in and out, drag the sun across the sky, look through either watcher's eyes, then sit in the chair |
-| **Session** | About 5 minutes: hand-in-the-sunbeam tutorial, three levels, the seat view |
-| **Platform** | WebXR in Quest Browser, built with Meta's Immersive Web SDK (IWSDK). Designed for Quest 3/3S hands, and for look-and-pinch on Meta VR Glasses |
-| **Proof** | Every level is proven solvable by enumerating every snap position (`npm run prove`). A simulated hand completes Level 1 in the IWER emulator (`npm run e2e:hand`) |
-| **Honest scope** | Illustrative sunlight and visibility checks, not certified daylight, comfort or privacy analysis |
-
-## Competition checklist
-
-**Hard requirements** ([official requirements](https://start-developer-competition-26.devpost.com/))
-
-| Requirement | Where |
-|---|---|
-| Built for Meta VR devices, one track | Gaming track. WebXR in Quest Browser on Quest 3/3S |
-| Hands-first, end to end, no controller | Every action is a pinch on a large handle; menus are pinchable. Verified with simulated hands in IWER ([TESTING](docs/TESTING.md)); real-headset check on the [Quest checklist](docs/QUEST-TEST-CHECKLIST.md) |
-| Policy compliance | No accounts, no data collection, no third-party services ([PRIVACY](docs/PRIVACY.md)) |
-| Seated, two-foot radius | A desk-top model within reach; watcher views and the seat view are fixed viewpoints with a fade, no walking |
-| Easy in and out, satisfying in under 10 minutes | Opens from a link, about 5 minutes for the whole game, pause and resume at any time |
-| Original, not a wrapper | All gameplay, geometry and checks are written here; no external AI or web service |
-| Playable build, judge access | [valora-vr.vercel.app](https://valora-vr.vercel.app), static WebXR on Vercel |
-| Video under 3 minutes | Recorded from the real build in the emulator (*planned*, [script](docs/VIDEO.md)) |
-
-**Judging criteria** (four, equally weighted)
-
-| Criterion | Evidence |
-|---|---|
-| Innovation and creativity | "Two watchers": privacy and sunlight as one rule; seeing through the sun's and the neighbour's eyes ([GAME-DESIGN](docs/GAME-DESIGN.md)) |
-| Experience design | Hand-in-the-sunbeam onboarding, large snapping handles, cause-and-effect beams, the seat view, comfort-first transitions |
-| Technical implementation | One pure geometry engine shared by the game and the solver, solvability proof in CI, emulator hand tests ([ARCHITECTURE](docs/ARCHITECTURE.md)) |
-| Polish and presentation | Architectural-model art direction, synthesised sound, 72 fps target on Quest 3 ([PERFORMANCE](docs/PERFORMANCE.md)) |
+| **What** | A short puzzle game played seated, with your hands, in VR (or with a mouse on a computer) |
+| **The watchers** | **The sun** should reach some spots and not others. **A neighbour**, **passing boats** or **a high-rise** must not see the reader. In some places **typhoon wind** or **monsoon rain** must not reach a spot |
+| **The idea** | Sunlight, privacy, wind and rain are one test: *can something reach this spot in a straight line?* The sun is just a watcher very far away |
+| **Where** | Manila (bahay kubo, typhoon wind), Bangkok (canal house, long-tail boats), Jakarta (joglo, monsoon rain), Singapore (black-and-white bungalow, the high-rise next door). The sun follows each capital's own path for 8 November |
+| **How you play** | Choose a place on the globe. Pinch a piece on the raft, point it at the courtyard, let go; pinch it again to turn it. Drag the sun. Press play to live the day; fewer pieces earn more stars |
+| **Guide** | **Tiki**, a gecko who sits on the garden wall. Tiki teaches by doing: the tutorial moves on when you place a piece or move the sun |
+| **Comfort** | Seated, no walking or turning: the view is set up once when VR starts, and the whole board sits within a short point of your hand |
+| **Honest scope** | Illustrative sunlight and visibility checks, not certified daylight, comfort, structural or privacy analysis |
 
 ## See it
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screens/valora-look-level1-tiki.png" alt="Level 1 with Tiki the gecko guide"><br><sub><b>Level 1.</b> Tiki introduces the two watchers; the red line is the neighbour's view.</sub></td>
-<td width="50%"><img src="docs/screens/valora-look-level3-solved.png" alt="Level 3 solved"><br><sub><b>Level 3 solved.</b> Screen at 30°, overhang out: private, sunny garden, shaded chair.</sub></td>
+<td width="50%"><img src="docs/screens/ph-manila.png" alt="Manila: bahay kubo island"><br><sub><b>Manila.</b> A bahay kubo on stilts, the dirty kitchen, a carabao and a banca. The red line is the neighbour's view.</sub></td>
+<td width="50%"><img src="docs/screens/id-jakarta.png" alt="Jakarta: joglo in the monsoon rain"><br><sub><b>Jakarta.</b> A joglo with its three-pitch roof, red-brick walls and monsoon rain.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screens/sg-singapore.png" alt="Singapore: black-and-white bungalow"><br><sub><b>Singapore.</b> A black-and-white bungalow, a Peranakan shophouse and the high-rise watching from above.</sub></td>
+<td width="50%"><img src="docs/screens/ph-kubo-close.png" alt="Close view of the kubo yard"><br><sub><b>Close up.</b> The reader sits on a bench in the shade under the kubo.</sub></td>
 </tr>
 </table>
 
@@ -74,50 +50,49 @@
 
 ```mermaid
 flowchart LR
-  A[Hand in the sunbeam<br/>30 s tutorial] --> B[Lift the roof<br/>meet the seat, plant, neighbour]
-  B --> C[Level 1<br/>The Neighbour]
-  C --> D[Level 2<br/>Morning Garden]
-  D --> E[Level 3<br/>The Whole Day]
-  E --> F[Sun-hours map and stars]
-  F --> G[Sit in the reading chair]
+  G[Globe<br/>choose a place] --> T[Tiki<br/>pinch to start]
+  T --> P[Place pieces<br/>from the raft]
+  P --> S[Drag the sun]
+  S --> D[Live the day<br/>every rule, hour by hour]
+  D --> R[Stars<br/>fewer pieces, more stars]
+  R --> N[Next level or next country]
 ```
 
-| Level | Rules | Tools | Solutions |
-|---|---|---|---|
-| 1 · The Neighbour | Neighbour cannot see the seat | Screen | 3 of 18 positions |
-| 2 · Morning Garden | + Sun reaches the plant at 8:30 a.m. | Screen, sun | 1 of 18 |
-| 3 · The Whole Day | + Seat in shade at 3:30 p.m. | Screen, overhang, sun | 3 of 90 |
+| Country | Twist | Levels |
+|---|---|---|
+| Philippines · Manila | Typhoon wind comes in low over the bamboo fence | Kapitbahay, Umaga, Bagyo |
+| Thailand · Bangkok | Long-tail boats pass the garden | Long-tail Boats, Lunch by the Water, A Day on the Water |
+| Indonesia · Jakarta | Monsoon rain slants in from the west | Hujan, Rain and Shine, Musim Hujan |
+| Singapore | The high-rise next door looks straight down | High-rise, Morning Swim, The Whole Day |
 
 ## How it works
 
 ```mermaid
 flowchart TB
   subgraph Pure["Pure TypeScript (runs in the headset and in Node)"]
-    SUN[sun.ts<br/>Singapore sun position] --> W[world.ts<br/>layout, boxes, two watchers]
-    G[geom.ts<br/>segment vs oriented box] --> W
-    W --> L[levels.ts<br/>rules and evaluation]
+    C[countries.ts<br/>places, sun paths, watchers, levels] --> PL[play.ts<br/>pieces, sockets, boxes, evaluate]
   end
-  L --> P[scripts/prove.ts<br/>every snap position]
-  L --> APP[index.ts<br/>IWSDK world, grab, refresh]
-  APP --> M[model.ts<br/>the desk model]
-  APP --> F[feedback.ts / panel.ts<br/>beams, labels, level card]
-  APP --> S[sound.ts<br/>snap clicks]
+  PL --> PR[scripts/prove2.ts<br/>every level solvable, par is the minimum]
+  PL --> APP[index.ts<br/>IWSDK world, hand rays, raft, sun, day]
+  APP --> ART[Blender houses and islands<br/>art/blender, one per country]
+  APP --> HUD[hud.ts / globe.ts / tutorial.ts]
 ```
 
-Both watchers run the same test: a straight segment from the watcher to the target against oriented boxes (walls, roofs, the screen, the overhang). For the sun, the segment runs from the target towards the sun's direction for the chosen hour. The rendered model is built from the same numbers, so what you see is what is checked. Details in [ARCHITECTURE](docs/ARCHITECTURE.md).
+Every watcher runs the same test: a straight segment from the watcher (or towards the sun, wind or rain direction) to the target, against boxes for walls, roofs, the neighbour's house and each placed piece. The 3D houses are modelled to stay inside those boxes: tall roofs and upper storeys sit only above the checked roof plane, and courtyard eaves stop where the check's roof stops. Tall plants stand only where their shadows cannot reach the yard.
 
 ## For judges: try it in two minutes
 
-Open **[valora-vr.vercel.app](https://valora-vr.vercel.app)** in Quest Browser on Quest 3 or 3S, select **Enter VR**, put the controllers down and pinch Tiki the gecko to begin. Controls are in [CONTROLS](docs/CONTROLS.md).
+Open **[valora-vr.vercel.app](https://valora-vr.vercel.app)** in Quest Browser on Quest 3 or 3S, choose a place on the globe, select **Enter VR**, put the controllers down and pinch Tiki. On a computer, skip Enter VR and play with the mouse: click Continue, drag a piece from the raft, click a placed piece to turn it.
 
 ## Results
 
 | Check | Result | How to run |
 |---|---|---|
-| Levels solvable, none starts solved | 3/3 | `npm run prove` |
+| Every level solvable, none solved at the start, par equals the minimum pieces | 12/12 | `npm run prove` |
 | Type check | clean | `npm run typecheck` |
-| Hands-only playthrough: pinch Tiki through the tutorial, swing the screen, solve Level 1 (IWER, Quest 3 profile) | pass: hello → watchers → beam → swing; −90° → −75° → −60° → −45° → −30° → 30°, solved | `npm run e2e:play` |
-| Real Quest 3 hand tracking, comfort, readability, frame rate | not yet tested | [QUEST-TEST-CHECKLIST](docs/QUEST-TEST-CHECKLIST.md) |
+| Hands-only playthrough in the IWER emulator: seated recentre, Tiki pinch, carry a raft piece by pointing, turn it, solve Manila level 1, drag the sun, press play | 11/11 checks pass | `npm run e2e:play` |
+| Mouse playthrough on a computer: Manila level 1 solved with 3 stars, day completes | pass | browser test |
+| Real Quest 3 hand tracking, comfort, readability, frame rate | **not yet tested** | [QUEST-TEST-CHECKLIST](docs/QUEST-TEST-CHECKLIST.md) |
 
 Emulator results are reported separately from headset results. The emulator cannot establish real hand-tracking reliability, seated reach, fatigue, stereo readability, comfort or Quest performance.
 
@@ -130,7 +105,7 @@ npm run prove        # prove every level is solvable
 npm run build        # static build in dist/
 ```
 
-Full setup, emulator controls and deployment: [SETUP](SETUP.md).
+Art is generated in Blender from code: `python3 art/blender/stitch.py ph && blender-python art/blender/house_ph.py`, and `VALORA_COUNTRY=ph blender-python art/blender/island2.py`. The showcase video is rendered frame by frame from the game: `scripts/video/run-all.sh`, `scripts/video/make-titles.sh`, `python3 scripts/video/music.py video/music.wav`, `python3 scripts/video/edit.py`.
 
 ## Documentation
 

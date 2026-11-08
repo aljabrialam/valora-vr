@@ -31,7 +31,8 @@ def hexc(h):
 PAL = {
     'grass': hexc('#7cbf4f'), 'grass2': hexc('#69ad43'), 'soil': hexc('#8a5a34'),
     'sand': hexc('#f1d7a2'), 'wet': hexc('#d9b67c'), 'bed': hexc('#c9a978'),
-    'rock': hexc('#9a8f84'), 'rock2': hexc('#7f756c'), 'moss': hexc('#7aa64a'), 'foam': (1.0, 1.0, 1.0),
+    'rock': hexc('#c9a26a'), 'rock2': hexc('#a9824f'), 'rockwet': hexc('#7e6446'), 'rocktop': hexc('#dfc08a'), 'moss': hexc('#86bf45'), 'moss2': hexc('#6fa83a'), 'lipdark': hexc('#7a5a3a'), 'foam': (1.0, 1.0, 1.0),
+    'wall': hexc('#9b7d60'), 'wall2': hexc('#86684e'), 'green': hexc('#4f8f3a'),
 }
 
 
@@ -42,7 +43,15 @@ def sd_plateau(x, z):
     qx, qz = abs(x - cx) - hx, abs(z - cz) - hz
     out = math.hypot(max(qx, 0), max(qz, 0)) + min(max(qx, qz), 0) - PR
     # wobble only outward so nothing built ends up over the edge
-    return out - max(0.0, noise.noise(Vector((x * 0.16, z * 0.16, 3.0)))) * 0.9
+    wob = max(0.0, noise.noise(Vector((x * 0.16, z * 0.16, 3.0)))) * 0.9
+    if COUNTRY == 'th':  # a straight, built canal front: no wobble towards the water
+        wob *= max(0.0, min(1.0, (2.5 - z) / 2.0))
+    return out - wob
+
+
+def canal_front(x, z):
+    """Thailand: the front is a vertical laterite embankment on the khlong instead of a beach."""
+    return COUNTRY == 'th' and z > (PZ0 + PZ1) / 2 + 2.0
 
 
 def beach_width(x, z):
@@ -59,6 +68,8 @@ def height(x, z):
         # flat where people live; soft mounds only far from the built area
         far = max(0.0, min(1.0, (-d - 0.0) / 2.5)) * (1.0 if (x < -6.5 or x > 13.2 or z < -8.2) else 0.0)
         return far * (0.25 + 0.25 * noise.noise(Vector((x * 0.3, z * 0.3, 1.0))))
+    if canal_front(x, z):
+        return 0.0 if d < 0.04 else -2.3
     w = beach_width(x, z)
     if d < 0.35:  # soil lip
         return -0.32 * (d / 0.35)
@@ -67,15 +78,20 @@ def height(x, z):
     t = (d - 0.35) / w
     if t <= 1.0:  # beach: gentle, slightly convex, crossing the sea about two thirds out
         return -0.36 - 0.9 * t ** 1.15
-    return -1.26 - min(2.0, (t - 1.0) * 1.6)
+    return -1.26 - min(3.0, (t - 1.0) * 4.0)
 
 
 def colour(x, z, y, d):
     j = noise.noise(Vector((x * 0.9, z * 0.9, 5.0))) * 0.05
-    if d <= 0:
+    if d > 0 and canal_front(x, z) and y > SEA - 0.5:
+        band = int((y + 3.0) / 0.22) % 2
+        c = PAL['wall'] if band else PAL['wall2']
+        if y > -0.12:
+            c = PAL['wall2']
+    elif d <= 0:
         c = PAL['grass'] if noise.noise(Vector((x * 0.25, z * 0.25, 2.0))) > -0.1 else PAL['grass2']
     elif y > -0.33:
-        c = PAL['soil']
+        c = PAL['rock2']
     elif y > SEA + 0.12:
         c = PAL['sand']
     elif y > SEA - 0.25:
@@ -104,6 +120,7 @@ for j in range(nz):
         row.append(bm.verts.new(Vector((x, -z, y))))
     verts.append(row)
 col_layer = bm.loops.layers.float_color.new('Col')
+vcol = {}
 for j in range(nz - 1):
     for i in range(nx - 1):
         a, b, c, e = verts[j][i], verts[j][i + 1], verts[j + 1][i + 1], verts[j + 1][i]
@@ -112,11 +129,12 @@ for j in range(nz - 1):
             continue
         for tri in ((a, b, c), (a, c, e)) if (i + j) % 2 else ((a, b, e), (b, c, e)):
             f = bm.faces.new(tri[::-1])
-            cen = f.calc_center_median()
-            x, z, y = cen.x, -cen.y, cen.z
-            col = colour(x, z, y, sd_plateau(x, z))
-            for loop in f.loops:
-                loop[col_layer] = (*col, 1.0)
+            for loop in f.loops:  # colour per corner: soft gradients, no sawtooth bands
+                v = loop.vert
+                key = v.index if v.index >= 0 else id(v)
+                if v not in vcol:
+                    vcol[v] = colour(v.co.x, -v.co.y, v.co.z, sd_plateau(v.co.x, -v.co.y))
+                loop[col_layer] = (*vcol[v], 1.0)
 me = bpy.data.meshes.new('terrain')
 bm.to_mesh(me)
 bm.free()
@@ -127,55 +145,93 @@ bpy.context.collection.objects.link(terrain)
 parts = [terrain]
 
 
-def boulder(x, z, y, r, squash=0.7, seed=0, mossy=True):
+def rock(x, z, y0, y1, sx, sz, yaw, seed=0, mossy=True, seg=4):
+    """A chunky stylised rock: a bevelled block with softened, hand-cut faces. Warm sandstone sides,
+    darker and wet at the waterline, a cap of moss on top."""
+    import mathutils
     m = bpy.data.meshes.new('rock')
     b = bmesh.new()
-    bmesh.ops.create_icosphere(b, subdivisions=1, radius=1.0)
+    bmesh.ops.create_cube(b, size=1.0)
     k = random.Random(seed)
-    sx, sz = k.uniform(0.8, 1.3), k.uniform(0.8, 1.3)
+    h = max(0.2, y1 - y0)
     for v in b.verts:
-        n = noise.noise(v.co * 1.7 + Vector((seed, 0, 0)))
-        v.co *= 1 + 0.22 * n
-        v.co.x *= r * sx
-        v.co.y *= r * sz
-        v.co.z *= r * squash
-    bmesh.ops.rotate(b, verts=b.verts, cent=Vector(), matrix=__import__('mathutils').Matrix.Rotation(k.uniform(0, 6.28), 3, 'Z'))
+        v.co = Vector((v.co.x * sx, v.co.y * sz, v.co.z * h))
+    bmesh.ops.bevel(b, geom=list(b.edges), offset=min(sx, sz, h) * k.uniform(0.26, 0.4), segments=seg, profile=0.5, affect='EDGES')
+    off = Vector((k.uniform(0, 40), k.uniform(0, 40), 0))
+    for v in b.verts:
+        n = noise.noise(v.co * 0.7 + off)
+        v.co += Vector((n * 0.08 * sx, noise.noise(v.co * 0.7 + off + Vector((7, 0, 0))) * 0.08 * sz, 0))
+        if v.co.z > 0:  # tops slump a little, so rows do not read as bricks
+            v.co.z += noise.noise(v.co * 0.5 + off) * 0.14 * h
+    bmesh.ops.rotate(b, verts=b.verts, cent=Vector(), matrix=mathutils.Matrix.Rotation(yaw, 3, 'Z'))
+    bmesh.ops.translate(b, verts=b.verts, vec=Vector((x, -z, (y0 + y1) / 2)))
+    b.normal_update()
     cl = b.loops.layers.float_color.new('Col')
-    base = PAL['rock'] if k.random() > 0.4 else PAL['rock2']
+    tone = k.uniform(0.92, 1.06)
+    top_y = max(v.co.z for v in b.verts)
+    def mixc(c0, c1, t):
+        t = max(0.0, min(1.0, t))
+        return tuple(a_ + (b_ - a_) * t for a_, b_ in zip(c0, c1))
     for f in b.faces:
-        f.normal_update()
-        top = mossy and f.normal.z > 0.75 and f.calc_center_median().z > r * squash * 0.4
-        c = PAL['moss'] if top else tuple(v * k.uniform(0.9, 1.08) for v in base)
         for loop in f.loops:
+            v = loop.vert
+            yv, nz = v.co.z, v.normal.z
+            c = mixc(PAL['rock2'], PAL['rock'], (yv - y0) / h)              # darker toward the foot
+            c = mixc(c, PAL['rocktop'], (nz - 0.3) * 1.6)                  # sunlit upper faces
+            c = mixc(PAL['rockwet'], c, (yv - (SEA - 0.05)) / 0.3)          # wet band at the waterline
+            if mossy:
+                c = mixc(c, PAL['moss'], (nz - 0.55) * 4.0 * (1.0 if yv > top_y - h * 0.35 else 0.0))
+            c = tuple(min(1, ch * tone) for ch in c)
             loop[cl] = (*c, 1.0)
     b.to_mesh(m)
     b.free()
     o = bpy.data.objects.new('rock', m)
-    o.location = (x, -z, y)
     bpy.context.collection.objects.link(o)
     parts.append(o)
     return o
 
 
-# back cliff line: big boulders shouldering the cliff, mossy on top
+def boulder(x, z, y, r, squash=0.7, seed=0, mossy=True):
+    k = random.Random(seed + 500)
+    return rock(x, z, y - r * squash, y + r * squash, r * k.uniform(1.4, 1.9), r * k.uniform(1.3, 1.8), k.uniform(0, 6.28), seed, mossy)
+
+
+# the plinth: a ring of chunky rocks all round the plateau (two rows, the outer one lower and wet),
+# except where the beach runs into the water and, in Thailand, along the built canal front
+cxp, czp = (PX0 + PX1) / 2, (PZ0 + PZ1) / 2
 s = 0
-for i in range(26):
-    t = i / 25
-    x = PX0 - 0.4 + t * (PX1 - PX0 + 0.8)
-    z = PZ0 - 0.7 + rnd.uniform(-0.3, 0.4)
-    r = rnd.uniform(0.9, 1.6)
-    boulder(x, z, -0.9 + rnd.uniform(-0.2, 0.5), r, rnd.uniform(0.75, 1.0), seed=s)
-    s += 1
-# side cliffs where the beach is narrow
-for side in (-1, 1):
-    for i in range(7):
-        z = PZ0 + 0.5 + i * 1.6 + rnd.uniform(-0.3, 0.3)
-        x = (PX0 - 0.7) if side < 0 else (PX1 + 0.7)
-        boulder(x + rnd.uniform(-0.3, 0.3), z, -1.0 + rnd.uniform(-0.2, 0.3), rnd.uniform(0.7, 1.3), 0.8, seed=s)
+def edge_at(a):
+    dx, dz = math.cos(a), math.sin(a)
+    r = 2.0
+    while sd_plateau(cxp + dx * r, czp + dz * r) < 0:
+        r += 0.02
+    return r, dx, dz
+a = 0.0
+while a < math.tau:
+    r, dx, dz = edge_at(a)
+    x, z = cxp + dx * r, czp + dz * r
+    beachy = beach_width(x, z) > 1.7
+    if not (canal_front(x, z) or beachy):
+        w = rnd.choice((rnd.uniform(0.8, 1.2), rnd.uniform(1.3, 2.2)))
+        back = z < czp - 3
+        top = rnd.uniform(-0.2, 0.1) + (rnd.uniform(0.2, 0.8) if back and rnd.random() > 0.5 else 0.0) + (0.25 if w > 1.6 else 0.0)
+        rock(x + dx * 0.25, z + dz * 0.25, SEA - 0.9, top, w, w * rnd.uniform(0.55, 0.85), math.atan2(dx, dz) + rnd.uniform(-0.4, 0.4), seed=s)
+        if rnd.random() > 0.6:  # a pebble or two tucked in front
+            pr = rnd.uniform(0.18, 0.32)
+            rock(x + dx * 1.2 + rnd.uniform(-0.4, 0.4), z + dz * 1.2 + rnd.uniform(-0.4, 0.4), SEA - 0.3, SEA + pr, pr * 2, pr * 1.7, rnd.uniform(0, 6.28), seed=s + 7000, mossy=False)
         s += 1
+        if rnd.random() > 0.25:
+            w2 = rnd.uniform(0.6, 1.1)
+            rock(x + dx * (1.05 + rnd.uniform(0, 0.3)), z + dz * (1.05 + rnd.uniform(0, 0.3)), SEA - 0.8, SEA + rnd.uniform(0.15, 0.6), w2, w2 * rnd.uniform(0.8, 1.1), rnd.uniform(0, 6.28), seed=s, mossy=rnd.random() > 0.5)
+            s += 1
+    elif beachy and rnd.random() > 0.8:
+        rr = rnd.uniform(0.25, 0.45)
+        boulder(x + dx * 1.6, z + dz * 1.6, height(x + dx * 1.6, z + dz * 1.6) + rr * 0.3, rr, 0.7, seed=s, mossy=False)
+        s += 1
+    a += (0.75 + w * 0.45) / max(r, 4.0) * rnd.uniform(0.85, 1.05) if not (canal_front(x, z) or beachy) else 1.0 / max(r, 4.0)
 # the outcrop: a stack of boulders behind the house at the back left, the island's landmark
 for (x, z, y, r) in ((-7.2, -8.4, 0.2, 1.7), (-5.6, -8.9, 0.0, 1.4), (-6.6, -9.4, 1.4, 1.2), (-8.4, -9.0, 0.9, 1.1), (-6.1, -8.1, 1.9, 0.8), (-3.9, -9.2, -0.2, 1.1)):
-    boulder(x, z, y, r, 0.95, seed=s)
+    boulder(x, z, y, r * 0.8, 0.85, seed=s)
     s += 1
 # shore rocks on the beach and in the shallows, a few, in clusters, never in the boats' lane
 for (x, z, r) in ((-9.6, 4.6, 0.55), (-9.1, 5.3, 0.35), (-10.2, 3.6, 0.42), (15.8, 3.9, 0.6), (16.4, 3.0, 0.4), (15.2, 4.8, 0.32), (-4.0, 8.4, 0.3), (12.6, 7.8, 0.36)):
@@ -242,6 +298,86 @@ if COUNTRY == 'ph':
     for (x, z, r) in ((10.6, 6.0, 0.16), (10.8, 6.3, 0.15), (10.45, 6.35, 0.14)):
         boulder(x, z, height(x, z) + 0.08, r, 0.95, seed=900 + int(x * 10), mossy=False)
 
+# ---------------------------------------------------------------- Thailand: the canal embankment
+if COUNTRY == 'th':
+    # one mesh for the embankment strip
+    fb = bmesh.new()
+    fcl_ = fb.loops.layers.float_color.new('Col')
+    def fbox(x0, x1, y0, y1, z0, z1, col):
+        made = bmesh.ops.create_cube(fb, size=1.0)['verts']
+        for v in made:
+            v.co = Vector(((x0 + x1) / 2 + v.co.x * (x1 - x0), -((z0 + z1) / 2 + v.co.y * (z1 - z0)), (y0 + y1) / 2 + v.co.z * (y1 - y0)))
+        for f in {f for v in made for f in v.link_faces}:
+            for loop in f.loops:
+                loop[fcl_] = (*col, 1.0)
+    # the embankment on our side: a coping strip and a battered laterite face along the canal front
+    cx_, cz_ = (PX0 + PX1) / 2, (PZ0 + PZ1) / 2
+    edge = []
+    for k in range(400):
+        a = math.pi * (0.03 + 0.94 * k / 399)  # south half, sweeping east to west
+        dx, dz = math.cos(a), math.sin(a)
+        r = 2.0
+        while height(cx_ + dx * r, cz_ + dz * r) > -0.01:
+            r += 0.01
+        x, z = cx_ + dx * r, cz_ + dz * r
+        if canal_front(x, z):
+            edge.append((x, z, dx, dz))
+    ring = []
+    for (x, z, dx, dz) in edge:
+        ring.append([fb.verts.new(Vector((x - dx * 0.4, -(z - dz * 0.4), 0.06))), fb.verts.new(Vector((x + dx * 0.4, -(z + dz * 0.4), 0.06))), fb.verts.new(Vector((x + dx * 0.5, -(z + dz * 0.5), SEA - 1.4)))])
+    for i_, (x, z, dx, dz) in enumerate(edge[::5]):
+        for (y0_, y1_) in ((SEA - 0.7, -0.5), (-0.52, -0.02)):
+            rock(x + dx * 0.55, z + dz * 0.55, y0_, y1_, 0.62, 0.42, math.atan2(dx, dz) + random.Random(i_).uniform(-0.05, 0.05), seed=9000 + i_ * 2 + (y0_ > -1), mossy=False, seg=2)
+    for A, B in zip(ring, ring[1:]):
+        for (i, col) in ((0, PAL['wall2']), (1, PAL['wall'])):
+            f = fb.faces.new((A[i], A[i + 1], B[i + 1], B[i]))
+            for loop in f.loops:
+                loop[fcl_] = (*col, 1.0)
+    bmesh.ops.recalc_face_normals(fb, faces=fb.faces)
+    fm_ = bpy.data.meshes.new('farbank')
+    fb.to_mesh(fm_)
+    fb.free()
+    o = bpy.data.objects.new('farbank', fm_)
+    bpy.context.collection.objects.link(o)
+    parts.append(o)
+
+# ---------------------------------------------------------------- the grass lip
+# a smooth, rounded edge where the lawn rolls over onto the sand or the rocks (hides the grid's
+# sawtooth), grass on top shading to warm earth underneath
+lb = bmesh.new()
+lcl = lb.loops.layers.float_color.new('Col')
+prof = [(-0.35, 0.012, 'grass'), (-0.05, 0.03, 'grass'), (0.08, 0.0, 'grass2'), (0.14, -0.1, 'grass2'), (0.12, -0.2, 'lipdark'), (0.2, -0.34, 'rock2'), (0.42, -0.42, 'rock2')]
+cxl, czl = (PX0 + PX1) / 2, (PZ0 + PZ1) / 2
+rows = []
+N_ = 520
+for k in range(N_):
+    a = k / N_ * math.tau
+    dx, dz = math.cos(a), math.sin(a)
+    r = 2.0
+    while sd_plateau(cxl + dx * r, czl + dz * r) < 0:
+        r += 0.01
+    x, z = cxl + dx * r, czl + dz * r
+    rows.append(None if canal_front(x, z) else [lb.verts.new(Vector((x + dx * o, -(z + dz * o), y))) for (o, y, _) in prof])
+for k in range(N_):
+    A, B = rows[k], rows[(k + 1) % N_]
+    if A is None or B is None:
+        continue
+    for i in range(len(prof) - 1):
+        f = lb.faces.new((A[i], A[i + 1], B[i + 1], B[i]))
+        for loop in f.loops:
+            j = A.index(loop.vert) if loop.vert in A else B.index(loop.vert)
+            loop[lcl] = (*PAL[prof[j][2]], 1.0)
+bmesh.ops.recalc_face_normals(lb, faces=lb.faces)
+for f in lb.faces:
+    if f.normal.z < -0.2 and f.calc_center_median().z > -0.05:
+        f.normal_flip()
+lme = bpy.data.meshes.new('lip')
+lb.to_mesh(lme)
+lb.free()
+lip = bpy.data.objects.new('lip', lme)
+bpy.context.collection.objects.link(lip)
+parts.append(lip)
+
 # ---------------------------------------------------------------- foam: a strip along the waterline
 fbm = bmesh.new()
 fcl = fbm.loops.layers.float_color.new('Col')
@@ -296,8 +432,14 @@ island.name = 'island'
 island.data.materials.append(land)
 foam.data.materials.append(foam_m)
 for o in (island, foam):
-    for p in o.data.polygons:
-        p.use_smooth = False
+    bm_ = bmesh.new()
+    bm_.from_mesh(o.data)
+    for f in bm_.faces:
+        f.smooth = True
+    for e in bm_.edges:  # soft everywhere, crisp only at real corners
+        e.smooth = not (len(e.link_faces) == 2 and e.calc_face_angle(0) > math.radians(55))
+    bm_.to_mesh(o.data)
+    bm_.free()
 print('[island2]', COUNTRY, 'faces', len(island.data.polygons), 'foam', len(foam.data.polygons))
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.export_scene.gltf(filepath=OUT, export_format='GLB', use_selection=True, export_yup=True, export_apply=True, export_materials='EXPORT')
