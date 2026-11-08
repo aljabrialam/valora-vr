@@ -16,12 +16,16 @@ const cli = (...args) => {
 };
 const sleep = (s) => execFileSync('sleep', [String(s)]);
 const logs = () => cli('browser', 'logs').data.result.map((l) => l.message);
-const HAND = [0.16, 1.22, -0.22];
-const aim = (t, from = HAND) => {
+// Emulator poses are relative to the player rig, which the game recentres when the session starts,
+// so world targets are aimed from the hand's world position and the pose is sent in rig space.
+const HAND = [0.12, 1.32, -0.28]; // rig space: a seated hand, low and forward of the head
+let RIG = [0, 0, 0]; // the recentre offset, read from the app's log
+const aim = (t) => {
+  const from = HAND.map((v, k) => v + RIG[k]);
   const d = [t[0] - from[0], t[1] - from[1], t[2] - from[2]];
   const yaw = (Math.atan2(-d[0], -d[2]) * 180) / Math.PI;
   const pitch = (Math.atan2(d[1], Math.hypot(d[0], d[2])) * 180) / Math.PI;
-  return {position: from, orientation: {pitch, yaw, roll: 0}};
+  return {position: HAND, orientation: {pitch, yaw, roll: 0}};
 };
 const pose = (position, orientation) => cli('xr', 'run-sequence', '--input-json', JSON.stringify({device: 'hand-right', idleHand: 'rest', body: 'fixed', steps: [{label: 'pose', anchor: 'target-ray', position, orientation, duration: 0.3}]}));
 const pinch = (v) => cli('xr', 'set-select-value', '--input-json', JSON.stringify({device: 'hand-right', value: v}));
@@ -41,12 +45,18 @@ const A = JSON.parse(anchorLine.slice(anchorLine.indexOf('{')));
 cli('xr', 'enter');
 cli('xr', 'set-input-mode', '--input-json', '{"mode":"hand"}');
 pinch(0);
-sleep(3);
+let rc;
+for (let i = 0; i < 8 && !rc; i++) { sleep(4); rc = logs().filter((m) => m.includes('[VR] recentre')).pop(); }
+if (!rc) { console.log('FAIL  no recentre in the headset session'); process.exit(1); }
+RIG = rc.split(' ').pop().split(',').map(Number);
+check('Seated recentre on entering VR', true, `rig ${RIG.join(',')}`);
+const words = logs().filter((m) => m.includes('[VR] view')).pop() ?? '';
+check('Words switch to the headset view', words.includes('headset'));
 
-// 1. Tiki: hello, place, twist, sun -> goal
-for (let i = 0; i < 4; i++) tap(A.tiki);
-const steps = logs().filter((m) => m.includes('[VR] step'));
-check('Tiki advances by pinch', steps.some((m) => m.includes('-goal')), steps.slice(-1)[0] ?? '');
+// 1. Tiki: hello is the only pinch-to-continue before the first action
+tap(A.tiki);
+let steps = logs().filter((m) => m.includes('[VR] step'));
+check('Pinching Tiki starts the tutorial', steps.slice(-1)[0]?.includes('place'), steps.slice(-1)[0] ?? '');
 
 // 2. Grab the screen piece and carry it to socket 2
 const piece = A.pieces.find((p) => p.kind === 'screen' && p.n === 0).at;
@@ -65,6 +75,10 @@ pinch(0); sleep(4);
 let design = logs().filter((m) => m.includes('[VR] design')).pop() ?? '';
 check('Hand grab places a raft piece on a socket', /"socket":2/.test(design), design.slice(0, 120));
 
+steps = logs().filter((m) => m.includes('[VR] step'));
+check('Placing a piece moves the tutorial on by itself', !steps.slice(-1)[0]?.includes('place'), steps.slice(-1)[0] ?? '');
+tap(A.tiki); // the country twist line
+
 // 3. Turn it with a short pinch (tap), then the level should be solved
 tap(sock.map((v, k) => v + (k === 1 ? 0.05 : 0)), 1); // aim at the middle of the screen, not its foot
 design = logs().filter((m) => m.includes('[VR] design')).pop() ?? '';
@@ -81,6 +95,8 @@ const sunLines = logs().filter((m) => m.includes('[VR] sun '));
 const g = sunLines.filter((m) => m.includes('grab')).pop(), r = sunLines.filter((m) => m.includes('release')).pop();
 const h = (m) => (m ? +m.split(' ').pop() : NaN);
 check('Sun handle follows the hand ray', !!g && !!r && Math.abs(h(r) - h(g)) >= 0.5, `hour ${h(g)} -> ${h(r)}`);
+steps = logs().filter((m) => m.includes('[VR] step'));
+check('Moving the sun moves the tutorial on', /-goal|-done/.test(steps.slice(-1)[0] ?? ''), steps.slice(-1)[0] ?? '');
 
 // 5. Play button starts the day
 tap(A.play);

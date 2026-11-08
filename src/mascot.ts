@@ -3,6 +3,7 @@
 // blinks, breathes, sways its tail and hops when it moves. Pinch Tiki to continue.
 
 import {
+  type Object3D,
   CanvasTexture,
   Color,
   CylinderGeometry,
@@ -191,14 +192,33 @@ export class Gecko {
     if (line) g.fillText(line, 56, y);
     if (hint) {
       g.fillStyle = '#6b6a66';
-      g.font = '500 30px Inter, -apple-system, sans-serif';
-      g.fillText(hint, 56, H - 92);
+      g.font = '500 28px Inter, -apple-system, sans-serif';
+      // up to two lines, bottom-aligned above the tail
+      const lines: string[] = [];
+      let cur = '';
+      for (const word of hint.split(' ')) {
+        const t = cur ? `${cur} ${word}` : word;
+        if (g.measureText(t).width > W - 112 && cur) {
+          lines.push(cur);
+          cur = word;
+        } else cur = t;
+      }
+      if (cur) lines.push(cur);
+      lines.slice(0, 2).forEach((l, i, a) => g.fillText(l, 56, H - 92 - (a.length - 1 - i) * 34));
     }
     this.tex.needsUpdate = true;
     this.talkUntil = now + 1.2;
     this.bubble.visible = this.bubbleShown;
   }
 
+  /** Show the speech bubble at a fixed place in the world (headset: straight ahead) or back over Tiki. */
+  anchorBubble(parent: Object3D | null, at?: Vector3, width = 0.3) {
+    const home = parent ?? this.group;
+    if (this.bubble.parent !== home) home.add(this.bubble);
+    if (parent && at) this.bubble.position.copy(at);
+    else this.bubble.position.set(0.1, 0.2, 0);
+    this.bubble.scale.set(width, width * 0.41, 1);
+  }
   hide() {
     this.bubble.visible = false;
   }

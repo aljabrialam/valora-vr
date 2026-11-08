@@ -87,6 +87,7 @@ export class Hud {
   /** Show or hide the overlay (hidden in the headset). */
   set visible(v: boolean) {
     this.root.hidden = !v;
+    if (!v) this.map.hidden = true; // the page map would cover the headset view
   }
 
   onPlay: () => void = () => {};

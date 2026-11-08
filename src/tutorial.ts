@@ -3,14 +3,14 @@
 
 import type {Country, CountryLevel} from './sim/countries.ts';
 
-export type Look = 'window' | 'tower' | 'boat' | 'seat' | 'plant' | 'pool' | 'table' | 'deck' | 'tray' | 'sun' | 'overhang' | 'play' | null;
+export type Look = 'window' | 'tower' | 'boat' | 'seat' | 'plant' | 'pool' | 'table' | 'deck' | 'tray' | 'sun' | 'overhang' | 'play' | 'tiki' | null;
 
 export type Step = {
   id: string;
   say: string;
   hint?: string;
   look?: Look;
-  until: 'tap' | 'solved';
+  until: 'tap' | 'solved' | 'placed' | 'sun';
   celebrate?: boolean;
   then?: 'next-level';
 };
@@ -25,11 +25,11 @@ const TWIST: Record<Country['id'], {say: string; look: Look}> = {
 export function scriptFor(country: Country, index: number, level: CountryLevel, first: boolean): Step[] {
   const steps: Step[] = [];
   if (first) {
-    steps.push({id: 'hello', say: "Hi, I'm Tiki. I live on these walls, so I know where every shadow falls.", until: 'tap'});
-    steps.push({id: 'place', say: 'Pinch and drag a piece from the raft onto the courtyard. Pinch a placed piece to turn it.', hint: 'Pinch a piece on the raft, move it over the courtyard, let go', look: 'tray', until: 'tap'});
+    steps.push({id: 'hello', say: "Hi, I'm Tiki. I know where every shadow falls on this island. Pinch me to start.", hint: 'Point at Tiki and pinch', look: 'tiki', until: 'tap'});
+    steps.push({id: 'place', say: 'Pinch a piece on the raft, point it at the courtyard and let go. Pinch a placed piece to turn it.', hint: 'Follow the arrow to the raft', look: 'tray', until: 'placed'});
   }
   if (index === 0) steps.push({id: `${country.id}-twist`, say: `Welcome to ${country.place}: ${country.house}. ${TWIST[country.id].say}`, look: TWIST[country.id].look, until: 'tap'});
-  if (index === 0 && first) steps.push({id: 'sun', say: 'You can drag the sun across the sky to watch the shadows move.', hint: 'Pinch and drag the sun', look: 'sun', until: 'tap'});
+  if (index === 0 && first) steps.push({id: 'sun', say: 'Now pinch the sun and drag it across the sky. Watch the shadows move.', hint: 'Follow the arrow to the sun', look: 'sun', until: 'sun'});
   steps.push({id: `${level.id}-goal`, say: level.brief, look: lookFor(level), until: 'solved'});
   const last = index === country.levels.length - 1;
   steps.push({

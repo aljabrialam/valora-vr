@@ -7,6 +7,7 @@
 
 import {
   Box3,
+  ConeGeometry,
   Color,
   createSystem,
   DirectionalLight,
@@ -121,7 +122,8 @@ model.site.add(local.group);
 
 const hud = new Hud();
 const card = new LevelCard(0.42);
-card.mesh.position.set(0, 0.36, -0.5);
+card.mesh.position.set(-0.18, 0.5, -0.45); // headset: a little above eye height, beyond the board
+const BUBBLE_AT = new Vector3(-0.18, DESK.y + 0.22, -0.25); // headset: Tiki's words, just below eye height
 card.mesh.rotation.x = -10 * D;
 model.desk.add(card.mesh);
 const motes = new Motes(60);
@@ -150,12 +152,13 @@ for (const x of [-0.3, 0, 0.3]) {
   batten.position.set(x, -0.009, 0);
   raft.add(batten);
 }
-raft.position.set(0.8, -0.006, 0.13);
-raft.rotation.y = Math.PI / 2; // along the right side of the island, out of the boats' way
+// in front of the courtyard, nearest the seated player, so pieces are a short point away
+const RAFT = new Vector3(-0.18, -0.006, 0.6);
+raft.position.copy(RAFT);
 model.desk.add(raft);
 const KIND_ORDER: Kind[] = ['screen', 'hedge', 'tree', 'pergola'];
 const TRAY_SCALE = 0.5; // pieces wait on the raft at half size
-const traySlot = (kind: Kind, n: number) => new Vector3(0.8 + n * 0.014, 0.0, 0.42 - KIND_ORDER.indexOf(kind) * 0.12 - n * 0.012);
+const traySlot = (kind: Kind, n: number) => new Vector3(RAFT.x - 0.225 + KIND_ORDER.indexOf(kind) * 0.15 + n * 0.014, 0.0, RAFT.z - n * 0.012);
 
 // ---------- pieces: every copy in the tray is its own grabbable object ----------
 const HIT_MAT = new MeshBasicMaterial({colorWrite: false, depthWrite: false});
@@ -330,6 +333,7 @@ function hourNearestRay(ray: Raycaster['ray']): number {
   return best;
 }
 
+let sunMoved = false; // set when the player drags the sun; the tutorial waits for it
 function setHour(h: number) {
   if (h === viewHour) return;
   viewHour = h;
@@ -367,7 +371,7 @@ function setOverhangFrom(local: Vector3) {
 
 // ---------- the play-the-day button on the ledge ----------
 const playButton = new Mesh(new CylinderGeometry(0.022, 0.024, 0.012, 32), handleMat);
-playButton.position.copy(model.desk.localToWorld(new Vector3(0.8, 0.006, -0.17)));
+playButton.position.copy(model.desk.localToWorld(new Vector3(RAFT.x + 0.4, 0.006, RAFT.z)));
 const playEntity = world.createTransformEntity(playButton);
 playEntity.addComponent(RayInteractable);
 
@@ -519,6 +523,34 @@ function tickDay(now: number, dt: number) {
 }
 
 // ---------- the tutorial ----------
+// ---------- the arrow: shows what to touch for the current tutorial step ----------
+class Pointer {
+  target: Look | null = null;
+  readonly group = new Group();
+  private at = new Vector3();
+  constructor() {
+    const mat = new MeshStandardMaterial({color: '#ff8a1f', emissive: '#ff6a00', emissiveIntensity: 0.6, roughness: 0.4});
+    const head = new Mesh(new ConeGeometry(0.022, 0.045, 20), mat);
+    head.rotation.x = Math.PI; // tip down
+    const shaft = new Mesh(new CylinderGeometry(0.007, 0.007, 0.045, 12), mat);
+    shaft.position.y = 0.045;
+    for (const m of [head, shaft]) m.raycast = () => {};
+    this.group.add(head, shaft);
+    this.group.visible = false;
+    world.scene.add(this.group);
+  }
+  update(time: number) {
+    const p = this.target ? lookAt(this.target) : null;
+    this.group.visible = !!p;
+    if (!p) return;
+    this.at.copy(p);
+    // ride above pieces and handles; bob so it catches the eye
+    this.group.position.set(this.at.x, this.at.y + 0.09 + 0.02 * Math.sin(time * 5), this.at.z);
+    this.group.rotation.y = time * 1.5;
+  }
+}
+const pointer = new Pointer();
+
 class Tutorial {
   private steps: Step[] = [];
   private i = 0;
@@ -538,17 +570,22 @@ class Tutorial {
     console.info('[VR] step', st?.id ?? 'end');
     if (!st) {
       hud.say('', '');
+      pointer.target = null;
       return tiki.hide();
     }
     this.sayNow(now);
-    tiki.look(lookAt(st.look));
+    sunMoved = false;
+    tiki.look(st.look === 'tiki' ? null : lookAt(st.look)); // Tiki looks at what he talks about, not himself
+    pointer.target = st.look ?? null;
     if (st.celebrate) tiki.celebrate();
   }
   sayNow(now: number) {
     const st = this.steps[this.i];
     if (!st) return;
     const text = forDevice(st.say);
-    const hint = forDevice(st.hint ?? (st.until === 'tap' ? 'Pinch Tiki to continue' : ''));
+    let hint = forDevice(st.hint ?? (st.until === 'tap' ? 'Pinch Tiki to continue' : ''));
+    // VR mode in a computer browser is Meta's emulator: say how its controls stand in for hands
+    if (inXR() && IN_EMULATOR()) hint = 'Emulator: drag a controller arrow to aim, then set Trig to 1 to pinch. Easier: exit VR and use the mouse.';
     setFlatView(!inXR());
     tiki.say(text, hint, now);
     hud.say(text, hint);
@@ -567,6 +604,8 @@ class Tutorial {
     }
     if (now - this.enteredAt < 0.4) return;
     if (st.until === 'tap' && tapped) this.next(now);
+    else if (st.until === 'placed' && design.pieces.length > 0) this.next(now);
+    else if (st.until === 'sun' && sunMoved) this.next(now);
     else if (st.until === 'solved' && solved && !day.on) this.next(now);
   }
 }
@@ -587,9 +626,11 @@ function lookAt(l: Look | undefined): Vector3 | null {
     case 'deck':
       return siteToWorld(TARGETS[l].at);
     case 'tray':
-      return model.desk.localToWorld(new Vector3(0.86, 0.03, 0.1));
+      return (pieceObjs.find((o) => o.socket < 0)?.root ?? raft).getWorldPosition(new Vector3());
     case 'sun':
       return sunHandle.getWorldPosition(new Vector3());
+    case 'tiki':
+      return tiki.hit.getWorldPosition(new Vector3());
     case 'overhang':
       return overhangHandle.getWorldPosition(new Vector3());
     case 'play':
@@ -671,6 +712,12 @@ const toScreen = (v: Vector3) => {
   pieceScreen: (kind: Kind, n = 0) => {
     const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
     return o ? toScreen(o.root.position.clone()) : null;
+  },
+  boxOf(name: string) {
+    const o = world.scene.getObjectByName(name);
+    if (!o) return null;
+    const b = new Box3().setFromObject(o);
+    return {min: b.min.toArray().map((x) => +x.toFixed(3)), max: b.max.toArray().map((x) => +x.toFixed(3))};
   },
   pieceBox(kind: Kind, n = 0) {
     const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
@@ -787,7 +834,11 @@ window.addEventListener('pointermove', (e) => {
     canvas.style.cursor = flat.ray.intersectObjects(pickables(), true).length ? 'pointer' : '';
     return;
   }
-  if (flat.drag === 'sun') return setHour(hourNearestRay(flat.ray.ray));
+  if (flat.drag === 'sun') {
+    const h = hourNearestRay(flat.ray.ray);
+    if (h !== viewHour) sunMoved = true;
+    return setHour(h);
+  }
   if (!flat.ray.ray.intersectPlane(flat.plane, flat.hit)) return;
   if (flat.drag === 'overhang') return setOverhangFrom(model.site.worldToLocal(flat.hit.clone()));
   const o = flat.drag;
@@ -817,9 +868,11 @@ function setFlatView(flatView: boolean) {
   hud.visible = flatView;
   card.mesh.visible = !flatView;
   tiki.bubbleShown = !flatView;
+  // headset: Tiki's words sit straight ahead just under the level card, where the eye already is
+  if (flatView) tiki.anchorBubble(null);
+  else tiki.anchorBubble(world.scene, BUBBLE_AT, 0.34);
+  console.info('[VR] view', flatView ? 'flat' : 'headset');
 }
-world.renderer.xr.addEventListener('sessionstart', () => tutorial.sayNow(0));
-world.renderer.xr.addEventListener('sessionend', () => tutorial.sayNow(0));
 hud.onPlay = () => startDay(lastTime);
 hud.onReset = () => {
   for (const o of pieceObjs) homeInTray(o);
@@ -832,14 +885,35 @@ hud.onCountry = (id: string) => goToCountry(id as typeof COUNTRY.id, 0);
 hud.onMap = () => hud.showMap(COUNTRIES.map((c) => ({id: c.id, name: c.name, place: c.place, house: c.house})));
 
 /** Tiki's words for the device in use: pinch in a headset, click or drag on a screen. */
+// A real headset browser, or Meta's emulator running in a computer browser.
+// IWER (the emulator) reports a Quest user agent, so look for the device it installs instead.
+const IN_EMULATOR = () => !!(window as any).IWER_DEVICE;
 function forDevice(text: string): string {
   if (inXR()) return text;
   return text.replace(/Pinch and drag/g, 'Drag').replace(/pinch and drag/g, 'drag').replace(/Pinch/g, 'Click').replace(/pinch/g, 'click');
 }
 
 // ---------- per frame ----------
+
+// ---------- seated recentring ----------
+// When a headset session starts, place the player just behind the courtyard so the board sits low in
+// front of them, the raft at their lap and the level card at eye level. Done once per session: this is
+// a recentre, not locomotion; nothing moves the player after it.
+const SEAT_HEAD = new Vector3(-0.18, DESK.y + 0.3, 0.3);
+let recentreAt = -1;
+world.renderer.xr.addEventListener('sessionstart', () => (recentreAt = lastTime + 0.5));
+world.renderer.xr.addEventListener('sessionend', () => {
+  recentreAt = -1;
+  world.player.position.set(0, 0, 0);
+});
+function recentre(head: Vector3) {
+  world.player.position.add(new Vector3().subVectors(SEAT_HEAD, head));
+  console.info('[VR] recentre', world.player.position.toArray().map((x) => +x.toFixed(3)).join(','));
+}
+
 class PlaySystem extends createSystem({}) {
   private wasPressed = false;
+  private wasXR = false;
   private sunHand: 'left' | 'right' = 'right';
   private wasPlay = false;
   private head = new Vector3();
@@ -847,6 +921,17 @@ class PlaySystem extends createSystem({}) {
   update(delta: number, time: number) {
     lastTime = time;
     const xr = inXR();
+    // switch the words between the page (screen) and the world (headset) on the first frame that
+    // actually renders in the new mode; session events can fire before presenting starts
+    if (xr !== this.wasXR) {
+      this.wasXR = xr;
+      tutorial.sayNow(time);
+    }
+    if (xr && recentreAt >= 0 && time >= recentreAt) {
+      recentreAt = -1;
+      recentre(world.player.head.getWorldPosition(this.tmp)); // the tracked head, not the page camera
+    }
+    pointer.update(time);
     const k = 1 - Math.exp(-delta * 14);
 
     // pieces: hands hold them in XR, the mouse holds them on a screen; otherwise they spring home
@@ -890,7 +975,9 @@ class PlaySystem extends createSystem({}) {
         this.sunHand = aimHandAt(sunHandle.position);
         console.info('[VR] sun grab', viewHour);
       }
-      setHour(hourNearestRay(handRay.ray));
+      const h = hourNearestRay(handRay.ray);
+      if (h !== viewHour) sunMoved = true;
+      setHour(h);
       arcPoint(viewHour, sunHandle.position);
     }
     if (sunGrabbed && !sg) {
@@ -934,7 +1021,7 @@ class PlaySystem extends createSystem({}) {
     const tapped = (pressed && !this.wasPressed) || pendingTap;
     this.wasPressed = pressed;
     pendingTap = false;
-    world.camera.getWorldPosition(this.head);
+    (xr ? world.player.head : world.camera).getWorldPosition(this.head);
     tiki.update(delta, time, this.head);
     tutorial.tick(time, tapped);
   }
