@@ -6,7 +6,7 @@ Emulator results and headset results are reported separately. Emulation cannot e
 
 | Check | Environment | Result | How to run |
 |---|---|---|---|
-| Every level solvable, none starts solved, par is the fewest pieces | Node | 12/12 (4 countries x 3) | `npm run prove` |
+| Every level solvable, none starts solved, par is the fewest pieces | Node | 18/18 (6 countries x 3) | `npm run prove` |
 | Type check | Node | clean | `npm run typecheck` |
 | Production build | Node | builds | `npm run build` |
 | Hands-only playthrough: seated recentre, headset wording, Tiki pinch, carry a raft piece onto a socket by pointing, tutorial moves on by itself, turn the piece, solve Manila level 1, drag the sun, tutorial moves on, play button starts the day, no console errors | IWER emulator, Meta Quest 3 profile, hand input | 11/11 checks pass, re-run after the smooth-art pass | `npm run e2e:play` |

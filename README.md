@@ -5,18 +5,18 @@
 <p align="center">
 <img src="https://img.shields.io/badge/status-prototype-a8835a?style=flat-square" alt="Status: prototype">
 <img src="https://img.shields.io/badge/Meta%20VR%20Start%20Developer%20Competition-2026%20%C2%B7%20Gaming-0866FF?style=flat-square&logo=meta&logoColor=white" alt="Meta VR Start Developer Competition 2026, Gaming track">
-<img src="https://img.shields.io/badge/input-hands%20only-12805C?style=flat-square" alt="Hands only">
+<img src="https://img.shields.io/badge/input-hands%20first%20%C2%B7%20controllers%20too-12805C?style=flat-square" alt="Hands first, controllers too">
 <img src="https://img.shields.io/badge/play-seated-12805C?style=flat-square" alt="Seated">
 <img src="https://img.shields.io/badge/IWSDK-1.1.0--rc.2-0866FF?style=flat-square&logo=meta&logoColor=white" alt="IWSDK 1.1.0-rc.2">
-<img src="https://img.shields.io/badge/levels%20proven%20solvable-12%2F12-12805C?style=flat-square" alt="Levels proven solvable: 12 of 12">
+<img src="https://img.shields.io/badge/levels%20proven%20solvable-18%2F18-12805C?style=flat-square" alt="Levels proven solvable: 18 of 18">
 <img src="https://img.shields.io/badge/license-MIT-2B47C9?style=flat-square" alt="MIT">
 </p>
 
 <h3 align="center">Same sun, different skies.<br>Let the sun in, keep the watchers out, across South-east Asia.</h3>
 
-**VaLora: Two Watchers is a seated, hands-only VR puzzle about sun, shade and privacy.** A small island diorama floats in front of you: a house, its courtyard and the neighbours. Pick a country on the globe, then point and pinch pieces from a bamboo raft (screens, hedges, trees, a pergola) onto the courtyard, drag the sun across the sky and live the day, until the sun reaches what it should and no watcher sees what it should not.
+**VaLora: Two Watchers is a seated, single-player VR puzzle about sun, shade and privacy, played with your hands (Touch controllers work too).** The two watchers are the sun and whoever looks in; it is not a two-player game. A small island diorama floats in front of you: a house, its courtyard and the neighbours. Pick a country on the globe, then point and pinch pieces from a bamboo raft (screens, hedges, trees, a pergola) onto the courtyard, drag the sun across the sky and live the day, until the sun reaches what it should and no watcher sees what it should not.
 
-> **Status (8 Nov 2026): playable, live at [valora-vr.vercel.app](https://valora-vr.vercel.app).** Four countries with their own houses and twists, 12 levels, Tiki the gecko guide, hands in the headset and mouse on a computer. Hands-only play verified in Meta's IWER emulator; **not yet tested on a real Quest** (planned for 12 Nov).
+> **Status (8 Nov 2026): playable, live at [valora-vr.vercel.app](https://valora-vr.vercel.app).** Six countries with their own houses and twists, 18 levels, Tiki the gecko guide, hands in the headset and mouse on a computer. Hand and controller play verified in Meta's IWER emulator; **not yet tested on a real Quest** (planned for 12 Nov).
 
 ---
 
@@ -25,9 +25,9 @@
 | | |
 |---|---|
 | **What** | A short puzzle game played seated, with your hands, in VR (or with a mouse on a computer) |
-| **The watchers** | **The sun** should reach some spots and not others. **A neighbour**, **passing boats** or **a high-rise** must not see the reader. In some places **typhoon wind** or **monsoon rain** must not reach a spot |
+| **The watchers** | **The sun** should reach some spots and not others. **A neighbour**, **passing boats**, **motorbikes in the lane**, **condo towers** or **a high-rise** must not see the reader. In some places **typhoon wind** or **monsoon rain** must not reach a spot |
 | **The idea** | Sunlight, privacy, wind and rain are one test: *can something reach this spot in a straight line?* The sun is just a watcher very far away |
-| **Where** | Manila (bahay kubo, typhoon wind), Bangkok (teak ruen thai on a canal, long-tail boats), Jakarta (joglo, monsoon rain), Singapore (black-and-white bungalow, the high-rise next door). The sun follows each capital's own path for 8 November |
+| **Where** | Manila (bahay kubo, typhoon wind), Bangkok (teak ruen thai on a canal, long-tail boats), Hanoi (northern village house on a lakeside lane, motorbikes), Kuala Lumpur (Malay kampung house on stilts, condo towers), Jakarta (joglo, monsoon rain), Singapore (black-and-white bungalow, the high-rise next door). The sun follows each capital's own path for 8 November |
 | **How you play** | Choose a place on the globe. Pinch a piece on the raft, point it at the courtyard, let go; pinch it again to turn it. Drag the sun. Press play to live the day; fewer pieces earn more stars |
 | **Guide** | **Tiki**, a gecko who sits on the garden wall. Tiki teaches by doing: the tutorial moves on when you place a piece or move the sun |
 | **Comfort** | Seated, no walking or turning: the view is set up once when VR starts, and the whole board sits within a short point of your hand |
@@ -84,13 +84,13 @@ Every watcher runs the same test: a straight segment from the watcher (or toward
 
 ## For judges: try it in two minutes
 
-Open **[valora-vr.vercel.app](https://valora-vr.vercel.app)** in Quest Browser on Quest 3 or 3S, choose a place on the globe, select **Enter VR**, put the controllers down and pinch Tiki. On a computer, skip Enter VR and play with the mouse: click Continue, drag a piece from the raft, click a placed piece to turn it.
+Open **[valora-vr.vercel.app](https://valora-vr.vercel.app)** in Quest Browser on Quest 3 or 3S, choose a place on the globe, select **Enter VR**, put the controllers down (or keep them: point and pull the trigger) and pinch Tiki. On a computer, skip Enter VR and play with the mouse: click Continue, drag a piece from the raft, click a placed piece to turn it.
 
 ## Results
 
 | Check | Result | How to run |
 |---|---|---|
-| Every level solvable, none solved at the start, par equals the minimum pieces | 12/12 | `npm run prove` |
+| Every level solvable, none solved at the start, par equals the minimum pieces | 18/18 | `npm run prove` |
 | Type check | clean | `npm run typecheck` |
 | Hands-only playthrough in the IWER emulator: seated recentre, Tiki pinch, carry a raft piece by pointing, turn it, solve Manila level 1, drag the sun, press play, no console errors | 11/11 checks pass (re-run 8 Nov on the new art) | `npm run e2e:play` |
 | Mouse playthrough on a computer: Manila level 1 solved with 3 stars, day completes | pass | browser test |

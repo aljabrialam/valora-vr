@@ -22,6 +22,8 @@ Freeze the submitted build on the evening of 18 November (Singapore time).
 
 **6 November.** Prototype: the courtyard house, a swinging screen, the neighbour and the sun; Tiki the gecko; solvability proof; hands-only playthrough in the emulator; live at valora-vr.vercel.app.
 
+**9 November.** Vietnam (Hanoi: motorbikes in the lane) and Malaysia (Kuala Lumpur: condo towers) with their own houses, islands and three levels each, 18 levels proven solvable; stars and pieces against par on the level card in the headset; the 2:40 demo with voice-over, Touch controller footage, the competition entry card and the maker card.
+
 **7 November.** Pieces carried from a bamboo raft by pointing (screen, hedge, tree, pergola); four countries with their own twists and real sun paths; 12 levels proven solvable; the globe country picker; drag the sun; live the day; stars; the seated recentre; the page overlay with a Continue button for computer players.
 
 **8 November.**

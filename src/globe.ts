@@ -11,7 +11,7 @@ export type Place = {name: string; place: string; lon: number; lat: number; id?:
 // ISO 3166 numeric codes used by world-atlas (Singapore is too small for the 1:110m map; its marker
 // stands in for it)
 const ASEAN = new Set(['608', '764', '360', '702', '458', '704', '418', '116', '104', '096', '626']);
-const PLAYABLE_CODE: Record<string, string> = {ph: '608', th: '764', id: '360', sg: '702'};
+const PLAYABLE_CODE: Record<string, string> = {ph: '608', th: '764', vn: '704', my: '458', id: '360', sg: '702'};
 
 const SIZE = 440;
 const R = SIZE / 2 - 10;

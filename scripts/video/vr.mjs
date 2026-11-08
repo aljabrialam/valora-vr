@@ -19,11 +19,15 @@ export async function serveHandModels(page) {
   });
 }
 
-/** Enter the emulated session with hands, hide the emulator UI, recentre for a seated player. */
+// INPUT=controller films the same actions with Quest Touch controllers: the trigger stands in for the pinch
+export const INPUT = process.env.INPUT === 'controller' ? 'controller' : 'hand';
+const DEVICE = INPUT === 'controller' ? 'controller-right' : 'hand-right';
+
+/** Enter the emulated session with hands (or controllers), hide the emulator UI, recentre for a seated player. */
 export async function enterVR(page) {
   await page.getByText('Enter XR').click();
   await page.waitForTimeout(8000);
-  await page.evaluate(() => {
+  await page.evaluate((mode) => {
     const game = [...document.querySelectorAll('canvas')].find((c) => getComputedStyle(c).position !== 'fixed');
     let node = game;
     while (node && node !== document.body) {
@@ -33,8 +37,8 @@ export async function enterVR(page) {
       }
       node = node.parentElement;
     }
-    window.IWER_DEVICE.primaryInputMode = 'hand';
-  });
+    window.IWER_DEVICE.primaryInputMode = mode;
+  }, INPUT);
   await page.waitForTimeout(3000);
   return page.evaluate(() => { VR.recentreNow(); return VR.rig(); });
 }
@@ -58,16 +62,18 @@ export async function pose(page, rig, at, pinch, head = {pitch: -24, yaw: 0}, ha
   const d = at.map((v, k) => v - from[k]);
   const yaw = (Math.atan2(-d[0], -d[2]) * 180) / Math.PI;
   const pitch = (Math.atan2(d[1], Math.hypot(d[0], d[2])) * 180) / Math.PI;
-  await page.evaluate(([h, ray, pinch, head]) => {
+  await page.evaluate(([h, ray, pinch, head, device]) => {
     const r = window.IWER_DEVICE.remote;
     // stay under programmatic control (it lapses to manual on a real-time timer, and the emulator's
     // own panel then resets the head and hands)
     r.activateCaptureMode();
     window.IWER_DEVICE.controlMode = 'programmatic';
     r.executeSetTransform({device: 'headset', orientation: {pitch: head.pitch, yaw: head.yaw, roll: 0}});
-    r.executeSetTransform({device: 'hand-right', position: {x: h[0], y: h[1], z: h[2]}, orientation: {pitch: ray.pitch, yaw: ray.yaw, roll: 0}});
-    r.executeSetSelectValue({device: 'hand-right', value: pinch});
-  }, [hand, {pitch, yaw}, pinch, head]);
+    r.executeSetTransform({device, position: {x: h[0], y: h[1], z: h[2]}, orientation: {pitch: ray.pitch, yaw: ray.yaw, roll: 0}});
+    r.executeSetSelectValue({device, value: pinch});
+    // the idle left controller rests low and to the side, out of the way
+    if (device === 'controller-right') r.executeSetTransform({device: 'controller-left', position: {x: h[0] - 0.42, y: h[1] - 0.22, z: h[2] + 0.06}, orientation: {pitch: -35, yaw: 20, roll: 0}});
+  }, [hand, {pitch, yaw}, pinch, head, DEVICE]);
 }
 
 /** Collects the game's '[VR] anchors' log line (world positions of Tiki, the sun, the play button,

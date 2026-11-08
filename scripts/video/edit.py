@@ -12,6 +12,8 @@ SEG = [
     ('frames/t_ph', 3.2, 'titles/p_ph', ''),
     ('titles/skies', 1.7, None, 'in-out'),
     ('frames/t_th', 2.5, 'titles/p_th', ''),
+    ('frames/t_vn', 2.5, 'titles/p_vn', ''),
+    ('frames/t_my', 2.5, 'titles/p_my', ''),
     ('frames/t_id', 2.5, 'titles/p_id', ''),
     ('frames/t_sg', 2.5, 'titles/p_sg', ''),
     ('titles/watch', 1.7, None, 'in-out'),
@@ -45,13 +47,19 @@ def frames_pattern(d):
 
 
 # CUT=trailer: the trailer shots, the logo and the end card only
+TRAILER = 11  # segments up to and including the logo
 NAME = 'showcase'
 if os.environ.get('CUT') == 'trailer':
-    SEG = SEG[:9] + [SEG[-1]]
+    SEG = SEG[:TRAILER] + [SEG[-1]]
     NAME = 'trailer'
-# CUT=demo: the VR demo for the submission: the trailer, then the headset view (emulator), a proof card
+# CUT=demo: the VR demo for the submission, under three minutes: the trailer, the entry and the goal,
+# choosing a place, then the headset view (emulator): how to play with hands, how to score, the same
+# with Touch controllers, one twist per capital, the proof, the maker and the link
 if os.environ.get('CUT') == 'demo':
-    SEG = SEG[:9] + [
+    SEG = SEG[:TRAILER] + [
+        ('titles/entry', 4.2, None, 'in-out'),
+        ('titles/goal', 4.6, None, 'in-out'),
+        ('frames/d_globe', 9.4, 'titles/d_globe', 'in'),
         ('titles/vr', 2.6, None, 'in-out'),
         ('frames/v_ph', 4.3, 'titles/d_tiki', 'in', 0.0),
         ('frames/v_ph', 5.9, 'titles/d_place', '', 4.3),
@@ -59,11 +67,17 @@ if os.environ.get('CUT') == 'demo':
         ('frames/v_ph', 3.75, 'titles/d_turn', '', 12.0),
         ('frames/v_look', 7.4, 'titles/d_look', ''),
         ('frames/v_sun', 10.1, 'titles/d_sun', '', 1.8),
-        ('frames/v_day', 11.0, 'titles/d_day', ''),
+        ('frames/v_score', 6.5, 'titles/d_score1', '', 0.0),
+        ('frames/v_score', 7.6, 'titles/d_score2', '', 6.5),
+        ('frames/v_score', 5.6, 'titles/d_score3', '', 14.1),
+        ('frames/v_score', 6.9, 'titles/d_score4', '', 19.7),
+        ('frames/v_vn', 7.9, 'titles/d_ctrl', '', 1.9),
         ('frames/v_th', 7.9, 'titles/d_th', '', 1.9),
+        ('frames/v_my', 7.9, 'titles/d_my', '', 1.9),
         ('frames/v_id', 7.9, 'titles/d_id', '', 1.9),
         ('frames/v_sg', 7.9, 'titles/d_sg', '', 1.9),
         ('titles/proof', 3.4, None, 'in-out'),
+        ('titles/profile', 5.0, None, 'in-out'),
         SEG[-1],
     ]
     NAME = 'demo'

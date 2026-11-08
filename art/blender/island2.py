@@ -21,6 +21,12 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 SEA = -0.9
 # the plateau: everything built stands inside this rounded rectangle
 PX0, PX1, PZ0, PZ1, PR = -8.8, 14.8, -9.0, 5.4, 3.2
+if COUNTRY == 'vn':  # a lakeside lane runs along the front, outside the garden wall
+    PZ1 = 7.7
+if COUNTRY == 'my':  # room on the west for the condo towers
+    PX0 = -15.6
+BUILT_FRONT = COUNTRY in ('th', 'vn')  # a straight stone embankment instead of a beach
+LANE = (5.0, 7.25)  # Hanoi lane, site z
 
 
 def hexc(h):
@@ -32,6 +38,8 @@ PAL = {
     'grass': hexc('#7cbf4f'), 'grass2': hexc('#69ad43'), 'soil': hexc('#8a5a34'),
     'sand': hexc('#f1d7a2'), 'wet': hexc('#d9b67c'), 'bed': hexc('#c9a978'),
     'rock': hexc('#c9a26a'), 'rock2': hexc('#a9824f'), 'rockwet': hexc('#7e6446'), 'rocktop': hexc('#dfc08a'), 'moss': hexc('#86bf45'), 'moss2': hexc('#6fa83a'), 'lipdark': hexc('#7a5a3a'), 'foam': (1.0, 1.0, 1.0),
+    'asphalt': hexc('#6d6f72'), 'kerb': hexc('#c9c3b6'), 'paint': hexc('#f1e3a8'),
+    'paving': hexc('#c9c1b3'), 'paving2': hexc('#bdb4a5'),
     'wall': hexc('#9b7d60'), 'wall2': hexc('#86684e'), 'green': hexc('#4f8f3a'),
 }
 
@@ -44,14 +52,14 @@ def sd_plateau(x, z):
     out = math.hypot(max(qx, 0), max(qz, 0)) + min(max(qx, qz), 0) - PR
     # wobble only outward so nothing built ends up over the edge
     wob = max(0.0, noise.noise(Vector((x * 0.16, z * 0.16, 3.0)))) * 0.9
-    if COUNTRY == 'th':  # a straight, built canal front: no wobble towards the water
+    if BUILT_FRONT:  # a straight, built canal front: no wobble towards the water
         wob *= max(0.0, min(1.0, (2.5 - z) / 2.0))
     return out - wob
 
 
 def canal_front(x, z):
     """Thailand: the front is a vertical laterite embankment on the khlong instead of a beach."""
-    return COUNTRY == 'th' and z > (PZ0 + PZ1) / 2 + 2.0
+    return BUILT_FRONT and z > (PZ0 + PZ1) / 2 + 2.0
 
 
 def beach_width(x, z):
@@ -66,7 +74,7 @@ def height(x, z):
     d = sd_plateau(x, z)
     if d <= 0:
         # flat where people live; soft mounds only far from the built area
-        far = max(0.0, min(1.0, (-d - 0.0) / 2.5)) * (1.0 if (x < -6.5 or x > 13.2 or z < -8.2) else 0.0)
+        far = max(0.0, min(1.0, (-d - 0.0) / 2.5)) * (1.0 if ((x < -6.5 and COUNTRY != 'my') or x > 13.2 or z < -8.2) else 0.0)
         return far * (0.25 + 0.25 * noise.noise(Vector((x * 0.3, z * 0.3, 1.0))))
     if canal_front(x, z):
         return 0.0 if d < 0.04 else -2.3
@@ -88,6 +96,12 @@ def colour(x, z, y, d):
         c = PAL['wall'] if band else PAL['wall2']
         if y > -0.12:
             c = PAL['wall2']
+    elif d <= 0 and COUNTRY == 'vn' and LANE[0] < z < LANE[1]:
+        # asphalt with a worn centre, a kerb line either side
+        edge = min(z - LANE[0], LANE[1] - z)
+        c = PAL['kerb'] if edge < 0.18 else PAL['asphalt'] if abs(z - (LANE[0] + LANE[1]) / 2) > 0.06 else PAL['paint']
+    elif d <= 0 and COUNTRY == 'my' and x < -8.9:
+        c = PAL['paving'] if (int((x + 40) / 1.2) + int((z + 40) / 1.2)) % 2 else PAL['paving2']
     elif d <= 0:
         c = PAL['grass'] if noise.noise(Vector((x * 0.25, z * 0.25, 2.0))) > -0.1 else PAL['grass2']
     elif y > -0.33:
@@ -102,7 +116,7 @@ def colour(x, z, y, d):
 
 
 # ---------------------------------------------------------------- terrain grid
-GX0, GX1, GZ0, GZ1, STEP = -15.0, 21.0, -14.0, 12.5, 0.32
+GX0, GX1, GZ0, GZ1, STEP = (-22.0 if COUNTRY == 'my' else -15.0), 21.0, -14.0, 12.5, 0.32
 nx, nz = int((GX1 - GX0) / STEP) + 1, int((GZ1 - GZ0) / STEP) + 1
 bm = bmesh.new()
 verts = []
@@ -231,10 +245,14 @@ while a < math.tau:
     a += (0.75 + w * 0.45) / max(r, 4.0) * rnd.uniform(0.85, 1.05) if not (canal_front(x, z) or beachy) else 1.0 / max(r, 4.0)
 # the outcrop: a stack of boulders behind the house at the back left, the island's landmark
 for (x, z, y, r) in ((-7.2, -8.4, 0.2, 1.7), (-5.6, -8.9, 0.0, 1.4), (-6.6, -9.4, 1.4, 1.2), (-8.4, -9.0, 0.9, 1.1), (-6.1, -8.1, 1.9, 0.8), (-3.9, -9.2, -0.2, 1.1)):
+    if COUNTRY == 'my' and x < -6.0:
+        continue  # the tower plaza takes this corner
     boulder(x, z, y, r * 0.8, 0.85, seed=s)
     s += 1
 # shore rocks on the beach and in the shallows, a few, in clusters, never in the boats' lane
 for (x, z, r) in ((-9.6, 4.6, 0.55), (-9.1, 5.3, 0.35), (-10.2, 3.6, 0.42), (15.8, 3.9, 0.6), (16.4, 3.0, 0.4), (15.2, 4.8, 0.32), (-4.0, 8.4, 0.3), (12.6, 7.8, 0.36)):
+    if COUNTRY == 'my' and x < -8:
+        continue
     boulder(x, z, height(x, z) - 0.05, r, 0.7, seed=s, mossy=False)
     s += 1
 
@@ -299,7 +317,7 @@ if COUNTRY == 'ph':
         boulder(x, z, height(x, z) + 0.08, r, 0.95, seed=900 + int(x * 10), mossy=False)
 
 # ---------------------------------------------------------------- Thailand: the canal embankment
-if COUNTRY == 'th':
+if BUILT_FRONT:
     # one mesh for the embankment strip
     fb = bmesh.new()
     fcl_ = fb.loops.layers.float_color.new('Col')

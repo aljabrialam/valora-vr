@@ -4,7 +4,7 @@
 |---|---|
 | [GAME-DESIGN.md](GAME-DESIGN.md) | The two-watchers idea, the session, levels, interactions, feedback, simulation boundaries, scope |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Modules, coordinates and scale, the check engine and watchers, sun paths, hand-ray interaction, rendering, test hooks |
-| [TESTING.md](TESTING.md) | Solvability proof (12/12), emulator hands-only playthrough (11/11), what is not tested yet |
+| [TESTING.md](TESTING.md) | Solvability proof (18/18), emulator playthrough with hands (11/11), what is not tested yet |
 | [QUEST-TEST-CHECKLIST.md](QUEST-TEST-CHECKLIST.md) | Borrowed-headset checklist |
 | [PERFORMANCE.md](PERFORMANCE.md) | Frame-rate target and budgets |
 | [ACCESSIBILITY.md](ACCESSIBILITY.md) | Accessibility and comfort decisions |

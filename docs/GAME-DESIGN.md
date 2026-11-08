@@ -8,9 +8,9 @@ A spot is in direct sun when the sun can see it. A chair is private when the nei
 
 ## 2. Pillars
 
-1. **Hands are the controller.** Every action is a ray pinch: aim, pinch, move, let go. Nothing needs fine finger poses, throwing or speed.
+1. **Hands first.** Every action is a ray pinch: aim, pinch, move, let go. Nothing needs fine finger poses, throwing or speed. Touch controllers work the same way, with the trigger for the pinch.
 2. **Cause and effect you can see.** Every rule has a beam along the watcher's line and a label in words and a symbol. Moving anything updates them at once.
-3. **One house, four skies.** The same courtyard puzzle plays out in four South-east Asian capitals, each with its own house, its own sun path and its own twist.
+3. **One house, six skies.** The same courtyard puzzle plays out in six South-east Asian capitals, each with its own house, its own sun path and its own twist.
 4. **Short and complete.** A level takes a minute or two; a country takes about five.
 
 ## 3. The session
@@ -28,7 +28,7 @@ flowchart LR
 
 | Beat | What happens |
 |---|---|
-| Globe | A small Earth turns to the place you pick; ASEAN members are tinted, the four playable capitals carry a marker |
+| Globe | A small Earth turns to the place you pick; ASEAN members are tinted, the six playable capitals carry a marker |
 | Hello | Tiki the gecko sits on the garden wall. Pinch Tiki to start |
 | Place | An arrow points at the bamboo raft moored by the island. Pinch a piece, point at the courtyard, let go. The tutorial moves on by itself when a piece lands |
 | Twist | Tiki introduces the place: the house, and what watches it here (the neighbour, boats, the high-rise, the typhoon, the rain) |
@@ -48,6 +48,12 @@ Defined in [`src/sim/countries.ts`](../src/sim/countries.ts) and proven by [`scr
 | Thailand · Bangkok | Long-tail boats pass on the canal; the wall is only 0.9 m | Long-tail Boats | Keep the garden table out of the boats' sight | 1 |
 | | | Lunch by the Water | Lunch in the shade, out of sight of the boats | 2 |
 | | | A Day on the Water | A sunny swim the boats cannot see, a private chair, a shaded afternoon | 1 |
+| Vietnam · Hanoi | Motorbikes stream down the lane; the laterite wall is only 1.1 m | Xe Máy | Keep the garden table out of the riders' sight | 1 |
+| | | Hàng Xóm | Two watchers at once: the neighbour sees the chair, the riders see the table | 2 |
+| | | Một Ngày Hà Nội | Sun on the lotus pond out of sight of the lane, a private chair, a shaded afternoon | 1 |
+| Malaysia · Kuala Lumpur | Condo towers rise over the kampung and look straight down | Kampung Baru | Hide the garden table from the towers | 1 |
+| | | Teh Tarik | Tea at lunch: in the shade and out of the towers' sight | 1 |
+| | | Sehari Suntuk | A sunny swim the towers cannot see, a private chair, a shaded afternoon | 2 |
 | Indonesia · Jakarta | Monsoon rain slants in from the west | Hujan | Keep the garden table dry in the 3:00 rain | 1 |
 | | | Rain and Shine | A dry table in the rain; the plant still gets its morning sun | 1 |
 | | | Musim Hujan | A dry deck, a private chair, shade in the afternoon | 1 |
@@ -57,7 +63,9 @@ Defined in [`src/sim/countries.ts`](../src/sim/countries.ts) and proven by [`scr
 
 Each country teaches a different piece: screens against a neighbour at eye level, hedges against boats looking over a low wall, a pergola against rain, a tree's canopy against a view from above.
 
-**Stars.** Par or fewer pieces: 3 stars. One more: 2. Any other solution: 1. Best stars are kept in the browser.
+**Stars.** Par or fewer pieces: 3 stars. One more: 2. Any other solution: 1. The level card on the desk shows three stars and "pieces · par" in the headset; best stars are kept in the browser.
+
+**Players.** One. "Two watchers" names what looks at the house (the sun, and whoever looks in), not a second player.
 
 ## 5. Tiki, the guide
 

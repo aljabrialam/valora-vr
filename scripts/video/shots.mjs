@@ -100,6 +100,18 @@ const shots = {
     await record(page, OUT, 2.5, move(page, {pos: [-0.55, 0.92, 0.25], look: [0.25, 1.0, -0.75]}, {pos: [-0.4, 0.88, 0.32], look: [0.3, 1.08, -0.8]}, 2.5, 44));
     await browser.close();
   },
+  async t_vn() {
+    const {browser, page} = await load('?country=vn&level=1');
+    await page.evaluate(() => VR.chrome(false));
+    await record(page, OUT, 2.5, move(page, {pos: [0.95, 0.98, 0.5], look: [0.02, 0.8, -0.42]}, {pos: [0.7, 0.95, 0.66], look: [-0.04, 0.8, -0.42]}, 2.5, 40));
+    await browser.close();
+  },
+  async t_my() {
+    const {browser, page} = await load('?country=my&level=1');
+    await page.evaluate(() => VR.chrome(false));
+    await record(page, OUT, 2.5, move(page, {pos: [-0.25, 1.05, 0.75], look: [-0.35, 1.0, -0.6]}, {pos: [-0.05, 1.0, 0.8], look: [-0.3, 0.98, -0.6]}, 2.5, 46));
+    await browser.close();
+  },
   async t_watch() {
     // over the neighbour's shoulder: the red line of sight lands on the reading chair
     const {browser, page} = await load('?country=ph&level=1');
@@ -117,6 +129,26 @@ const shots = {
     await record(page, OUT, 6, glide(page, [
       {t: 0, x: 900, y: 700}, {t: 0.8, ...c(th)}, {t: 2.4, ...c(th)}, {t: 3.0, ...c(ph)}, {t: 3.4, ...c(ph), down: true}, {t: 3.5, ...c(ph), up: true}, {t: 6, ...c(ph)},
     ]));
+    await browser.close();
+  },
+  // the demo: choose a place on the globe (browser view, before entering VR), then point at Enter XR
+  async d_globe() {
+    const {browser, page} = await load('', 18000, false);
+    await cursor(page);
+    const box = async (id) => page.locator(`.vh-place[data-country="${id}"]`).boundingBox();
+    const c = (b) => ({x: b.x + b.width * 0.4, y: b.y + b.height / 2});
+    const vn = c(await box('vn')), my = c(await box('my')), ph = c(await box('ph'));
+    const first = glide(page, [
+      {t: 0, x: 900, y: 760}, {t: 0.9, ...vn}, {t: 2.3, ...vn}, {t: 2.9, ...my}, {t: 4.3, ...my}, {t: 4.9, ...ph}, {t: 5.3, ...ph, down: true}, {t: 5.4, ...ph, up: true}, {t: 7.4, ...ph},
+    ]);
+    const n = await record(page, OUT, 7.4, first);
+    // the place opens on the desk; the Enter XR button waits bottom centre
+    const xr = await page.evaluate(() => {
+      for (const el of document.body.children) if (el.shadowRoot) { const b = el.shadowRoot.querySelector('button') ?? el; const r = b.getBoundingClientRect(); return {x: r.x + r.width / 2, y: r.y + r.height / 2}; }
+      return {x: 640, y: 660};
+    });
+    // hover only: a real click would open the emulator's own panels; the headset shots take over from here
+    await record(page, OUT, 2.0, glide(page, [{t: 0, ...ph}, {t: 1.3, ...xr}, {t: 2.0, ...xr}]), n);
     await browser.close();
   },
   async w_tiki() {

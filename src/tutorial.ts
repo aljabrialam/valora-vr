@@ -3,7 +3,7 @@
 
 import type {Country, CountryLevel} from './sim/countries.ts';
 
-export type Look = 'window' | 'tower' | 'boat' | 'seat' | 'plant' | 'pool' | 'table' | 'deck' | 'tray' | 'sun' | 'overhang' | 'play' | 'tiki' | null;
+export type Look = 'window' | 'tower' | 'boat' | 'moto' | 'seat' | 'plant' | 'pool' | 'table' | 'deck' | 'tray' | 'sun' | 'overhang' | 'play' | 'tiki' | null;
 
 export type Step = {
   id: string;
@@ -18,6 +18,8 @@ export type Step = {
 const TWIST: Record<Country['id'], {say: string; look: Look}> = {
   ph: {say: 'Here the neighbour watches from his balcony, and in typhoon season the wind comes in low over the bamboo fence.', look: 'window'},
   th: {say: 'Long-tail boats pass on the water all day, and the railing is low. Passengers can see a lot.', look: 'boat'},
+  vn: {say: 'Motorbikes stream down the lane all day, and the wall is only waist high. Riders glance in as they pass.', look: 'moto'},
+  my: {say: 'Condo towers rise over the kampung and look straight down. Screens will not help much; think about what covers from above.', look: 'tower'},
   id: {say: 'In the wet season the afternoon rain slants in from the west. Cover from above keeps things dry.', look: 'table'},
   sg: {say: 'A high-rise block next door looks straight down. Screens will not help much; think about what covers from above.', look: 'tower'},
 };
@@ -46,7 +48,7 @@ export function scriptFor(country: Country, index: number, level: CountryLevel, 
 
 function lookFor(level: CountryLevel): Look {
   const r = level.rules[level.rules.length - 1];
-  if (r.who === 'tower' || r.who === 'boat') return r.who;
+  if (r.who === 'tower' || r.who === 'boat' || r.who === 'moto') return r.who;
   if (r.who === 'window') return 'window';
   return r.target;
 }

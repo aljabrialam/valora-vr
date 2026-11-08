@@ -1,8 +1,8 @@
 # Controls
 
-## In the headset (hands)
+## In the headset (hands or Touch controllers)
 
-Open [valora-vr.vercel.app](https://valora-vr.vercel.app) in Quest Browser, choose a place on the globe, select **Enter VR** and put the controllers down. The view sets itself up once for a seated player at the desk; there is no walking or turning.
+Open [valora-vr.vercel.app](https://valora-vr.vercel.app) in Quest Browser, choose a place on the globe, select **Enter VR** and put the controllers down, or keep them in hand. The view sets itself up once for a seated player at the desk; there is no walking or turning.
 
 Every action is a ray pinch: point your hand so its ray touches the thing, pinch thumb and index finger, move, and open your fingers to let go.
 
@@ -17,7 +17,7 @@ Every action is a ray pinch: point your hand so its ray touches the thing, pinch
 | Slide the overhang (some levels) | Pinch its handle and pull |
 | Live the day | Pinch the bronze play button beside the raft |
 
-Controllers work the same way: aim and pull the trigger.
+Touch controllers work the same way: aim the controller's ray and pull the trigger where the table says pinch. The demo video shows both (filmed in Meta's IWER emulator).
 
 ## On a computer or phone, no headset
 

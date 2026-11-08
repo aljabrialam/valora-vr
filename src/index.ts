@@ -75,7 +75,7 @@ model.screen.removeFromParent();
 const deskEntity = world.createTransformEntity(model.desk);
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
 // Each country has its own island and house where one has been modelled; the shared ones stand in.
-const OWN_HOUSE = new Set(['ph', 'th', 'id', 'sg']);
+const OWN_HOUSE = new Set(['ph', 'th', 'vn', 'my', 'id', 'sg']);
 /** Height of the visible garden wall or fence top, site metres (Tiki sits on it). */
 const wallTop = (id: string) => (OWN_HOUSE.has(id) ? COUNTRIES.find((c) => c.id === id)!.wallH : 2.24);
 const countryArt: {island?: Group; house?: Group; trees?: Group; id?: string} = {};
@@ -108,8 +108,8 @@ function loadCountryArt(id: string) {
       const own = OWN_HOUSE.has(id);
       if (model.roof) model.roof.visible = !own;
       model.glass.visible = !own;
-      // Thailand models the neighbour's balcony where the figure stands; the others keep the drawn one
-      balcony.visible = id !== 'th';
+      // Thailand, Vietnam and Malaysia model the neighbour's ledge where the figure stands; the others keep the drawn one
+      balcony.visible = id !== 'th' && id !== 'vn' && id !== 'my';
       placeTiki();
     })
     .catch((e) => console.warn('[VR] house', e));
@@ -517,7 +517,7 @@ function refresh() {
   const was = solved;
   solved = res.solved;
   stars = res.stars;
-  card.draw(levelIndex, level, res.results, solved);
+  card.draw(levelIndex, level, res.results, solved, {used: design.pieces.length, par: level.par, stars});
   hud.level(levelIndex, LEVELS.length, level, res.results, solved, {used: design.pieces.length, par: level.par, stars, best: bestStars(level.id)});
   requestAnimationFrame(frameFlat);
   for (const b of beams.values()) b.group.visible = false;
@@ -534,7 +534,7 @@ function refresh() {
   neighbourOnTerrace.visible = terrRules.length > 0;
   waving.window = winRules.some((r) => r.look.sees);
   waving.terrace = terrRules.some((r) => r.look.sees);
-  waving.local = res.results.some((r) => (r.rule.who === 'tower' || r.rule.who === 'boat') && r.look.sees);
+  waving.local = res.results.some((r) => (r.rule.who === 'tower' || r.rule.who === 'boat' || r.rule.who === 'moto') && r.look.sees);
   overhangHandle.visible = level.overhang;
   if (solved && !was) {
     solveSound();
@@ -700,7 +700,8 @@ function lookAt(l: Look | undefined): Vector3 | null {
     case 'window':
       return siteToWorld(LAYOUT.neighbour.window);
     case 'tower':
-    case 'boat': {
+    case 'boat':
+    case 'moto': {
       const p = eyePoints(l)[0];
       return p ? siteToWorld(p) : null;
     }
@@ -867,8 +868,8 @@ const toScreen = (v: Vector3) => {
     });
   },
   socketScreen: (i: number) => toScreen(siteToWorld(SOCKETS[i])),
-  worldPos(name: 'tiki' | 'sun' | 'overhang') {
-    const o = name === 'tiki' ? tiki.hit : name === 'sun' ? sunHandle : overhangHandle;
+  worldPos(name: 'tiki' | 'sun' | 'overhang' | 'card') {
+    const o = name === 'tiki' ? tiki.hit : name === 'sun' ? sunHandle : name === 'card' ? card.mesh : overhangHandle;
     return o.getWorldPosition(new Vector3()).toArray();
   },
 };

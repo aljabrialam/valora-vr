@@ -108,16 +108,16 @@ export class Hud {
     this.countryName = name;
   }
 
-  /** The ASEAN map: four playable places, the others coming soon. Capitals plotted by longitude
+  /** The ASEAN map: six playable places, the others coming soon. Capitals plotted by longitude
    *  and latitude so the map is honest without needing coastlines. */
   showMap(playable: {id: string; name: string; place: string; house: string}[]) {
     const all: {name: string; place: string; lon: number; lat: number; id?: string}[] = [
       {name: 'Myanmar', place: 'Naypyidaw', lon: 96.1, lat: 19.7},
       {name: 'Thailand', place: 'Bangkok', lon: 100.5, lat: 13.75, id: 'th'},
       {name: 'Laos', place: 'Vientiane', lon: 102.6, lat: 18.0},
-      {name: 'Vietnam', place: 'Hanoi', lon: 105.8, lat: 21.0},
+      {name: 'Vietnam', place: 'Hanoi', lon: 105.8, lat: 21.0, id: 'vn'},
       {name: 'Cambodia', place: 'Phnom Penh', lon: 104.9, lat: 11.6},
-      {name: 'Malaysia', place: 'Kuala Lumpur', lon: 101.7, lat: 3.1},
+      {name: 'Malaysia', place: 'Kuala Lumpur', lon: 101.7, lat: 3.1, id: 'my'},
       {name: 'Singapore', place: 'Singapore', lon: 103.8, lat: 1.35, id: 'sg'},
       {name: 'Brunei', place: 'Bandar Seri Begawan', lon: 114.9, lat: 4.9},
       {name: 'Philippines', place: 'Manila', lon: 121.0, lat: 14.6, id: 'ph'},

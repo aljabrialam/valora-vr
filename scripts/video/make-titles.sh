@@ -11,6 +11,8 @@ T end 4.0 "scene=end"
 B=$(e "Captured in browser")
 T p_ph 3.2 "scene=place&name=Manila&sub=$(e 'Philippines · bahay kubo')"
 T p_th 2.5 "scene=place&name=Bangkok&sub=$(e 'Thailand · by the canal')"
+T p_vn 2.5 "scene=place&name=Hanoi&sub=$(e 'Vietnam · northern village house')"
+T p_my 2.5 "scene=place&name=$(e 'Kuala Lumpur')&sub=$(e 'Malaysia · kampung house')"
 T p_id 2.5 "scene=place&name=Jakarta&sub=$(e 'Indonesia · joglo')"
 T p_sg 2.5 "scene=place&name=Singapore&sub=$(e 'black-and-white bungalow')"
 T o_globe 6 "scene=ov&chip=Choose&label=$(e ' a place')&cap=$(e 'Spin the globe. Each place has its own house and sun path.')&badge=$B"

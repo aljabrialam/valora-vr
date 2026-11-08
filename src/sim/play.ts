@@ -102,7 +102,7 @@ export type Target = keyof typeof TARGETS;
 
 export type Look = {sees: boolean; from: V3; to: V3; blocker: string | null; t: number};
 
-export type Eye = 'window' | 'terrace' | 'tower' | 'boat';
+export type Eye = 'window' | 'terrace' | 'tower' | 'boat' | 'moto';
 
 /** Where an eye watcher looks from in the current country (a boat has several positions). */
 export function eyePoints(eye: Eye): V3[] {

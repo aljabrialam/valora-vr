@@ -26,7 +26,7 @@ export class LevelCard {
     );
   }
 
-  draw(index: number, level: Level, results: RuleResult[], solved: boolean) {
+  draw(index: number, level: Level, results: RuleResult[], solved: boolean, score = {used: 0, par: level.par, stars: 0}) {
     const g = this.canvas.getContext('2d')!;
     g.clearRect(0, 0, W, H);
     roundRect(g, 8, 8, W - 16, H - 16, 44);
@@ -40,6 +40,12 @@ export class LevelCard {
     g.fillStyle = BRONZE;
     g.font = '600 26px Inter, -apple-system, sans-serif';
     g.fillText(`LEVEL ${index + 1} OF ${LEVELS.length}`, 56, 78);
+    // the score, top right: three stars (filled when earned) and pieces used against par
+    for (let i = 0; i < 3; i++) star(g, W - 64 - (2 - i) * 46, 64, 19, solved && i < score.stars);
+    g.fillStyle = '#6b6a66';
+    g.font = '500 22px Inter, -apple-system, sans-serif';
+    const tally = `${score.used} ${score.used === 1 ? 'piece' : 'pieces'} \u00b7 par ${score.par}`;
+    g.fillText(tally, W - 56 - g.measureText(tally).width, 116);
     g.fillStyle = INK;
     g.font = '500 60px "Cormorant Garamond", Georgia, serif';
     g.fillText(level.title, 56, 146);
@@ -65,6 +71,27 @@ export class LevelCard {
     g.font = '500 24px Inter, -apple-system, sans-serif';
     g.fillText(solved ? 'Solved. Pinch Tiki for the next level, or play the day.' : 'Illustrative sunlight and visibility checks.', 56, H - 48);
     this.tex.needsUpdate = true;
+  }
+}
+
+/** A five-point star, bronze when earned, an outline when not. */
+function star(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, on: boolean) {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+    if (i) g.lineTo(x, y);
+    else g.moveTo(x, y);
+  }
+  g.closePath();
+  if (on) {
+    g.fillStyle = BRONZE;
+    g.fill();
+  } else {
+    g.lineWidth = 3;
+    g.strokeStyle = 'rgba(29,29,31,0.28)';
+    g.stroke();
   }
 }
 

@@ -8,7 +8,7 @@ import {open, record} from './clock.mjs';
 import {serveHandModels, enterVR, pose as poseAt, watchAnchors, watchLog} from './vr.mjs';
 // the right hand rests above the desk, forward and right of the head (rig space): its ray must come
 // down onto the desk plane for a carried piece to follow it
-const HAND = [0.14, 1.44, -0.24];
+const HAND = process.env.INPUT === 'controller' ? [0.22, 1.36, -0.3] : [0.14, 1.44, -0.24];
 const pose = (page, rig, at, pinch, head) => poseAt(page, rig, at, pinch, head, HAND);
 
 const shot = process.argv[2];
@@ -22,6 +22,9 @@ const ease = (k) => k * k * (3 - 2 * k);
 const up = (p, dy) => [p[0], p[1] + dy, p[2]];
 const HEAD = {pitch: -27, yaw: 0};
 const LOOK_RAFT = HEAD; // the emulated hand moves with the head: keep the head still while the hand works
+// leaning in to read the level card at the back of the desk
+const CARD_LEAN = JSON.parse(process.env.CARD_LEAN ?? '[0, 0.16, -0.86]');
+const CARD_HEAD = JSON.parse(process.env.CARD_HEAD ?? '{"pitch": 4, "yaw": 0}');
 
 /**
  * Plays segments [{d: seconds, to: worldPoint, pinch: 0|1, head?: {pitch, yaw}, hold?: true}];
@@ -29,15 +32,14 @@ const LOOK_RAFT = HEAD; // the emulated hand moves with the head: keep the head 
  */
 async function play(page, rig, segs, start = {at: segs[0].to, head: HEAD}, first = 0) {
   const total = segs.reduce((s, x) => s + x.d, 0);
-  let st = {at: start.at, head: start.head};
+  let st = {at: start.at, head: start.head, lean: start.lean ?? LEANED.cur.slice()};
   const ends = [];
   for (const s of segs) {
     const from = st;
-    const to = {at: s.to ?? from.at, head: s.head ?? from.head, pinch: s.pinch ?? 0};
+    const to = {at: s.to ?? from.at, head: s.head ?? from.head, pinch: s.pinch ?? 0, lean: s.lean ?? from.lean};
     ends.push({from, to, d: s.d});
     st = to;
   }
-  const log = [];
   const next = await record(page, TEST ? `${OUT}-all` : OUT, total, async (t) => {
     let acc = 0;
     for (const e of ends) {
@@ -45,7 +47,14 @@ async function play(page, rig, segs, start = {at: segs[0].to, head: HEAD}, first
         const k = ease(Math.min(1, (t - acc) / e.d));
         const at = lerp(e.from.at, e.to.at, k);
         const head = {pitch: e.from.head.pitch + (e.to.head.pitch - e.from.head.pitch) * k, yaw: e.from.head.yaw + (e.to.head.yaw - e.from.head.yaw) * k};
-        await pose(page, rig, at, e.to.pinch, head);
+        // leaning in (to read the level card): move the player, and the hand with it
+        const want = lerp(e.from.lean, e.to.lean, k);
+        const dl = want.map((v, i) => v - LEANED.cur[i]);
+        if (dl.some((v) => Math.abs(v) > 1e-5)) {
+          await page.evaluate((d) => VR.lean(d[0], d[1], d[2]), dl);
+          LEANED.cur = want;
+        }
+        await pose(page, rig.map((v, i) => v + LEANED.cur[i]), at, e.to.pinch, head);
         return;
       }
       acc += e.d;
@@ -62,6 +71,8 @@ async function play(page, rig, segs, start = {at: segs[0].to, head: HEAD}, first
   }
   return next;
 }
+// how far the player has leaned from where the shot started (site of the rig returned by setup)
+const LEANED = {cur: [0, 0, 0]};
 
 async function setup(path) {
   const {browser, page} = await open(BASE + path, {w: W, h: H});
@@ -214,7 +225,55 @@ const shots = {
     await browser.close();
   },
 
+  // a quick check of the lean-in framing for the level card (TEST=1)
+  async v_cardprobe() {
+    const {browser, page, rig, A} = await setup('?country=vn&level=2');
+    const card = await page.evaluate(() => VR.worldPos('card'));
+    console.log('rig', rig, 'card', card);
+    await play(page, rig, [{d: 1.0, to: up(card, -0.08), head: CARD_HEAD, lean: CARD_LEAN}, {d: 1.1, to: up(card, -0.08)}]);
+    await browser.close();
+  },
   async v_id() { await countrySolve('id', 'pergola', 15); },
+  // Hanoi: hide the garden table from the motorbikes in the lane (film with INPUT=controller for Touch)
+  async v_vn() { await countrySolve('vn', 'hedge', 22); },
+  // Kuala Lumpur: a tree's canopy hides the table from the condo towers
+  async v_my() { await countrySolve('my', 'tree', 6); },
+  // Hanoi level 2, two watchers at once: a screen for the neighbour, a hedge for the riders. Both
+  // rules turn to DONE, the card fills three stars (two pieces, par two), then the hand presses play.
+  async v_score() {
+    const {browser, page, rig, A, log, piece} = await setup('?country=vn&level=2');
+    const sc = await piece('screen'), he = await piece('hedge');
+    const s2 = A.sockets[2], s22 = A.sockets[22];
+    const card = await page.evaluate(() => VR.worldPos('card'));
+    const n = await play(page, rig, [
+      {d: 0.7, to: A.tiki},
+      {d: 0.4, to: A.tiki, pinch: 1},
+      {d: 0.6, to: A.tiki},
+      {d: 1.3, to: up(card, -0.08), head: CARD_HEAD, lean: CARD_LEAN},
+      {d: 2.2, to: up(card, -0.08)},
+      {d: 1.3, to: sc, head: HEAD, lean: [0, 0, 0]},
+      {d: 0.5, to: sc, pinch: 1},
+      {d: 1.7, to: s2, pinch: 1},
+      {d: 0.4, to: s2, pinch: 1},
+      {d: 0.6, to: s2},
+    ]);
+    const he2 = await piece('hedge');
+    const m = await play(page, rig, [
+      {d: 1.2, to: he2},
+      {d: 0.5, to: he2, pinch: 1},
+      {d: 1.7, to: s22, pinch: 1},
+      {d: 0.4, to: s22, pinch: 1},
+      {d: 0.6, to: s22},
+      {d: 1.3, to: up(card, -0.08), head: CARD_HEAD, lean: CARD_LEAN},
+      {d: 3.0, to: up(card, -0.08)},
+      {d: 1.3, to: A.play, head: HEAD, lean: [0, 0, 0]},
+      {d: 0.4, to: A.play, pinch: 1},
+      {d: 0.5, to: A.play},
+    ], {at: s2, head: HEAD}, n);
+    await record(page, OUT, TEST ? 2 : 6, async () => { await pose(page, rig, A.play, 0, {pitch: -20, yaw: 0}); await page.evaluate(() => window.__frame(1000 / 24)); }, m);
+    console.log(log.filter((l) => /design|day|step/.test(l)).slice(-5).join('\n'));
+    await browser.close();
+  },
   async v_sg() { await countrySolve('sg', 'tree', 1); },
 };
 

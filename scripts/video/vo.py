@@ -1,4 +1,4 @@
-# Voice-over for the VR demo cut (CUT=demo in edit.py, 99.95 s).
+# Voice-over for the VR demo cut (CUT=demo in edit.py, 159.55 s).
 #   pip install kokoro-onnx soundfile
 #   KOKORO_DIR=/path/to/models python3 scripts/video/vo.py   -> video/vo-demo.wav
 # Models: kokoro-v1.0.onnx and voices-v1.0.bin from
@@ -12,44 +12,52 @@ from kokoro_onnx import Kokoro
 
 VOICE = os.environ.get('VO_VOICE', 'af_heart')
 SPEED = float(os.environ.get('VO_SPEED', '1.0'))
-DUR = 99.95
+DUR = 159.55
 SR = 24000
 
 # (start seconds, line). Segment times come from the demo timeline in docs/VIDEO.md.
 LINES = [
-    # trailer 0.0 - 22.0
-    (0.5, 'Four homes in Southeast Asia, all under the same sun.'),
-    (5.0, 'Manila. Bangkok. Jakarta. Singapore.'),
-    (14.2, 'But someone is always watching.'),
-    (16.6, 'Your goal: let the sun in, and keep the watchers out.'),
-    (19.6, 'This is Valora: Two Watchers.'),
-    # "Now, in the headset" card 22.0 - 24.6
-    (22.15, "Here's how to play: seated, hands only."),
-    # Tiki 24.6 - 28.9
-    (25.0, 'Point at Tiki the gecko, and pinch to start.'),
-    # place 28.9 - 34.8
-    (29.2, 'Pinch a screen on the bamboo raft. Point it at the courtyard, and let go.'),
-    # private 34.8 - 36.6, turn 36.6 - 40.35
-    (34.9, "Now the neighbour can't see your chair."),
-    (37.2, 'A short pinch turns a piece.'),
-    # look 40.35 - 47.75
-    (40.6, 'Look around. Every watcher has a line of sight: the neighbour, the boats on the canal, and the sun.'),
-    # sun 47.75 - 57.85
-    (48.1, 'Pinch the sun and drag it across the sky. The shadows follow each city\'s own sun path.'),
-    (53.6, 'A spot is sunny when the sun can see it, and private when no one else can.'),
-    # day 57.85 - 68.85
-    (58.2, 'When every rule passes, press play to live the day.'),
-    (61.8, 'The sun crosses the sky, and every watcher is checked, hour by hour.'),
-    # Bangkok 68.85 - 76.75
-    (69.1, 'Each city adds a twist. In Bangkok, a hedge hides the garden table from the long-tail boats.'),
-    # Jakarta 76.75 - 84.65
-    (77.1, 'In Jakarta, a pergola keeps the table dry in the monsoon rain.'),
-    # Singapore 84.65 - 92.55
-    (85.0, "In Singapore, a tree's canopy hides the pool from the high-rise next door."),
-    # proof 92.55 - 95.95
-    (92.75, 'Twelve levels, four capitals, every one proven solvable.'),
-    # end 95.95 - 99.95
-    (96.45, 'Valora. Let the sun in. Keep the watchers out.'),
+    # trailer 0.0 - 27.0
+    (0.4, 'Six homes across Southeast Asia, all under the same sun.'),
+    (4.9, 'Manila. Bangkok. Hanoi. Kuala Lumpur. Jakarta. Singapore.'),
+    (19.1, 'But someone is always watching.'),
+    (21.1, 'Your goal: let the sun in, and keep the watchers out.'),
+    (24.1, 'This is Valora: Two Watchers.'),
+    # entry 27.0 - 31.2, goal 31.2 - 35.8
+    (27.1, 'Our entry for the Meta VR Start Developer Competition.'),
+    (31.4, "It's a single-player puzzle. The two watchers are the sun, and whoever looks in."),
+    # globe 35.8 - 45.2
+    (36.1, 'Start on the globe. Pick a country, then enter VR.'),
+    (40.0, 'Each one has its own house, its own sun path, and its own watchers.'),
+    # "Now, in the headset" 45.2 - 47.8
+    (45.3, 'In the headset, stay seated. Use hands or controllers.'),
+    # Tiki 47.8 - 52.1, place 52.1 - 58.0, private 58.0 - 59.8, turn 59.8 - 63.55
+    (49.0, 'Point at Tiki the gecko, and pinch to start.'),
+    (52.4, 'Pinch a screen on the bamboo raft. Point it at the courtyard, and let go.'),
+    (58.1, "Now the neighbour can't see your chair."),
+    (60.0, 'A short pinch turns a piece.'),
+    # look 63.55 - 70.95
+    (63.8, 'Look around. Every watcher has a line of sight: the neighbour, the boats on the canal, and the sun.'),
+    # sun 70.95 - 81.05
+    (71.2, "Pinch the sun and drag it across the sky. The shadows follow each city's own sun path."),
+    (76.9, 'A spot is sunny when the sun can see it, and private when no one else can.'),
+    # score 81.05 - 107.65
+    (81.3, "Here's how you score. Each level has a few rules, and they start as not yet."),
+    (86.2, 'This one has two watchers at once: the neighbour, and the riders in the lane.'),
+    (91.0, 'A screen blocks the neighbour. A hedge blocks the riders.'),
+    (95.4, 'Every rule is done. Use the fewest pieces, and you earn three stars.'),
+    (100.9, 'Then press play to live the day. Every hour is checked.'),
+    # controllers, Hanoi 107.65 - 115.55
+    (107.9, 'Prefer controllers? Point, and pull the trigger. In Hanoi, a hedge hides the table from the motorbikes.'),
+    # Bangkok 115.55 - 123.45, Kuala Lumpur 123.45 - 131.35, Jakarta 131.35 - 139.25, Singapore 139.25 - 147.15
+    (115.8, 'In Bangkok, a hedge hides the table from the long-tail boats.'),
+    (123.7, "In Kuala Lumpur, condo towers look down. A tree's canopy hides the table."),
+    (131.6, 'In Jakarta, a pergola keeps the table dry in the monsoon rain.'),
+    (139.5, "In Singapore, a tree's canopy hides the pool from the high-rise next door."),
+    # proof 147.15 - 150.55, profile 150.55 - 155.55, end 155.55 - 159.55
+    (147.25, 'Eighteen levels, six capitals, all proven solvable.'),
+    (151.0, 'Made by Aljabri Alam, in Singapore.'),
+    (155.8, 'Valora. Let the sun in. Keep the watchers out.'),
 ]
 GAP = 0.15  # least silence between two lines
 

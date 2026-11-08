@@ -1,6 +1,8 @@
-// The four playable places. Same courtyard puzzle, local house and a local twist:
+// The six playable places. Same courtyard puzzle, local house and a local twist:
 //   Philippines: typhoon wind across a low bamboo fence
 //   Thailand:    long-tail boats passing on the water, looking over the railing
+//   Vietnam:     motorbikes streaming down the lane, riders glancing over a low wall
+//   Malaysia:    condo towers rising over the kampung, looking down
 //   Indonesia:   monsoon rain slanting in from the west
 //   Singapore:   a high-rise next door looking down
 // Sun: real positions for 8 November at each city (latitude, and local clock time of solar noon
@@ -8,7 +10,7 @@
 
 import type {V3} from './geom.ts';
 
-export type WatcherId = 'sun' | 'window' | 'terrace' | 'tower' | 'boat' | 'wind' | 'rain';
+export type WatcherId = 'sun' | 'window' | 'terrace' | 'tower' | 'boat' | 'moto' | 'wind' | 'rain';
 export type TargetId = 'seat' | 'plant' | 'pool' | 'table' | 'deck';
 export type KindId = 'screen' | 'tree' | 'pergola' | 'hedge';
 
@@ -32,17 +34,17 @@ export type CountryLevel = {
 };
 
 export type Country = {
-  id: 'ph' | 'th' | 'id' | 'sg';
+  id: 'ph' | 'th' | 'vn' | 'my' | 'id' | 'sg';
   name: string;
   place: string; // city the sun is computed for
   house: string; // the local house, in words
   lat: number;
   solarNoon: number; // local clock time
   wallH: number; // courtyard wall height: low fences let wind and boats in
-  eyes: Partial<Record<'window' | 'terrace' | 'tower' | 'boat', V3[]>>; // a boat has several positions
+  eyes: Partial<Record<'window' | 'terrace' | 'tower' | 'boat' | 'moto', V3[]>>; // a boat or a motorbike has several positions
   wind?: V3; // unit vector towards where the wind comes from
   rain?: V3; // unit vector towards where the rain comes from
-  extra?: {id: string; c: V3; h: V3}[]; // extra fixed buildings (the Singapore tower)
+  extra?: {id: string; c: V3; h: V3}[]; // extra fixed buildings (the Singapore and Kuala Lumpur towers)
   levels: CountryLevel[];
 };
 
@@ -56,6 +58,8 @@ const dir = (azDeg: number, elDeg: number): V3 => {
 
 const WINDOW: V3 = [7.75, 3.6, 1.5];
 const BOATS: V3[] = [-6, -2.5, 1, 4.5, 8].map((x) => [x, 1.9, 7.2] as V3);
+// riders on the lane south of the Hanoi house: seated on a motorbike, eyes about 1.65 m up
+const MOTOS: V3[] = [-6, -2.5, 1, 4.5, 8].map((x) => [x, 1.65, 6.4] as V3);
 
 const r = {
   private: (hour = 9.5): CountryRule => ({id: 'private', who: 'window', target: 'seat', want: 'blind', hour, text: 'The neighbour cannot see you reading'}),
@@ -118,6 +122,72 @@ export const COUNTRIES: Country[] = [
         overhang: true,
         par: 1,
         rules: [r.swimSun(), {id: 'boats-pool', who: 'boat', target: 'pool', want: 'blind', hour: 11, text: 'Swim unseen from the boats'}, r.private(), r.seatPm()],
+      },
+    ],
+  },
+  {
+    id: 'vn',
+    name: 'Vietnam',
+    place: 'Hanoi',
+    house: 'a northern wooden house with a curved tiled roof, on a busy lane',
+    lat: 21.03,
+    solarNoon: 11.68,
+    wallH: 1.1,
+    eyes: {window: [WINDOW], moto: MOTOS},
+    levels: [
+      {id: 'vn-1', title: 'Xe Máy', brief: 'Motorbikes stream down the lane all day. Keep the garden table out of the riders’ sight.', tray: {hedge: 2, screen: 1}, overhang: false, par: 1, rules: [{id: 'motos', who: 'moto', target: 'table', want: 'blind', hour: 10, text: 'Riders in the lane cannot see the table'}]},
+      {
+        id: 'vn-2',
+        title: 'Hàng Xóm',
+        brief: 'Two watchers at once: the neighbour looks at your chair, the riders look at the table. Block both.',
+        tray: {screen: 2, hedge: 2, tree: 1},
+        overhang: false,
+        par: 2,
+        rules: [r.private(), {id: 'motos', who: 'moto', target: 'table', want: 'blind', hour: 10, text: 'Riders in the lane cannot see the table'}],
+      },
+      {
+        id: 'vn-3',
+        title: 'Một Ngày Hà Nội',
+        brief: 'Sun on the lotus pond, out of sight of the lane, a private chair and a shaded afternoon.',
+        tray: {screen: 2, hedge: 2, tree: 2},
+        overhang: true,
+        par: 1,
+        rules: [{id: 'pond-sun', who: 'sun', target: 'pool', want: 'sees', hour: 11, text: 'Sun on the lotus pond at 11:00'}, {id: 'motos-pool', who: 'moto', target: 'pool', want: 'blind', hour: 11, text: 'The lane cannot see the pond'}, r.private(), r.seatPm()],
+      },
+    ],
+  },
+  {
+    id: 'my',
+    name: 'Malaysia',
+    place: 'Kuala Lumpur',
+    house: 'a Malay kampung house on stilts, under the city towers',
+    lat: 3.14,
+    solarNoon: 12.95,
+    wallH: 1.0,
+    eyes: {window: [WINDOW], tower: [[-9.35, 14.5, -6.6]]},
+    extra: [
+      {id: 'tower', c: [-11.4, 9, -6.8], h: [1.8, 9, 1.8]},
+      {id: 'tower', c: [-12.6, 11, -2.4], h: [1.6, 11, 1.6]},
+    ],
+    levels: [
+      {id: 'my-1', title: 'Kampung Baru', brief: 'The condo towers look straight down at the garden table. Hide it from above.', tray: {tree: 1, pergola: 1}, overhang: false, par: 1, rules: [{id: 'tower', who: 'tower', target: 'table', want: 'blind', hour: 10, text: 'The towers cannot see the table'}]},
+      {
+        id: 'my-2',
+        title: 'Teh Tarik',
+        brief: 'Teh tarik at the garden table at lunch: in the shade, and out of sight of the towers.',
+        tray: {tree: 2, pergola: 1, screen: 1},
+        overhang: false,
+        par: 1,
+        rules: [r.lunch(), {id: 'tower-tea', who: 'tower', target: 'table', want: 'blind', hour: 12.5, text: 'The towers cannot see you at tea'}],
+      },
+      {
+        id: 'my-3',
+        title: 'Sehari Suntuk',
+        brief: 'A sunny swim the towers cannot see, a private chair, a shaded afternoon.',
+        tray: {screen: 2, tree: 2, pergola: 1},
+        overhang: true,
+        par: 2,
+        rules: [r.swimSun(), {id: 'tower', who: 'tower', target: 'pool', want: 'blind', hour: 11, text: 'Swim unseen from the towers'}, r.private(), r.seatPm()],
       },
     ],
   },

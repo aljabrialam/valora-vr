@@ -1,5 +1,5 @@
 // The local watchers made visible, in site metres: a high-rise block with a figure on a balcony
-// (Singapore), long-tail boats passing on the sea (Thailand), wind streaks blowing in (Philippines),
+// (Singapore), condo towers (Kuala Lumpur), motorbikes in the lane (Hanoi), long-tail boats passing on the sea (Thailand), wind streaks blowing in (Philippines),
 // slanting rain (Indonesia), and the sea itself around the island. The checks are in
 // src/sim/play.ts; this only draws them.
 
@@ -17,6 +17,7 @@ import {
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   type Object3D,
+  SphereGeometry,
 } from '@iwsdk/core';
 import {scaleFigure} from './pieces.ts';
 import type {Country} from './sim/countries.ts';
@@ -52,31 +53,76 @@ function sea(): Mesh {
   return mesh;
 }
 
-/** A Singapore point block: white walls, rows of windows, a figure on a balcony. */
-function tower(c: V3, h: V3, eye: V3): Group {
+/** A tower block that faces the house: a Singapore point block (white, orange crown) or a Kuala
+ *  Lumpur condo (glass, balcony bands). The figure stands on a balcony at the watcher's eye. */
+function tower(c: V3, h: V3, eye: V3 | null, style: 'sg' | 'my'): Group {
   const g = new Group();
-  const body = new Mesh(new BoxGeometry(h[0] * 2, h[1] * 2, h[2] * 2), std('#f1ece2'));
+  const face = c[0] > 0 ? -1 : 1; // the side that looks at the house
+  const body = new Mesh(new BoxGeometry(h[0] * 2, h[1] * 2, h[2] * 2), style === 'my' ? std('#e8e2d6', 0.4) : std('#f1ece2'));
   body.position.set(c[0], c[1], c[2]);
   body.castShadow = body.receiveShadow = true;
   g.add(body);
-  const win = std('#5c7d8f', 0.3);
-  for (let y = 1.2; y < h[1] * 2 - 0.5; y += 1.5) {
-    const strip = new Mesh(new BoxGeometry(0.05, 0.55, h[2] * 1.7), win);
-    strip.position.set(c[0] - h[0] - 0.01, y, c[2]);
+  const win = style === 'my' ? std('#3f7f95', 0.15) : std('#5c7d8f', 0.3);
+  const ledge = std(style === 'my' ? '#f4f1ea' : '#f1ece2');
+  for (let y = 1.2; y < h[1] * 2 - 0.5; y += style === 'my' ? 1.1 : 1.5) {
+    const strip = new Mesh(new BoxGeometry(0.05, style === 'my' ? 0.62 : 0.55, h[2] * 1.7), win);
+    strip.position.set(c[0] + face * (h[0] + 0.01), y, c[2]);
     g.add(strip);
+    // the south face, towards the player, has windows too
+    const south = new Mesh(new BoxGeometry(h[0] * 1.7, style === 'my' ? 0.62 : 0.55, 0.05), win);
+    south.position.set(c[0], y, c[2] + h[2] + 0.01);
+    g.add(south);
+    if (style === 'my') {
+      const band = new Mesh(new BoxGeometry(0.34, 0.07, h[2] * 2.05), ledge);
+      band.position.set(c[0] + face * (h[0] + 0.15), y - 0.4, c[2]);
+      const sband = new Mesh(new BoxGeometry(h[0] * 2.05, 0.07, 0.3), ledge);
+      sband.position.set(c[0], y - 0.4, c[2] + h[2] + 0.13);
+      g.add(band, sband);
+    }
   }
-  const band = std('#d98a3b');
-  const top = new Mesh(new BoxGeometry(h[0] * 2 + 0.2, 0.4, h[2] * 2 + 0.2), band);
+  const top = new Mesh(new BoxGeometry(h[0] * 2 + 0.2, 0.4, h[2] * 2 + 0.2), std(style === 'my' ? '#2f6b7a' : '#d98a3b'));
   top.position.set(c[0], h[1] * 2 + 0.2, c[2]);
   g.add(top);
-  const balcony = new Mesh(new BoxGeometry(0.9, 0.12, 1.6), std('#f1ece2'));
-  balcony.position.set(eye[0] - 0.1, eye[1] - 1.62, eye[2]);
-  g.add(balcony);
-  const fig = scaleFigure(true);
-  fig.position.set(eye[0], eye[1] - 1.56, eye[2]);
-  fig.rotation.y = -Math.PI / 2;
-  fig.name = 'watcher';
-  g.add(fig);
+  if (eye) {
+    const balcony = new Mesh(new BoxGeometry(0.9, 0.12, 1.6), ledge);
+    balcony.position.set(eye[0] + face * 0.1, eye[1] - 1.62, eye[2]);
+    g.add(balcony);
+    const fig = scaleFigure(true);
+    fig.position.set(eye[0], eye[1] - 1.56, eye[2]);
+    fig.rotation.y = (face * Math.PI) / 2;
+    fig.name = 'watcher';
+    g.add(fig);
+  }
+  return g;
+}
+
+/** A motorbike with a helmeted rider, for the Hanoi lane. Faces +x. */
+function moto(paint: string, helmet: string): Group {
+  const g = new Group();
+  const tyre = std('#2b2b2e', 0.9);
+  for (const x of [-0.55, 0.55]) {
+    const w = new Mesh(new CylinderGeometry(0.26, 0.26, 0.12, 18), tyre);
+    w.rotation.x = Math.PI / 2;
+    w.position.set(x, 0.26, 0);
+    g.add(w);
+  }
+  const body = new Mesh(new BoxGeometry(1.0, 0.32, 0.36), std(paint, 0.45));
+  body.position.set(0, 0.6, 0);
+  const shield = new Mesh(new BoxGeometry(0.12, 0.62, 0.42), std(paint, 0.45));
+  shield.position.set(0.5, 0.78, 0);
+  shield.rotation.z = -0.25;
+  const bars = new Mesh(new CylinderGeometry(0.025, 0.025, 0.6, 6), tyre);
+  bars.rotation.x = Math.PI / 2;
+  bars.position.set(0.48, 1.12, 0);
+  const rider = scaleFigure(true);
+  rider.position.set(-0.05, 0.1, 0);
+  rider.rotation.y = -Math.PI / 2;
+  rider.name = 'watcher';
+  const hat = new Mesh(new SphereGeometry(0.235, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), std(helmet, 0.35));
+  hat.position.y = 1.58;
+  rider.add(hat);
+  g.add(body, shield, bars, rider);
+  for (const o of g.children) o.castShadow = true;
   return g;
 }
 
@@ -136,6 +182,7 @@ class Streaks {
 export class LocalWatchers {
   group = new Group();
   private boats: {g: Group; phase: number}[] = [];
+  private motos: {g: Group; phase: number; dir: number; z: number; speed: number}[] = [];
   private wind: Streaks | null = null;
   private rain: Streaks | null = null;
   private sea = sea();
@@ -148,8 +195,20 @@ export class LocalWatchers {
   set(c: Country) {
     for (const o of [...this.group.children]) if (o !== this.sea) this.group.remove(o);
     this.boats = [];
+    this.motos = [];
     this.wind = this.rain = null;
-    if (c.extra?.length && c.eyes.tower) for (const e of c.extra) this.group.add(tower(e.c, e.h, c.eyes.tower[0]));
+    if (c.extra?.length && c.eyes.tower)
+      c.extra.forEach((e, i) => this.group.add(tower(e.c, e.h, i === 0 ? c.eyes.tower![0] : null, c.id === 'my' ? 'my' : 'sg')));
+    if (c.eyes.moto) {
+      const looks: [string, string][] = [['#c8372d', '#f2f2f2'], ['#2f6fb5', '#f2c14e'], ['#e9e4d8', '#c8372d'], ['#2e8a5a', '#2b2b2e']];
+      looks.forEach(([paint, helmet], i) => {
+        const m = moto(paint, helmet);
+        const dir = i % 2 ? -1 : 1;
+        m.rotation.y = dir > 0 ? 0 : Math.PI;
+        this.motos.push({g: m, phase: i * 0.27, dir, z: c.eyes.moto![0][2] + (dir > 0 ? 0.35 : -0.35), speed: 0.045 + i * 0.006});
+        this.group.add(m);
+      });
+    }
     if (c.eyes.boat) {
       for (let i = 0; i < 2; i++) {
         const b = boat();
@@ -173,6 +232,11 @@ export class LocalWatchers {
       const u = ((time * 0.025 + b.phase) % 1);
       b.g.position.set(-14 + u * 32, SEA_Y + 0.05 + Math.sin(time * 1.3 + b.phase * 6) * 0.06, 7.2);
       b.g.rotation.z = Math.sin(time * 1.1 + b.phase) * 0.03;
+    }
+    for (const m of this.motos) {
+      const u = (time * m.speed + m.phase) % 1;
+      const x = -12 + u * 28;
+      m.g.position.set(m.dir > 0 ? x : 4 - x, 0.02, m.z);
     }
     this.wind?.update(time);
     this.rain?.update(time);
