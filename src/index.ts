@@ -73,8 +73,37 @@ const model = buildModel();
 model.screen.removeFromParent();
 const deskEntity = world.createTransformEntity(model.desk);
 loadPlant(1.15).then((p) => model.marks.plant.add(p)).catch((e) => console.warn('[VR] plant', e));
-loadIsland().then((i) => model.site.add(i)).catch((e) => console.warn('[VR] island', e));
-loadHouse().then((h) => model.site.add(h)).catch((e) => console.warn('[VR] house', e));
+// Each country has its own island and house where one has been modelled; the shared ones stand in.
+const OWN_HOUSE = new Set(['ph']);
+/** Height of the visible garden wall or fence top, site metres (Tiki sits on it). */
+const wallTop = (id: string) => (OWN_HOUSE.has(id) ? COUNTRIES.find((c) => c.id === id)!.wallH : 2.24);
+const countryArt: {island?: Group; house?: Group; id?: string} = {};
+function loadCountryArt(id: string) {
+  if (countryArt.id === id) return;
+  countryArt.id = id;
+  loadIsland(id)
+    .then((i) => {
+      if (countryArt.id !== id) return;
+      countryArt.island?.removeFromParent();
+      countryArt.island = i;
+      model.site.add(i);
+    })
+    .catch((e) => console.warn('[VR] island', e));
+  loadHouse(id)
+    .then((h) => {
+      if (countryArt.id !== id) return;
+      countryArt.house?.removeFromParent();
+      countryArt.house = h;
+      model.site.add(h);
+      // a country house with its own roof and open veranda replaces the code-drawn ghost roof and glass
+      const own = OWN_HOUSE.has(id);
+      if (model.roof) model.roof.visible = !own;
+      model.glass.visible = !own;
+      placeTiki();
+    })
+    .catch((e) => console.warn('[VR] house', e));
+}
+loadCountryArt(COUNTRY.id);
 loadTrees(GARDEN).then((t) => model.site.add(t)).catch((e) => console.warn('[VR] trees', e));
 const siteToWorld = (p: number[], out = new Vector3()) => model.site.localToWorld(out.set(p[0], p[1], p[2]));
 
@@ -134,32 +163,68 @@ model.desk.add(motes.points);
 const tiki = new Gecko();
 // Tiki lives on the walls: he sits on the cap of the front garden wall, left of the gate gap, so he
 // never stands inside a wall. (The baked garden walls are 2.2 m tall with a cap to 2.24 m.)
-model.desk.updateWorldMatrix(true, true);
-const TIKI_HOME = model.desk.worldToLocal(siteToWorld([-3.6, 2.24, LAYOUT.court.z1 + LAYOUT.court.wallT / 2]));
-tiki.group.position.copy(TIKI_HOME);
+const TIKI_HOME = new Vector3();
+function placeTiki() {
+  model.desk.updateWorldMatrix(true, true);
+  TIKI_HOME.copy(model.desk.worldToLocal(siteToWorld([-3.6, wallTop(COUNTRY.id), LAYOUT.court.z1 + LAYOUT.court.wallT / 2])));
+  tiki.group.position.copy(TIKI_HOME);
+}
+tiki.group.scale.setScalar(0.62); // a gecko sized to the wall he lives on
+placeTiki();
 const tikiEntity = world.createTransformEntity(tiki.group, deskEntity);
 tikiEntity.addComponent(RayInteractable);
 
 // ---------- the tray: a walnut ledge on the front of the plinth ----------
 // the tray is a little timber raft floating just in front of the island
 const raft = new Group();
-const plankMat = new MeshStandardMaterial({color: '#c98a4b', roughness: 0.75});
-for (let i = 0; i < 5; i++) {
-  const plank = new Mesh(new BoxGeometry(0.66, 0.01, 0.03), plankMat);
-  plank.position.set(0, 0, -0.068 + i * 0.034);
-  plank.rotation.z = (i % 2 ? 1 : -1) * 0.006;
-  plank.receiveShadow = plank.castShadow = true;
-  raft.add(plank);
-}
-for (const x of [-0.3, 0, 0.3]) {
-  const batten = new Mesh(new BoxGeometry(0.03, 0.008, 0.17), new MeshStandardMaterial({color: '#9a5a2c', roughness: 0.8}));
-  batten.position.set(x, -0.009, 0);
-  raft.add(batten);
+// a bamboo raft: poles lashed side by side over three cross poles, moored to two posts on the beach
+{
+  const tones = ['#d9b468', '#cfae63', '#e0bd72', '#c7a45c', '#bfa35a'];
+  const poleGeo = new CylinderGeometry(0.0095, 0.0095, 1, 10);
+  poleGeo.rotateZ(Math.PI / 2);
+  for (let i = 0; i < 9; i++) {
+    const len = 0.64 + ((i * 37) % 5) * 0.008;
+    const m = new Mesh(poleGeo, new MeshStandardMaterial({color: tones[i % tones.length], roughness: 0.55}));
+    m.scale.set(len, 1, 1);
+    m.position.set(((i * 13) % 3) * 0.004 - 0.004, 0, -0.076 + i * 0.019);
+    m.receiveShadow = m.castShadow = true;
+    raft.add(m);
+  }
+  const cross = new CylinderGeometry(0.006, 0.006, 0.2, 8);
+  cross.rotateX(Math.PI / 2);
+  const dark = new MeshStandardMaterial({color: '#7a5631', roughness: 0.7});
+  const rope = new MeshStandardMaterial({color: '#5b4128', roughness: 0.9});
+  for (const x of [-0.27, 0, 0.27]) {
+    const c = new Mesh(cross, dark);
+    c.position.set(x, -0.011, 0);
+    raft.add(c);
+    const band = new Mesh(new BoxGeometry(0.012, 0.022, 0.18), rope);
+    band.position.set(x, -0.002, 0);
+    raft.add(band);
+  }
 }
 // in front of the courtyard, nearest the seated player, so pieces are a short point away
 const RAFT = new Vector3(-0.18, -0.006, 0.6);
 raft.position.copy(RAFT);
 model.desk.add(raft);
+// mooring: two posts in the shallows behind the raft, with a rope to each end
+{
+  const post = new CylinderGeometry(0.007, 0.008, 0.08, 8);
+  const wood = new MeshStandardMaterial({color: '#6b4428', roughness: 0.8});
+  const rope = new MeshStandardMaterial({color: '#5b4128', roughness: 0.9});
+  for (const sx of [-1, 1]) {
+    const p = new Mesh(post, wood);
+    p.position.set(RAFT.x + sx * 0.36, -0.02, RAFT.z - 0.13);
+    p.castShadow = true;
+    model.desk.add(p);
+    const a = new Vector3(RAFT.x + sx * 0.36, 0.015, RAFT.z - 0.13);
+    const b = new Vector3(RAFT.x + sx * 0.3, 0.0, RAFT.z - 0.07);
+    const line = new Mesh(new CylinderGeometry(0.0018, 0.0018, a.distanceTo(b), 5), rope);
+    line.position.copy(a).add(b).multiplyScalar(0.5);
+    line.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    model.desk.add(line);
+  }
+}
 const KIND_ORDER: Kind[] = ['screen', 'hedge', 'tree', 'pergola'];
 const TRAY_SCALE = 0.5; // pieces wait on the raft at half size
 const traySlot = (kind: Kind, n: number) => new Vector3(RAFT.x - 0.225 + KIND_ORDER.indexOf(kind) * 0.15 + n * 0.014, 0.0, RAFT.z - n * 0.012);
@@ -658,6 +723,7 @@ function advance() {
 
 function goToCountry(id: typeof COUNTRY.id, i = 0) {
   setCountry(id);
+  loadCountryArt(id);
   local.set(COUNTRY);
   goToLevel(i);
 }
@@ -720,6 +786,31 @@ const toScreen = (v: Vector3) => {
     const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
     return o ? toScreen(o.root.position.clone()) : null;
   },
+  /** Video capture: drive the screen camera directly (null hands it back to the page layout). */
+  cinema(shot: {pos: number[]; look: number[]; fov?: number} | null) {
+    const cam = world.camera as PerspectiveCamera;
+    cinemaOn = !!shot;
+    if (!shot) return frameFlat();
+    cam.clearViewOffset();
+    cam.zoom = 1;
+    if (shot.fov) cam.fov = shot.fov;
+    cam.position.set(shot.pos[0], shot.pos[1], shot.pos[2]);
+    cam.lookAt(shot.look[0], shot.look[1], shot.look[2]);
+    cam.updateProjectionMatrix();
+  },
+  /** Video capture: show or hide the page panels and the Enter XR button. */
+  chrome(show: boolean) {
+    hud.visible = show;
+    document.querySelectorAll<HTMLElement>('button, a').forEach((b) => {
+      if (/Enter XR/i.test(b.textContent ?? '')) b.style.visibility = show ? '' : 'hidden';
+    });
+  },
+  rig: () => world.player.position.toArray(),
+  pieceWorld(kind: Kind, n = 0) {
+    const o = pieceObjs.find((x) => x.kind === kind && x.n === n);
+    return o ? o.root.getWorldPosition(new Vector3()).toArray() : null;
+  },
+  socketWorld: (i: number) => siteToWorld(SOCKETS[i]).toArray(),
   boxOf(name: string) {
     const o = world.scene.getObjectByName(name);
     if (!o) return null;
@@ -906,9 +997,10 @@ function forDevice(text: string): string {
 // ---------- fit the screen view into the space the page panels leave free ----------
 // The level card sits on the left and Tiki's line along the bottom. Shift and widen the camera's view
 // so the island and the raft land in the open area instead of behind the panels.
+let cinemaOn = false;
 function frameFlat() {
   const cam = world.camera as PerspectiveCamera;
-  if (inXR()) return;
+  if (inXR() || cinemaOn) return;
   const W = innerWidth;
   const H = innerHeight;
   const a = hud.freeArea();

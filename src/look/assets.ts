@@ -61,8 +61,8 @@ export async function loadPlant(height: number): Promise<Group> {
  * straight into the site group. Colour and ambient occlusion are baked; the sun stays real-time
  * because it moves between levels and the screen and overhang move with the player's hands.
  */
-export async function loadHouse(): Promise<Group> {
-  const gltf = await loader.loadAsync(`${base}models/valora-house.glb`);
+export async function loadHouse(country?: string): Promise<Group> {
+  const gltf = await loadFor('valora-house', country);
   gltf.scene.traverse((o) => {
     const m = o as Mesh;
     if (!m.isMesh) return;
@@ -118,8 +118,20 @@ export async function loadTrees(placements: [string, number, number, number][]):
 }
 
 /** The floating island under the house (art/blender/island.py), in site metres. */
-export async function loadIsland(): Promise<Group> {
-  const gltf = await loader.loadAsync(`${base}models/valora-island.glb`);
+/** A country's own model if it has one, else the shared one. */
+async function loadFor(name: string, country?: string) {
+  if (country) {
+    try {
+      return await loader.loadAsync(`${base}models/${name}-${country}.glb`);
+    } catch {
+      /* no country version yet */
+    }
+  }
+  return loader.loadAsync(`${base}models/${name}.glb`);
+}
+
+export async function loadIsland(country?: string): Promise<Group> {
+  const gltf = await loadFor('valora-island', country);
   gltf.scene.traverse((o) => {
     const m = o as Mesh;
     if (!m.isMesh) return;
@@ -129,6 +141,14 @@ export async function loadIsland(): Promise<Group> {
     const mat = m.material as MeshStandardMaterial;
     mat.flatShading = true;
     mat.envMapIntensity = 0.7;
+    if (mat.name === 'island-foam') {
+      // the white line where sand meets water: soft-edged, drawn over the sea, never shadowed
+      mat.transparent = true;
+      mat.depthWrite = false;
+      mat.roughness = 1;
+      m.receiveShadow = false;
+      m.renderOrder = 2;
+    }
   });
   const g = new Group();
   g.name = 'island';

@@ -142,6 +142,7 @@ export type Model = {
   lever: Group; // the bronze lever arm on the screen, which carries the handle's resting point
   overhang: Mesh;
   roof: Mesh | null;
+  glass: Mesh;
   marks: {seat: Mesh; plant: Group; window: Mesh};
 };
 
@@ -234,7 +235,7 @@ export function buildModel(): Model {
   overhang.visible = false;
   site.add(overhang);
 
-  return {desk, site, screen, screenPanel: panel, lever, overhang, roof, marks: {seat: seatMark, plant, window: win}};
+  return {desk, site, screen, screenPanel: panel, lever, overhang, roof, glass, marks: {seat: seatMark, plant, window: win}};
 }
 
 /**
