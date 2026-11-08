@@ -141,6 +141,7 @@ export async function loadIsland(country?: string): Promise<Group> {
     const mat = m.material as MeshStandardMaterial;
     mat.flatShading = true;
     mat.envMapIntensity = 0.7;
+    mat.side = DoubleSide; // open shapes (the banca's hull) show their inside
     if (mat.name === 'island-foam') {
       // the white line where sand meets water: soft-edged, drawn over the sea, never shadowed
       mat.transparent = true;

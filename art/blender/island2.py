@@ -182,6 +182,66 @@ for (x, z, r) in ((-9.6, 4.6, 0.55), (-9.1, 5.3, 0.35), (-10.2, 3.6, 0.42), (15.
     boulder(x, z, height(x, z) - 0.05, r, 0.7, seed=s, mossy=False)
     s += 1
 
+
+# ---------------------------------------------------------------- Philippines: a banca on the beach
+def banca(x0, z0, yaw_deg=8):
+    """An outrigger boat pulled up on the sand: white hull with a blue stripe, raised bow and
+    stern, bamboo outriggers on two cross booms."""
+    import mathutils
+    b = bmesh.new()
+    cl = b.loops.layers.float_color.new('Col')
+    L, W, D = 4.4, 0.55, 0.42
+    n = 14
+    rings = []
+    for i in range(n + 1):
+        t = i / n
+        u = 2 * t - 1
+        w = W * (1 - u ** 4) ** 0.6 + 0.02
+        lift = 0.28 * u ** 6
+        xs = -L / 2 + L * t
+        ring = [(xs, -w, D + lift), (xs, -w * 0.93, 0.29 + lift * 0.8), (xs, -w * 0.75, 0.12 + lift * 0.4), (xs, 0.0, 0.0 + lift * 0.5), (xs, w * 0.75, 0.12 + lift * 0.4), (xs, w * 0.93, 0.29 + lift * 0.8), (xs, w, D + lift)]
+        rings.append([b.verts.new(Vector(p)) for p in ring])
+    for a, c in zip(rings, rings[1:]):
+        for k in range(6):
+            b.faces.new((a[k], a[k + 1], c[k + 1], c[k]))
+    for f in b.faces:
+        k_ = [v.co.z for v in f.verts]
+        zc = sum(k_) / len(k_)
+        lo = min(k_)
+        col = (0.95, 0.95, 0.93) if lo > 0.28 else (0.12, 0.33, 0.72) if lo > 0.11 else (0.72, 0.2, 0.16)
+        for loop in f.loops:
+            loop[cl] = (*col, 1.0)
+    # seats/thwarts and the outriggers (katig) on two booms
+    def bar(c, size, col):
+        made = bmesh.ops.create_cube(b, size=1.0)['verts']
+        for v in made:
+            v.co = Vector((c[0] + v.co.x * size[0], c[1] + v.co.y * size[1], c[2] + v.co.z * size[2]))
+        fs = {f for v in made for f in v.link_faces}
+        for f in fs:
+            for loop in f.loops:
+                loop[cl] = (*col, 1.0)
+    for xb in (-0.9, 0.9):
+        bar((xb, 0, D - 0.02), (0.1, 3.1, 0.07), (0.55, 0.38, 0.22))
+    for yb in (-1.5, 1.5):
+        bar((0, yb, 0.12), (3.8, 0.12, 0.12), (0.85, 0.72, 0.42))
+    bar((0, 0, D - 0.06), (0.25, W * 1.6, 0.04), (0.6, 0.42, 0.25))
+    me = bpy.data.meshes.new('banca')
+    b.to_mesh(me)
+    b.free()
+    o = bpy.data.objects.new('banca', me)
+    gy = max(height(x0, z0), SEA + 0.05)
+    o.location = (x0, -z0, gy - 0.02)
+    o.rotation_euler = (0.04, 0.0, math.radians(yaw_deg))
+    bpy.context.collection.objects.link(o)
+    parts.append(o)
+
+
+if COUNTRY == 'ph':
+    banca(12.4, 6.2, -14)
+    # a few coconuts and a log on the sand by the boat
+    for (x, z, r) in ((10.6, 6.0, 0.16), (10.8, 6.3, 0.15), (10.45, 6.35, 0.14)):
+        boulder(x, z, height(x, z) + 0.08, r, 0.95, seed=900 + int(x * 10), mossy=False)
+
 # ---------------------------------------------------------------- foam: a strip along the waterline
 fbm = bmesh.new()
 fcl = fbm.loops.layers.float_color.new('Col')

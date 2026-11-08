@@ -252,48 +252,50 @@ def jitter(c, amt):
     return tuple(min(1, max(0, v * k)) for v in c)
 
 
-# ================================================================ PHILIPPINES: bahay kubo
-# Matches src/sim: room x -5..5, z -7..-3 with solid north/west/east walls to 3 m and a roof slab
-# from 3 m; the courtyard face is open. The floor is raised 0.45 m on posts (the silong), so the
-# reader sitting on a banig mat has the 1.05 m eye height the checks use. The steep nipa roof rises
-# above 3 m; its courtyard eave stops at the checks' roof edge (z -2.9), so it shades nothing the
-# checks do not know about. Garden fence: 1.0 m bamboo, as in the Philippines levels.
+# ================================================================ PHILIPPINES v3: bahay kubo and bakuran
+# Stays inside what src/sim checks: the room footprint x -5..5, z -7..-3 has solid north, west and
+# east sides to 3 m, a roof plane at 3 m, and an open courtyard face; the reader's eye is 1.05 m at
+# (1.6, -3.5); the garden fence is 1.0 m; the neighbour's house fits its box below 4.6 m.
+#   right of the footprint: the bahay kubo raised on tall bamboo stilts. The reader sits on a bench
+#     in the silong, the shaded space under the house, whose north and east sides are slatted.
+#   left of the footprint: the dirty kitchen annex, a low open shed with a clay stove.
+# Every sun ray that reaches the reader passes the courtyard face below 2.0 m in Manila in November
+# (noon altitude about 59 degrees), so the kubo floor at 2 m shades nothing the checks let through.
 import math as _m
-from mathutils import Matrix
+from mathutils import Matrix, Euler, noise as mnoise
 
-FLOOR = 0.45
+FENCE_H = 1.0
+KFLOOR = 2.0  # kubo floor
+KX0, KX1 = -0.6, 5.0  # kubo on the right of the footprint; annex to the left
 
 
 def P(x, y, z):
     """Site metres (y up, +z south) to Blender (z up, -y south)."""
     return Vector((x, -z, y))
-FENCE_H = 1.0
-
-
-def S2(hexs):
-    return S(hexs)
-
-
 
 
 def _thatch(nt, bsdf, coord):
-    # nipa shingles: long straw streaks down the slope (Blender z), banded courses, sun-bleached tips
+    # nipa: coarse straw streaks down the slope, sun-bleached and weathered grey in patches
     mp = nt.nodes.new('ShaderNodeMapping')
-    mp.inputs['Scale'].default_value = (11, 11, 0.9)
+    mp.inputs['Scale'].default_value = (7, 7, 0.7)
     nt.links.new(coord.outputs['Object'], mp.inputs['Vector'])
     n = nt.nodes.new('ShaderNodeTexNoise')
     n.inputs['Scale'].default_value = 1.0
-    n.inputs['Detail'].default_value = 4
+    n.inputs['Detail'].default_value = 6
+    n.inputs['Roughness'].default_value = 0.7
     nt.links.new(mp.outputs['Vector'], n.inputs['Vector'])
-    w = nt.nodes.new('ShaderNodeTexWave')
-    w.bands_direction = 'Z'
-    w.inputs['Scale'].default_value = 1.6
-    w.inputs['Distortion'].default_value = 1.5
-    nt.links.new(coord.outputs['Object'], w.inputs['Vector'])
-    straw = mix(nt, n.outputs['Fac'], rgb(nt, S('#6e4622')), rgb(nt, S('#d2a660')))
-    c = mix(nt, w.outputs['Fac'], straw, rgb(nt, S('#a8793f')))
-    nt.links.new(tint(nt, c), bsdf.inputs['Base Color'])
-    bsdf.inputs['Roughness'].default_value = 0.95
+    r = nt.nodes.new('ShaderNodeValToRGB')
+    els = r.color_ramp.elements
+    els[0].position = 0.3
+    els[0].color = (*S('#5e3f22'), 1)
+    els[1].position = 0.72
+    els[1].color = (*S('#cfa767'), 1)
+    mid = els.new(0.5)
+    mid.color = (*S('#9a7443'), 1)
+    nt.links.new(n.outputs['Fac'], r.inputs['Fac'])
+    weather = mix(nt, noise(nt, coord, 0.6, 2, 0.5), r.outputs['Color'], rgb(nt, S('#a39577')))
+    nt.links.new(tint(nt, weather), bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = 0.96
 
 
 def _sawali(nt, bsdf, coord):
@@ -302,56 +304,42 @@ def _sawali(nt, bsdf, coord):
     mp.inputs['Rotation'].default_value = (0.785, 0.785, 0.0)
     nt.links.new(coord.outputs['Object'], mp.inputs['Vector'])
     ch = nt.nodes.new('ShaderNodeTexChecker')
-    ch.inputs['Scale'].default_value = 7.0
-    ch.inputs['Color1'].default_value = (*S('#d9bb7d'), 1)
-    ch.inputs['Color2'].default_value = (*S('#b38f57'), 1)
+    ch.inputs['Scale'].default_value = 6.0
+    ch.inputs['Color1'].default_value = (*S('#dcc086'), 1)
+    ch.inputs['Color2'].default_value = (*S('#a9844e'), 1)
     nt.links.new(mp.outputs['Vector'], ch.inputs['Vector'])
-    c = mix(nt, noise(nt, coord, 30, 4, 0.6), ch.outputs['Color'], rgb(nt, S('#c7a56a')))
+    c = mix(nt, noise(nt, coord, 30, 4, 0.6), ch.outputs['Color'], rgb(nt, S('#c4a066')))
     nt.links.new(tint(nt, c), bsdf.inputs['Base Color'])
     bsdf.inputs['Roughness'].default_value = 0.85
 
 
-def _capiz(nt, bsdf, coord):
-    # capiz shell panes: pearly squares in a dark timber grid
-    out = None
-    grid = []
-    for axis in ('X', 'Z'):
-        w = nt.nodes.new('ShaderNodeTexWave')
-        w.wave_profile = 'SAW'
-        w.bands_direction = axis
-        w.inputs['Scale'].default_value = 2.2
-        w.inputs['Distortion'].default_value = 0.0
-        nt.links.new(coord.outputs['Object'], w.inputs['Vector'])
-        r = nt.nodes.new('ShaderNodeValToRGB')
-        r.color_ramp.interpolation = 'CONSTANT'
-        r.color_ramp.elements[0].color = (*S('#4a2f1c'), 1)
-        r.color_ramp.elements[1].position = 0.12
-        r.color_ramp.elements[1].color = (1, 1, 1, 1)
-        nt.links.new(w.outputs['Fac'], r.inputs['Fac'])
-        grid.append(r.outputs['Color'])
-    m = nt.nodes.new('ShaderNodeMix')
-    m.data_type = 'RGBA'
-    m.blend_type = 'MULTIPLY'
-    m.inputs['Factor'].default_value = 1.0
-    nt.links.new(grid[0], m.inputs['A'])
-    nt.links.new(grid[1], m.inputs['B'])
-    pearl = mix(nt, noise(nt, coord, 14, 3, 0.5), rgb(nt, S('#efe6d2')), rgb(nt, S('#f8f2e6')))
-    m2 = nt.nodes.new('ShaderNodeMix')
-    m2.data_type = 'RGBA'
-    m2.blend_type = 'MULTIPLY'
-    m2.inputs['Factor'].default_value = 1.0
-    nt.links.new(pearl, m2.inputs['A'])
-    nt.links.new(m.outputs['Result'], m2.inputs['B'])
-    nt.links.new(m2.outputs['Result'], bsdf.inputs['Base Color'])
-    bsdf.inputs['Roughness'].default_value = 0.35
+def _bamboo(nt, bsdf, coord):
+    # bamboo: straw with green-gold variation and darker weathering; per-pole tint does the rest
+    c = mix(nt, noise(nt, coord, 4, 3, 0.5), rgb(nt, S('#d8b468')), rgb(nt, S('#bf9a52')))
+    nt.links.new(tint(nt, c), bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = 0.5
+
+
+def _weathered(nt, bsdf, coord):
+    # old timber: dark brown with grain and grey sun-bleaching
+    mp = nt.nodes.new('ShaderNodeMapping')
+    mp.inputs['Scale'].default_value = (2, 2, 40)
+    nt.links.new(coord.outputs['Object'], mp.inputs['Vector'])
+    n = nt.nodes.new('ShaderNodeTexNoise')
+    n.inputs['Scale'].default_value = 1.0
+    n.inputs['Detail'].default_value = 5
+    nt.links.new(mp.outputs['Vector'], n.inputs['Vector'])
+    c = mix(nt, n.outputs['Fac'], rgb(nt, S('#4a3020')), rgb(nt, S('#7a5638')))
+    c = mix(nt, noise(nt, coord, 0.8, 2, 0.5), c, rgb(nt, S('#8a7d6c')))
+    nt.links.new(tint(nt, c), bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = 0.85
 
 
 def _banig(nt, bsdf, coord):
-    # woven sleeping mat: bright stripes on straw
     w = nt.nodes.new('ShaderNodeTexWave')
     w.wave_profile = 'SAW'
     w.bands_direction = 'X'
-    w.inputs['Scale'].default_value = 0.9
+    w.inputs['Scale'].default_value = 1.2
     w.inputs['Distortion'].default_value = 0.0
     nt.links.new(coord.outputs['Object'], w.inputs['Vector'])
     r = nt.nodes.new('ShaderNodeValToRGB')
@@ -365,348 +353,643 @@ def _banig(nt, bsdf, coord):
         e = els.new(i / len(cols))
         e.color = (*S(cols[i]), 1)
     nt.links.new(w.outputs['Fac'], r.inputs['Fac'])
-    c = mix(nt, noise(nt, coord, 60, 2, 0.5), r.outputs['Color'], rgb(nt, S('#d7b97c')))
-    nt.links.new(c, bsdf.inputs['Base Color'])
+    nt.links.new(r.outputs['Color'], bsdf.inputs['Base Color'])
     bsdf.inputs['Roughness'].default_value = 0.8
 
 
 def _gi(nt, bsdf, coord):
-    # corrugated iron, painted blue: fine ridges baked as light and dark bands
+    # corrugated iron with rust: ridges as light and dark bands, rust in patches
     w = nt.nodes.new('ShaderNodeTexWave')
     w.bands_direction = 'X'
-    w.inputs['Scale'].default_value = 6.0
+    w.inputs['Scale'].default_value = 7.0
     nt.links.new(coord.outputs['Object'], w.inputs['Vector'])
-    c = mix(nt, w.outputs['Fac'], rgb(nt, S('#3d6f9e')), rgb(nt, S('#5b8fc0')))
+    c = mix(nt, w.outputs['Fac'], rgb(nt, S('#8d969c')), rgb(nt, S('#c3cacd')))
+    n = noise(nt, coord, 1.6, 4, 0.6)
+    r = nt.nodes.new('ShaderNodeValToRGB')
+    r.color_ramp.elements[0].position = 0.52
+    r.color_ramp.elements[1].position = 0.62
+    nt.links.new(n, r.inputs['Fac'])
+    c = mix(nt, r.outputs['Color'], c, rgb(nt, S('#9c5a32')))
     nt.links.new(c, bsdf.inputs['Base Color'])
-    bsdf.inputs['Roughness'].default_value = 0.5
+    bsdf.inputs['Roughness'].default_value = 0.55
+    bsdf.inputs['Metallic'].default_value = 0.3
 
 
-MATS.update({
-    'thatch': node_mat('thatch', None.__class__ and (lambda nt, bsdf, coord: _thatch(nt, bsdf, coord))),
-    'sawali': node_mat('sawali', lambda nt, bsdf, coord: _sawali(nt, bsdf, coord)),
-    'bamboo': node_mat('bamboo', flat(S('#d8b468'), 0.55)),
-    'timber': node_mat('timber', basswood(S('#6b4428'))),
-    'capiz': node_mat('capiz', lambda nt, bsdf, coord: _capiz(nt, bsdf, coord)),
-    'banig': node_mat('banig', lambda nt, bsdf, coord: _banig(nt, bsdf, coord)),
-    'earth': node_mat('earth', card(S('#c49a6c'), 0.08)),
-    'footing': node_mat('footing', card(S('#bdb5a6'), 0.05)),
-    'mint': node_mat('mint', card(S('#a9d9c0'), 0.03)),
-    'cream': node_mat('cream', card(S('#f4e7cc'), 0.03)),
-    'gi': node_mat('gi', lambda nt, bsdf, coord: _gi(nt, bsdf, coord)),
-    'steel': node_mat('steel', flat(S('#2f3438'), 0.5, 0.3)),
-    'clay': node_mat('clay', card(S('#b9643d'), 0.05)),
-    'leaf': node_mat('leaf', flat(S('#4f9a3a'), 0.7)),
-    'water-bed': node_mat('water-bed', flat(S('#2e7f7a'), 0.6)),
-    'red': node_mat('red', flat(S('#c0443a'), 0.6)),
-    'stone': node_mat('stone', card(S('#b8ab95'), 0.06)),  # river stone, warmer and darker than paving
-})
+def _awning(nt, bsdf, coord):
+    # striped canvas: red and white
+    w = nt.nodes.new('ShaderNodeTexWave')
+    w.wave_profile = 'SAW'
+    w.bands_direction = 'X'
+    w.inputs['Scale'].default_value = 2.2
+    w.inputs['Distortion'].default_value = 0.0
+    nt.links.new(coord.outputs['Object'], w.inputs['Vector'])
+    r = nt.nodes.new('ShaderNodeValToRGB')
+    r.color_ramp.interpolation = 'CONSTANT'
+    r.color_ramp.elements[0].color = (*S('#d6453a'), 1)
+    r.color_ramp.elements[1].position = 0.5
+    r.color_ramp.elements[1].color = (*S('#f7efe2'), 1)
+    nt.links.new(w.outputs['Fac'], r.inputs['Fac'])
+    nt.links.new(r.outputs['Color'], bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = 0.8
 
 
-def pole(a, b, r, mat, tint_c=(1, 1, 1), seg=8, name='pole'):
-    """A round pole between two site points (bamboo, posts, rails)."""
-    A, B = P(*a), P(*b)
-    d = B - A
-    me = bpy.data.meshes.new(name)
-    bm = bmesh.new()
-    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=seg, radius1=r, radius2=r, depth=d.length)
-    rot = d.to_track_quat('Z', 'Y').to_matrix().to_4x4()
-    bmesh.ops.transform(bm, matrix=Matrix.Translation((A + B) / 2) @ rot, verts=bm.verts)
-    bm.to_mesh(me)
-    bm.free()
-    ob = bpy.data.objects.new(name, me)
+def _plaster(base):
+    # painted hollow block: paint colour with soft grime toward the ground
+    def build(nt, bsdf, coord):
+        sep = nt.nodes.new('ShaderNodeSeparateXYZ')
+        nt.links.new(coord.outputs['Object'], sep.inputs['Vector'])
+        r = nt.nodes.new('ShaderNodeMapRange')
+        r.inputs['From Min'].default_value = 0.0
+        r.inputs['From Max'].default_value = 0.9
+        nt.links.new(sep.outputs['Z'], r.inputs['Value'])
+        c = mix(nt, noise(nt, coord, 6, 4, 0.6), rgb(nt, base), rgb(nt, tuple(v * 0.92 for v in base)))
+        grime = mix(nt, r.outputs['Result'], rgb(nt, tuple(v * 0.72 for v in base)), c)
+        nt.links.new(tint(nt, grime), bsdf.inputs['Base Color'])
+        bsdf.inputs['Roughness'].default_value = 0.9
+    return build
+
+
+
+
+def _finish(ob, me, mat, tint_c):
     bpy.context.collection.objects.link(ob)
     col = me.color_attributes.new('tint', 'FLOAT_COLOR', 'POINT')
-    for dd in col.data:
-        dd.color = (*tint_c, 1)
+    for d in col.data:
+        d.color = (*tint_c, 1)
     parts.append((ob, mat))
     return ob
 
 
-def poly_solid(top_pts, bottom_pts, mat, name='solid', tint_c=(1, 1, 1)):
-    """A closed solid between two rings of site points (same count): used for the thatch roof."""
+MATS.update({
+    'thatch': node_mat('thatch', _thatch),
+    'sawali': node_mat('sawali', _sawali),
+    'bamboo': node_mat('bamboo', _bamboo),
+    'timber': node_mat('timber', _weathered),
+    'banig': node_mat('banig', _banig),
+    'earth': node_mat('earth', card(S('#c9a57a'), 0.08)),
+    'footing': node_mat('footing', card(S('#9d968a'), 0.06)),
+    'teal': node_mat('teal', _plaster(S('#5fb3a6'))),
+    'coral': node_mat('coral', _plaster(S('#f0a07a'))),
+    'trim': node_mat('trim', card(S('#f6efe0'), 0.03)),
+    'gi': node_mat('gi', _gi),
+    'awning': node_mat('awning', _awning),
+    'steel': node_mat('steel', flat(S('#2c3135'), 0.5, 0.3)),
+    'glass': node_mat('glass', flat(S('#9fc3cf'), 0.2)),
+    'tank': node_mat('tank', flat(S('#2f6fb5'), 0.45)),
+    'clay': node_mat('clay', card(S('#b45f38'), 0.06)),
+    'leaf': node_mat('leaf', card(S('#4f9a3a'), 0.12)),
+    'banana': node_mat('banana', card(S('#7fbf3f'), 0.1)),
+    'trunk': node_mat('trunk', card(S('#8a8a52'), 0.1)),
+    'red': node_mat('red', flat(S('#c8322e'), 0.6)),
+    'flower': node_mat('flower', flat(S('#e0302b'), 0.6)),
+    'stone': node_mat('stone', card(S('#a99d88'), 0.07)),
+    'water-bed': node_mat('water-bed', flat(S('#2e6f6a'), 0.6)),
+    'carabao': node_mat('carabao', card(S('#77737a'), 0.06)),
+    'horn': node_mat('horn', flat(S('#2a2622'), 0.5)),
+    'cloth': node_mat('cloth', flat((1, 1, 1), 0.85)),
+    'sign': node_mat('sign', flat(S('#f3d23a'), 0.7)),
+    'char': node_mat('char', flat(S('#2b2421'), 0.9)),
+    'hen': node_mat('hen', card(S('#c8743a'), 0.1)),
+})
+
+
+def pole(a, b, r, mat, tint_c=(1, 1, 1), seg=8, name='pole', r2=None):
+    """A round (optionally tapered) pole between two site points."""
+    A, B = P(*a), P(*b)
+    d = B - A
     me = bpy.data.meshes.new(name)
     bm = bmesh.new()
-    t = [bm.verts.new(P(*p)) for p in top_pts]
-    b = [bm.verts.new(P(*p)) for p in bottom_pts]
-    return bm, t, b, me
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=seg, radius1=r, radius2=r if r2 is None else r2, depth=max(d.length, 1e-3))
+    rot = d.to_track_quat('Z', 'Y').to_matrix().to_4x4()
+    bmesh.ops.transform(bm, matrix=Matrix.Translation((A + B) / 2) @ rot, verts=bm.verts)
+    bm.to_mesh(me)
+    bm.free()
+    return _finish(bpy.data.objects.new(name, me), me, mat, tint_c)
+
+
+def obox(c, size, rot, mat, tint_c=(1, 1, 1), bevel=0.0, name='obox', taper=None):
+    """An oriented box: centre and size in site metres, rotation (rx, ry, rz) in degrees about the
+    site axes (y is up). taper scales the +x end (used for leaves)."""
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts:
+        # (x, z, -y): a rotation, not a mirror, so faces stay outward
+        x, y, z = v.co.x * size[0], v.co.z * size[1], -v.co.y * size[2]
+        if taper is not None and v.co.x > 0:
+            y *= taper
+            z *= taper
+        v.co = Vector((x, y, z))
+    if bevel > 0:
+        bmesh.ops.bevel(bm, geom=list(bm.edges), offset=min(bevel, min(size) * 0.45), segments=2, profile=0.6, affect='EDGES')
+    R_ = Euler((_m.radians(rot[0]), _m.radians(rot[1]), _m.radians(rot[2])), 'YXZ').to_matrix().to_4x4()
+    # build in site axes (x, y up, z south) then convert to Blender
+    to_b = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+    bmesh.ops.transform(bm, matrix=Matrix.Translation(P(*c)) @ to_b @ R_, verts=bm.verts)
+    bm.to_mesh(me)
+    bm.free()
+    return _finish(bpy.data.objects.new(name, me), me, mat, tint_c)
+
+
+def solid(rings, mat, tint_c=(1, 1, 1), name='solid', cap_top=True, cap_bottom=True):
+    """A closed solid through rings of site points (each ring the same count), bottom to top."""
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    vs = [[bm.verts.new(P(*p)) for p in ring] for ring in rings]
+    n = len(rings[0])
+    for a, b in zip(vs, vs[1:]):
+        for k in range(n):
+            bm.faces.new((a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]))
+    if cap_bottom:
+        bm.faces.new(vs[0][::-1])
+    if cap_top and len(set(id(v) for v in vs[-1])) == n:
+        bm.faces.new(vs[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me)
+    bm.free()
+    return _finish(bpy.data.objects.new(name, me), me, mat, tint_c)
+
+
+def rect(x0, x1, z0, z1, y):
+    return [(x0, y, z1), (x1, y, z1), (x1, y, z0), (x0, y, z0)]
 
 
 def bamboo_tone():
-    return rnd.choice([(1, 1, 1), (0.92, 0.95, 0.8), (1.05, 1.0, 0.92), (0.88, 0.86, 0.8)])
+    return rnd.choice([(1, 1, 1), (0.95, 1.0, 0.82), (1.06, 1.0, 0.9), (0.9, 0.88, 0.8)])
+
+
+def slats(a, b, y0, y1, step, r, mat='bamboo', name='slat'):
+    """Vertical round slats from a to b (site x,z), y0..y1."""
+    L = math.dist(a, b)
+    n = max(1, int(L / step))
+    for k in range(n + 1):
+        t = k / n
+        x = a[0] + (b[0] - a[0]) * t
+        z = a[1] + (b[1] - a[1]) * t
+        pole((x, y0, z), (x, y1 - rnd.uniform(0, 0.04), z), r, mat, seg=6, tint_c=bamboo_tone(), name=name)
 
 
 R = LAY['room']
 C = LAY['court']
 N = LAY['neighbour']
+sx, _, sz = LAY['seat']
 
-# ---------------------------------------------------------------- courtyard ground
+# ================================================================ the bakuran (yard)
 pool = {'x0': -4.3, 'x1': -1.6, 'z0': 0.3, 'z1': 2.9}
-box(C['x0'], C['x1'], -0.04, 0.02, C['z0'], C['z1'], 'earth', bevel=0.0, name='court-earth')
-# a bamboo terrace (batalan) in front of the house, slats running east-west
-z = C['z0'] + 0.02
-while z < C['z0'] + 1.5:
-    box(C['x0'] + 0.1, C['x1'] - 0.1, 0.02, 0.1, z, min(z + 0.11, C['z0'] + 1.5), 'bamboo', bevel=0.02, tint_c=bamboo_tone(), name='batalan')
-    z += 0.125
-for x in (C['x0'] + 0.1, 0.0, C['x1'] - 0.1):
-    box(x - 0.08, x + 0.08, -0.02, 0.06, C['z0'], C['z0'] + 1.5, 'timber', bevel=0.01, name='bearer')
-# stepping stones: one deliberate path from the ladder to the table, a spur to the pond
-def stones(pts, size=0.5):
-    for (x, zz) in pts:
-        w = size * rnd.uniform(0.85, 1.15)
-        d = size * rnd.uniform(0.7, 0.95)
-        box(x - w / 2, x + w / 2, -0.01, 0.035, zz - d / 2, zz + d / 2, 'stone', bevel=0.05, tint_c=jitter((0.72, 0.68, 0.62), 0.08), name='flag')
+box(C['x0'], C['x1'], -0.04, 0.02, C['z0'], C['z1'], 'grass', bevel=0.0, name='yard')
+# a worn dirt path: ladder -> table, with a spur to the pond and the kitchen
+PATH_Y = [0.022]
 
 
-stones([(-3.7, -1.2), (-3.2, -0.45), (-2.4, 0.0), (-1.4, 0.1), (-0.4, 0.45), (0.5, 0.95), (1.3, 1.55), (1.9, 2.0)])
-stones([(-1.0, 0.9), (-1.2, 1.7)], 0.42)
-# fish pond: dark basin, a rim of rounded stones, lily pads
-box(pool['x0'], pool['x1'], -0.45, -0.3, pool['z0'], pool['z1'], 'water-bed', bevel=0.0, name='pond-bed')
-for (a, b, c, d) in ((pool['x0'] - 0.25, pool['x1'] + 0.25, pool['z0'] - 0.25, pool['z0']), (pool['x0'] - 0.25, pool['x1'] + 0.25, pool['z1'], pool['z1'] + 0.25), (pool['x0'] - 0.25, pool['x0'], pool['z0'], pool['z1']), (pool['x1'], pool['x1'] + 0.25, pool['z0'], pool['z1'])):
-    box(a, b, -0.45, 0.02, c, d, 'stone', bevel=0.01, tint_c=(0.85, 0.83, 0.8), name='pond-wall')
-k = 0.0
-per = 2 * ((pool['x1'] - pool['x0']) + (pool['z1'] - pool['z0']))
-while k < per:
-    t = k
-    if t < pool['x1'] - pool['x0']:
-        x, zz = pool['x0'] + t, pool['z0'] - 0.12
-    elif t < (pool['x1'] - pool['x0']) + (pool['z1'] - pool['z0']):
-        x, zz = pool['x1'] + 0.12, pool['z0'] + t - (pool['x1'] - pool['x0'])
-    elif t < 2 * (pool['x1'] - pool['x0']) + (pool['z1'] - pool['z0']):
-        x, zz = pool['x1'] - (t - (pool['x1'] - pool['x0']) - (pool['z1'] - pool['z0'])), pool['z1'] + 0.12
-    else:
-        x, zz = pool['x0'] - 0.12, pool['z1'] - (t - 2 * (pool['x1'] - pool['x0']) - (pool['z1'] - pool['z0']))
-    r = rnd.uniform(0.13, 0.2)
-    box(x - r, x + r, 0.0, rnd.uniform(0.12, 0.2), zz - r, zz + r, 'stone', bevel=r * 0.8, tint_c=jitter((0.7, 0.68, 0.64), 0.1), name='pond-stone')
-    k += r * 1.7
-for (x, zz, r) in ((-3.6, 0.9, 0.32), (-2.3, 1.5, 0.26), (-3.1, 2.3, 0.3), (-2.0, 0.7, 0.2)):
-    pole((x, 0.07, zz), (x, 0.085, zz), r, 'leaf', seg=12, name='lily')
-pole((-3.0, 0.085, 1.7), (-3.0, 0.16, 1.7), 0.07, 'red', seg=8, name='lotus')
-
-# a green verge inside the fence, with low shrubs in the corners
-for (a, b, c, d) in ((C['x0'], C['x1'], C['z1'] - 0.55, C['z1']), (C['x0'], C['x0'] + 0.5, C['z0'] + 1.5, C['z1']), (C['x1'] - 0.5, C['x1'], C['z0'] + 1.5, C['z1'])):
-    box(a, b, -0.02, 0.035, c, d, 'grass', bevel=0.0, name='verge')
-for (x, zz, r) in ((-4.55, 3.55, 0.42), (-3.9, 3.65, 0.3), (4.5, 3.5, 0.45), (3.85, 3.65, 0.32), (4.55, -0.9, 0.36), (-4.55, -0.6, 0.3)):
-    box(x - r, x + r, 0.0, r * 1.5, zz - r, zz + r, 'leaf', bevel=r * 0.7, tint_c=jitter((1, 1, 1), 0.12), name='shrub')
-
-# bamboo table and stools at the courtyard table spot (top at 0.75 m)
-tx, tz = 2.6, 2.6
-box(tx - 0.6, tx + 0.6, 0.72, 0.78, tz - 0.45, tz + 0.45, 'bamboo', bevel=0.02, name='table-top')
-for dx in (-0.5, 0.5):
-    for dz in (-0.35, 0.35):
-        pole((tx + dx, 0.0, tz + dz), (tx + dx, 0.72, tz + dz), 0.045, 'bamboo', name='table-leg')
-for (sx_, sz_) in ((tx - 0.95, tz), (tx + 0.95, tz)):
-    pole((sx_, 0.0, sz_), (sx_, 0.45, sz_), 0.2, 'bamboo', seg=10, tint_c=bamboo_tone(), name='stool')
-
-# ---------------------------------------------------------------- the bahay kubo
-xs = [R['x0'], -2.5, 0.0, 2.5, R['x1']]
-zs = [R['z0'], -5.0, R['z1']]
-for x in xs:
-    for zz in zs:
-        box(x - 0.2, x + 0.2, -0.02, 0.18, zz - 0.2, zz + 0.2, 'footing', bevel=0.03, name='footing')
-        top = R['h'] if (zz in (R['z0'], R['z1']) or x in (R['x0'], R['x1'])) else FLOOR
-        box(x - 0.09, x + 0.09, 0.18, top, zz - 0.09, zz + 0.09, 'timber', bevel=0.02, name='post')
-# floor: bamboo slats on joists
-for zz in (R['z0'] + 0.1, -5.0, R['z1'] - 0.1):
-    box(R['x0'], R['x1'], FLOOR - 0.16, FLOOR - 0.06, zz - 0.08, zz + 0.08, 'timber', bevel=0.01, name='joist')
-x = R['x0'] + 0.05
-while x < R['x1'] - 0.05:
-    box(x, min(x + 0.075, R['x1'] - 0.05), FLOOR - 0.06, FLOOR, R['z0'] + 0.05, R['z1'] - 0.02, 'bamboo', bevel=0.012, tint_c=bamboo_tone(), name='slat')
-    x += 0.09
-# silong: bamboo lattice skirt on the three closed sides
-for (a, b, c, d) in ((R['x0'], R['x1'], R['z0'] - 0.04, R['z0'] + 0.04), (R['x0'] - 0.04, R['x0'] + 0.04, R['z0'], R['z1']), (R['x1'] - 0.04, R['x1'] + 0.04, R['z0'], R['z1'])):
-    along_x = (b - a) > (d - c)
-    L0, L1 = (a, b) if along_x else (c, d)
-    t = L0 + 0.12
-    while t < L1 - 0.1:
-        p0 = (t, 0.18, (c + d) / 2) if along_x else ((a + b) / 2, 0.18, t)
-        p1 = (t, FLOOR - 0.06, (c + d) / 2) if along_x else ((a + b) / 2, FLOOR - 0.06, t)
-        pole(p0, p1, 0.03, 'bamboo', seg=6, tint_c=bamboo_tone(), name='lattice')
-        t += 0.11
-# walls: woven sawali panels between timber posts, a sill and a top plate
-WALLS = [('north', R['x0'], R['x1'], R['z0'] - 0.05, R['z0'] + 0.05), ('west', R['x0'] - 0.05, R['x0'] + 0.05, R['z0'], R['z1']), ('east', R['x1'] - 0.05, R['x1'] + 0.05, R['z0'], R['z1'])]
-for (nm, a, b, c, d) in WALLS:
-    box(a, b, FLOOR, R['h'] - 0.12, c, d, 'sawali', bevel=0.0, name='sawali-' + nm)
-    box(a - 0.04, b + 0.04, FLOOR, FLOOR + 0.1, c - 0.04, d + 0.04, 'timber', bevel=0.01, name='sill')
-    box(a - 0.05, b + 0.05, R['h'] - 0.14, R['h'], c - 0.05, d + 0.05, 'timber', bevel=0.01, name='plate')
-    box(a - 0.03, b + 0.03, 1.55, 1.62, c - 0.03, d + 0.03, 'bamboo', bevel=0.01, name='mid-rail')
-# capiz windows, closed (the checks treat these walls as solid): north two, west and east one
-def capiz_window(cx, cz, along_x, outward):
-    w = 1.3
-    if along_x:
-        a, b, c, d = cx - w / 2, cx + w / 2, cz + outward * 0.06, cz + outward * 0.1
-    else:
-        a, b, c, d = cx + outward * 0.06, cx + outward * 0.1, cz - w / 2, cz + w / 2
-    box(a, b, 1.25, 2.45, min(c, d), max(c, d), 'capiz', bevel=0.0, name='capiz')
-    # frame, and a propped awning shutter (tukod) over it
-    if along_x:
-        box(a - 0.08, b + 0.08, 2.45, 2.55, min(c, d) - 0.02, max(c, d) + 0.02, 'timber', bevel=0.01, name='win-head')
-        box(a - 0.08, b + 0.08, 1.15, 1.25, min(c, d) - 0.04, max(c, d) + 0.06, 'timber', bevel=0.01, name='win-sill')
-        box(a - 0.05, b + 0.05, 2.55, 2.62, cz + outward * 0.1, cz + outward * 0.75, 'sawali', bevel=0.0, name='awning')
-    else:
-        box(min(a, b) - 0.02, max(a, b) + 0.02, 2.45, 2.55, c - 0.08, d + 0.08, 'timber', bevel=0.01, name='win-head')
-        box(min(a, b) - 0.04, max(a, b) + 0.06, 1.15, 1.25, c - 0.08, d + 0.08, 'timber', bevel=0.01, name='win-sill')
-        lo, hi = sorted((cx + outward * 0.1, cx + outward * 0.75))
-        box(lo, hi, 2.55, 2.62, c - 0.05, d + 0.05, 'sawali', bevel=0.0, name='awning')
-
-
-capiz_window(-2.5, R['z0'], True, -1)
-capiz_window(2.5, R['z0'], True, -1)
-capiz_window(R['x0'], -5.0, False, -1)
-capiz_window(R['x1'], -5.0, False, 1)
-# courtyard face: open veranda with a low bamboo rail (top 0.85 m, below every sight line to the
-# reader), an eave beam, and a gap for the ladder
-box(R['x0'], R['x1'], R['h'] - 0.16, R['h'], R['z1'] - 0.08, R['z1'] + 0.08, 'timber', bevel=0.015, name='eave-beam')
-gap = (-4.3, -3.2)
-for (a, b) in ((R['x0'], gap[0]), (gap[1], R['x1'])):
-    pole((a, 0.85, R['z1'] + 0.02), (b, 0.85, R['z1'] + 0.02), 0.04, 'bamboo', name='rail')
-    pole((a, 0.66, R['z1'] + 0.02), (b, 0.66, R['z1'] + 0.02), 0.03, 'bamboo', name='rail')
-    t = a + 0.15
-    while t < b - 0.05:
-        pole((t, FLOOR, R['z1'] + 0.02), (t, 0.85, R['z1'] + 0.02), 0.022, 'bamboo', seg=6, tint_c=bamboo_tone(), name='baluster')
-        t += 0.18
-# steps: three solid bamboo-faced treads up to the floor
-lx0, lx1 = gap
-for i, y in enumerate((0.15, 0.3, 0.45)):
-    box(lx0 + 0.04, lx1 - 0.04, 0.0, y, R['z1'], R['z1'] + 0.75 - i * 0.25, 'bamboo', bevel=0.03, tint_c=jitter((0.95, 0.92, 0.85), 0.05), name='step')
-
-# ---------------------------------------------------------------- the nipa roof
-# hip roof: eaves at 3.0 m, ridge at 6.0 m; thick thatch with a ragged fringe; dark ridge cap
-EY, RY, TH = R['h'] - 0.05, 6.0, 0.38
-ex0, ex1, ez0, ez1 = R['x0'] - 0.9, R['x1'] + 0.9, R['z0'] - 0.9, R['z1'] + 0.1
-rx0, rx1, rz = -2.4, 2.4, (ez0 + ez1) / 2
-def hip_layer(inset, lift, thick, tone, name):
-    """One course of thatch: a closed hip-roof shell whose eave is inset and lifted."""
-    me = bpy.data.meshes.new(name)
+def path(pts, w=0.9):
+    """A worn dirt path: one continuous ribbon with a slightly wavy edge (no overlapping tiles)."""
+    dense = []
+    for (p0, p1) in zip(pts, pts[1:]):
+        n = max(1, int(math.dist(p0, p1) / 0.25))
+        for k in range(n):
+            t = k / n
+            dense.append((p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t))
+    dense.append(pts[-1])
+    left, right = [], []
+    PATH_Y[0] += 0.004  # each path a hair above the last, so crossings do not flicker
+    py = PATH_Y[0]
+    for i, (x, z) in enumerate(dense):
+        a_ = dense[max(0, i - 1)]
+        b_ = dense[min(len(dense) - 1, i + 1)]
+        dx, dz = b_[0] - a_[0], b_[1] - a_[1]
+        L = math.hypot(dx, dz) or 1
+        nx_, nz_ = -dz / L, dx / L
+        hw = w / 2 * rnd.uniform(0.85, 1.1)
+        left.append((x + nx_ * hw, py, z + nz_ * hw))
+        right.append((x - nx_ * hw, py, z - nz_ * hw))
+    me = bpy.data.meshes.new('path')
     bm = bmesh.new()
-
-    def V(x, y, zz):
-        return bm.verts.new(P(x, y, zz))
-    a0, a1, b0, b1 = ex0 + inset, ex1 - inset, ez0 + inset, ez1 - inset * 0.25
-    y0 = EY + lift
-    o = [V(a0, y0 + thick, b1), V(a1, y0 + thick, b1), V(a1, y0 + thick, b0), V(a0, y0 + thick, b0)]
-    ro = [V(rx0, RY + thick, rz), V(rx1, RY + thick, rz)]
-    i_ = [V(a0 + 0.06, y0, b1 - 0.06), V(a1 - 0.06, y0, b1 - 0.06), V(a1 - 0.06, y0, b0 + 0.06), V(a0 + 0.06, y0, b0 + 0.06)]
-    ri = [V(rx0 + 0.3, RY - 0.12, rz), V(rx1 - 0.3, RY - 0.12, rz)]
-    for f in ((o[0], o[1], ro[1], ro[0]), (o[2], o[3], ro[0], ro[1]), (o[1], o[2], ro[1]), (o[3], o[0], ro[0])):
-        bm.faces.new(f)
-    for f in ((i_[1], i_[0], ri[0], ri[1]), (i_[3], i_[2], ri[1], ri[0]), (i_[2], i_[1], ri[1]), (i_[0], i_[3], ri[0])):
-        bm.faces.new(f)
-    for k in range(4):
-        bm.faces.new((i_[k], i_[(k + 1) % 4], o[(k + 1) % 4], o[k]))
-    bm.normal_update()
+    L_ = [bm.verts.new(P(*p)) for p in left]
+    R_ = [bm.verts.new(P(*p)) for p in right]
+    for i in range(len(dense) - 1):
+        f = bm.faces.new((L_[i], R_[i], R_[i + 1], L_[i + 1]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for f in bm.faces:
+        if f.normal.z < 0:
+            f.normal_flip()
     bm.to_mesh(me)
     bm.free()
-    ob = bpy.data.objects.new(name, me)
-    bpy.context.collection.objects.link(ob)
-    col = me.color_attributes.new('tint', 'FLOAT_COLOR', 'POINT')
-    for dd in col.data:
-        dd.color = (*tone, 1)
-    parts.append((ob, 'thatch'))
-    return (a0, a1, b0, b1, y0)
+    _finish(bpy.data.objects.new('path', me), me, 'earth', (1.2, 1.15, 1.1))
 
 
-def fringe(p0, p1, y0, tone):
-    """A ragged hanging edge: overlapping straw bundles of uneven width and drop."""
-    L = math.dist((p0[0], p0[1]), (p1[0], p1[1]))
+path([(2.0, -2.4), (1.6, -0.8), (2.2, 0.8), (2.6, 2.0)])
+path([(1.6, -0.8), (-0.4, -0.3), (-1.2, 0.0)], 0.75)
+path([(-0.4, -0.3), (-2.6, -1.6), (-3.2, -2.6)], 0.75)
+# fish pond: dark basin, a rim of river stones, lily pads and a lotus
+box(pool['x0'], pool['x1'], -0.45, -0.3, pool['z0'], pool['z1'], 'water-bed', bevel=0.0, name='pond-bed')
+for (a, b, c, d) in ((pool['x0'] - 0.1, pool['x1'] + 0.1, pool['z0'] - 0.1, pool['z0']), (pool['x0'] - 0.1, pool['x1'] + 0.1, pool['z1'], pool['z1'] + 0.1), (pool['x0'] - 0.1, pool['x0'], pool['z0'], pool['z1']), (pool['x1'], pool['x1'] + 0.1, pool['z0'], pool['z1'])):
+    box(a, b, -0.45, 0.0, c, d, 'earth', bevel=0.0, name='pond-wall')
+cx_, cz_ = (pool['x0'] + pool['x1']) / 2, (pool['z0'] + pool['z1']) / 2
+for k in range(34):
+    a = k / 34 * math.tau
+    x = cx_ + math.cos(a) * ((pool['x1'] - pool['x0']) / 2 + 0.12)
+    z = cz_ + math.sin(a) * ((pool['z1'] - pool['z0']) / 2 + 0.12)
+    x = min(max(x, pool['x0'] - 0.12), pool['x1'] + 0.12)
+    z = min(max(z, pool['z0'] - 0.12), pool['z1'] + 0.12)
+    r = rnd.uniform(0.13, 0.21)
+    box(x - r, x + r, 0.0, rnd.uniform(0.1, 0.2), z - r, z + r, 'stone', bevel=r * 0.8, tint_c=jitter((1, 1, 1), 0.12), name='pond-stone')
+for (x, zz, r) in ((-3.6, 0.9, 0.32), (-2.3, 1.5, 0.26), (-3.1, 2.3, 0.3), (-2.0, 0.7, 0.2), (-3.9, 2.6, 0.18)):
+    pole((x, 0.07, zz), (x, 0.085, zz), r, 'leaf', seg=12, tint_c=(0.9, 1.05, 0.9), name='lily')
+for (x, zz) in ((-3.0, 1.7), (-2.4, 2.4)):
+    pole((x, 0.085, zz), (x, 0.17, zz), 0.07, 'flower', seg=8, tint_c=(1.0, 0.75, 0.8), name='lotus')
+# bamboo table with two stools at the courtyard table spot (top 0.75 m)
+tx, tz = 2.6, 2.6
+for k in range(9):
+    x = tx - 0.6 + k * 0.15
+    pole((x, 0.75, tz - 0.45), (x, 0.75, tz + 0.45), 0.07, 'bamboo', seg=7, tint_c=bamboo_tone(), name='table-top')
+for dx in (-0.5, 0.5):
+    for dz in (-0.35, 0.35):
+        pole((tx + dx, 0.0, tz + dz), (tx + dx, 0.7, tz + dz), 0.045, 'bamboo', name='table-leg')
+for (x, z) in ((tx - 0.95, tz), (tx + 0.95, tz)):
+    pole((x, 0.0, z), (x, 0.45, z), 0.19, 'bamboo', seg=10, tint_c=bamboo_tone(), name='stool')
+# the papag: a bamboo daybed in front of the house (the deck spot the wind level checks, eye 0.8 m)
+for k in range(10):
+    x = 0.4 + k * 0.17
+    pole((x, 0.45, -2.95), (x, 0.45, -2.05), 0.075, 'bamboo', seg=7, tint_c=bamboo_tone(), name='papag')
+for x in (0.45, 1.95):
+    for z in (-2.9, -2.1):
+        pole((x, 0.0, z), (x, 0.42, z), 0.05, 'bamboo', name='papag-leg')
+# gumamela (hibiscus) and low shrubs in the yard corners, all below 0.9 m
+def blob(x, y, z, r, mat, tint_c, squash=0.85, seed=0, name='blob'):
+    """A faceted, slightly lumpy ball: leaves, fruit, stones."""
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    k = random.Random(seed)
+    off = Vector((k.uniform(0, 50), k.uniform(0, 50), 0))
+    for v in bm.verts:
+        v.co *= 1 + 0.16 * mnoise.noise(v.co * 1.8 + off)
+        v.co.x *= r
+        v.co.y *= r
+        v.co.z *= r * squash
+    bmesh.ops.transform(bm, matrix=Matrix.Translation(P(x, y, z)), verts=bm.verts)
+    bm.to_mesh(me)
+    bm.free()
+    return _finish(bpy.data.objects.new(name, me), me, mat, tint_c)
+
+
+def shrub(x, z, r, flowers=True):
+    s0 = rnd.randint(0, 999)
+    blob(x, r * 0.75, z, r, 'leaf', jitter((1, 1, 1), 0.12), seed=s0, name='shrub')
+    blob(x + r * 0.45, r * 0.55, z + r * 0.2, r * 0.7, 'leaf', jitter((1.08, 1.12, 1.0), 0.1), seed=s0 + 1, name='shrub')
+    blob(x - r * 0.4, r * 0.5, z - r * 0.25, r * 0.65, 'leaf', jitter((0.92, 1.0, 0.9), 0.1), seed=s0 + 2, name='shrub')
+    if flowers:
+        for _ in range(int(6 * r / 0.3)):
+            a = rnd.uniform(0, math.tau)
+            fx, fz = x + math.cos(a) * r * 0.85, z + math.sin(a) * r * 0.85
+            fy = rnd.uniform(r * 0.6, r * 1.8)
+            blob(fx, fy, fz, 0.075, 'flower', jitter((1, 1, 1), 0.1), squash=0.6, seed=rnd.randint(0, 999), name='gumamela')
+
+
+for (x, z, r) in ((-4.5, 3.6, 0.42), (-3.7, 3.7, 0.3), (4.5, 3.55, 0.45), (3.75, 3.7, 0.32), (4.55, -0.6, 0.36)):
+    shrub(x, z, r)
+
+# ================================================================ the bahay kubo
+posts_x = [KX0, 1.3, 3.1, KX1]
+posts_z = [R['z0'], -5.0, R['z1']]
+for x in posts_x:
+    for z in posts_z:
+        box(x - 0.17, x + 0.17, -0.02, 0.15, z - 0.17, z + 0.17, 'footing', bevel=0.03, name='footing')
+        corner = (x in (KX0, KX1)) and (z in (R['z0'], R['z1']))
+        top = 4.0 if (corner or z in (R['z0'], R['z1']) or x in (KX0, KX1)) else KFLOOR
+        pole((x, 0.15, z), (x, top, z), 0.1, 'bamboo', seg=10, tint_c=bamboo_tone(), name='stilt')
+# floor: joists and bamboo slats; the underside reads as the silong ceiling
+for z in (R['z0'] + 0.1, -5.0, R['z1'] - 0.1):
+    pole((KX0, KFLOOR - 0.12, z), (KX1, KFLOOR - 0.12, z), 0.09, 'bamboo', seg=8, tint_c=(0.85, 0.82, 0.75), name='joist')
+x = KX0 + 0.06
+while x < KX1 - 0.04:
+    pole((x, KFLOOR - 0.02, R['z0'] - 0.05), (x, KFLOOR - 0.02, R['z1'] + 0.05), 0.045, 'bamboo', seg=6, tint_c=bamboo_tone(), name='floor')
+    x += 0.09
+# silong: slatted on the north and east (solid to the checks), open to the yard and the kitchen
+slats((KX0, R['z0']), (KX1, R['z0']), 0.15, KFLOOR - 0.16, 0.1, 0.035, name='silong-n')
+slats((KX1, R['z0']), (KX1, R['z1']), 0.15, KFLOOR - 0.16, 0.1, 0.035, name='silong-e')
+for y in (0.6, 1.4):
+    pole((KX0, y, R['z0'] - 0.05), (KX1, y, R['z0'] - 0.05), 0.03, 'timber', name='silong-rail')
+    pole((KX1 + 0.05, y, R['z0']), (KX1 + 0.05, y, R['z1']), 0.03, 'timber', name='silong-rail')
+# the reader's bench (bangko) under the house, seat 0.45 m: eye 1.05 m at the checked spot
+for k in range(6):
+    zz = sz - 0.42 + k * 0.08
+    pole((sx - 0.8, 0.45, zz), (sx + 0.8, 0.45, zz), 0.04, 'bamboo', seg=6, tint_c=bamboo_tone(), name='bangko')
+for x in (sx - 0.7, sx + 0.7):
+    for zz in (sz - 0.38, sz):
+        pole((x, 0.0, zz), (x, 0.42, zz), 0.035, 'bamboo', name='bangko-leg')
+box(sx - 0.25, sx + 0.25, 0.47, 0.6, sz - 0.4, sz - 0.1, 'banig', bevel=0.04, name='cushion')
+# silong life: a clay jar, a rolled mat, hanging baskets, a stack of coconuts
+pole((4.3, 0.0, -6.4), (4.3, 0.75, -6.4), 0.3, 'clay', seg=12, r2=0.18, name='tapayan')
+pole((3.4, 0.12, -6.6), (2.2, 0.12, -6.6), 0.12, 'banig', seg=10, name='rolled-banig')
+for (x, z) in ((2.2, -4.6), (3.7, -4.4)):
+    pole((x, KFLOOR - 0.15, z), (x, 1.45, z), 0.008, 'char', seg=4, name='cord')
+    pole((x, 1.45, z), (x, 1.2, z), 0.22, 'sawali', seg=10, r2=0.16, name='basket')
+for (x, z) in ((0.5, -6.3), (0.8, -6.5), (0.6, -6.0), (0.65, -6.25)):
+    box(x - 0.13, x + 0.13, 0.0 if z != -6.25 else 0.22, 0.24 if z != -6.25 else 0.46, z - 0.13, z + 0.13, 'trunk', bevel=0.1, tint_c=(0.75, 0.6, 0.45), name='coconut')
+
+# upper room: sawali walls on all four sides, timber sill and plate, bamboo corner battens
+EYV = 4.0
+for (a, b, c, d, nm) in ((KX0, KX1, R['z0'] - 0.05, R['z0'] + 0.05, 'n'), (KX0, KX1, R['z1'] - 0.05, R['z1'] + 0.05, 's'), (KX0 - 0.05, KX0 + 0.05, R['z0'], R['z1'], 'w'), (KX1 - 0.05, KX1 + 0.05, R['z0'], R['z1'], 'e')):
+    box(a, b, KFLOOR, EYV - 0.1, c, d, 'sawali', bevel=0.0, name='wall-' + nm)
+    box(a - 0.05, b + 0.05, KFLOOR - 0.05, KFLOOR + 0.08, c - 0.05, d + 0.05, 'timber', bevel=0.01, name='sill')
+    box(a - 0.06, b + 0.06, EYV - 0.14, EYV, c - 0.06, d + 0.06, 'timber', bevel=0.01, name='plate')
+    box(a - 0.03, b + 0.03, 2.95, 3.02, c - 0.03, d + 0.03, 'bamboo', bevel=0.01, name='mid-rail')
+# windows with propped awnings (tukod) and a dark room behind
+def window(cx, cz, face, w=1.1):
+    # face: 's' or 'e' or 'w' or 'n' — outward direction
+    o = {'s': (0, 1), 'n': (0, -1), 'e': (1, 0), 'w': (-1, 0)}[face]
+    along_x = face in ('s', 'n')
+    hw = w / 2
+    if along_x:
+        box(cx - hw, cx + hw, 2.45, 3.45, cz - 0.06, cz + 0.06, 'char', bevel=0.0, name='win-dark')
+        box(cx - hw - 0.08, cx + hw + 0.08, 2.37, 2.45, cz - 0.08 + o[1] * 0.04, cz + 0.08 + o[1] * 0.04, 'timber', bevel=0.01, name='win-sill')
+        obox((cx, 3.45 + 0.28, cz + o[1] * 0.42), (w + 0.2, 0.06, 0.95), (o[1] * -58, 0, 0), 'sawali', bevel=0.0, name='awning')
+        pole((cx - hw, 2.45, cz + o[1] * 0.08), (cx - hw, 3.5, cz + o[1] * 0.8), 0.02, 'bamboo', name='tukod')
+    else:
+        box(cx - 0.06, cx + 0.06, 2.45, 3.45, cz - hw, cz + hw, 'char', bevel=0.0, name='win-dark')
+        box(cx - 0.08 + o[0] * 0.04, cx + 0.08 + o[0] * 0.04, 2.37, 2.45, cz - hw - 0.08, cz + hw + 0.08, 'timber', bevel=0.01, name='win-sill')
+        obox((cx + o[0] * 0.42, 3.45 + 0.28, cz), (0.95, 0.06, w + 0.2), (0, 0, o[0] * 58), 'sawali', bevel=0.0, name='awning')
+        pole((cx + o[0] * 0.08, 2.45, cz - hw), (cx + o[0] * 0.8, 3.5, cz - hw), 0.02, 'bamboo', name='tukod')
+
+
+window(3.9, R['z1'], 's')
+window(KX1, -5.0, 'e')
+window(KX0, -5.6, 'w', 0.9)
+window(2.0, R['z0'], 'n')
+# door on the yard side, a small landing and a bamboo ladder down to the path
+box(1.6, 2.5, KFLOOR + 0.08, 3.65, R['z1'] - 0.07, R['z1'] + 0.07, 'char', bevel=0.0, name='door-dark')
+box(1.5, 2.6, 3.65, 3.75, R['z1'] - 0.09, R['z1'] + 0.09, 'timber', bevel=0.01, name='door-head')
+box(1.45, 2.65, KFLOOR - 0.06, KFLOOR + 0.02, R['z1'], R['z1'] + 0.45, 'bamboo', bevel=0.02, name='landing')
+lz0, lz1 = R['z1'] + 0.45, R['z1'] + 1.55
+for x in (1.65, 2.45):
+    pole((x, 0.0, lz1), (x, KFLOOR + 0.6, lz0 - 0.15), 0.045, 'bamboo', seg=8, name='ladder-rail')
+for k in range(1, 6):
+    t = k / 6
+    y = KFLOOR * t
+    z = lz1 + (lz0 - lz1) * t
+    pole((1.65, y, z), (2.45, y, z), 0.03, 'bamboo', seg=6, tint_c=bamboo_tone(), name='rung')
+
+# the nipa roof: one steep hip, eaves 4.0 m, ridge 7.6 m; thin course lines read as layered thatch;
+# a shaggy fringe; a bundled ridge with crossed sticks
+ex0, ex1, ez0, ez1 = KX0 - 0.9, KX1 + 0.9, R['z0'] - 0.9, R['z1'] + 0.1
+rx0, rx1, rzr = 1.7, 2.7, (ez0 + ez1) / 2
+EY, RY, TH = EYV - 0.05, 7.6, 0.4
+
+
+def roof_ring(t, out=0.0):
+    """Outline of the roof surface at fraction t from eave (0) to ridge (1), pushed out by `out`."""
+    a0 = ex0 + (rx0 - ex0) * t - out
+    a1 = ex1 + (rx1 - ex1) * t + out
+    b0 = ez0 + (rzr - ez0) * t - out
+    b1 = ez1 + (rzr - ez1) * t + out
+    return rect(a0, a1, b0, b1, EY + (RY - EY) * t)
+
+
+solid([rect(ex0 + 0.05, ex1 - 0.05, ez0 + 0.05, ez1 - 0.05, EY), roof_ring(0.0, 0.0), [(rx1, RY + TH, rzr), (rx1, RY + TH, rzr), (rx0, RY + TH, rzr), (rx0, RY + TH, rzr)]], 'thatch', name='thatch-skin', cap_top=False)
+# lift the outer surface by the thatch thickness at the eave
+solid([roof_ring(0.0, 0.0), [(p[0], p[1] + TH, p[2]) for p in roof_ring(0.0, 0.06)]], 'thatch', tint_c=(0.82, 0.8, 0.76), name='thatch-edge', cap_top=False, cap_bottom=False)
+for k, t in enumerate((0.16, 0.32, 0.48, 0.64, 0.8)):
+    lo = [(p[0], p[1] + TH - 0.02, p[2]) for p in roof_ring(t, 0.02)]
+    hi = [(p[0], p[1] + TH + 0.07, p[2]) for p in roof_ring(t - 0.035, 0.1)]
+    solid([lo, hi], 'thatch', tint_c=(0.72, 0.68, 0.62), name=f'course-{k}', cap_top=False, cap_bottom=False)
+# fringe: ragged bundles hanging below the eave
+ring = roof_ring(0.0, 0.03)
+for i in range(4):
+    p0, p1 = ring[i], ring[(i + 1) % 4]
+    L = math.dist((p0[0], p0[2]), (p1[0], p1[2]))
     t = 0.0
     while t < L:
-        w = rnd.uniform(0.18, 0.42)
-        k0, k1 = t / L, min(1.0, (t + w) / L)
-        a = (p0[0] + (p1[0] - p0[0]) * k0, p0[1] + (p1[1] - p0[1]) * k0)
-        b = (p0[0] + (p1[0] - p0[0]) * k1, p0[1] + (p1[1] - p0[1]) * k1)
-        drop = rnd.uniform(0.05, 0.17)
-        box(min(a[0], b[0]) - 0.02, max(a[0], b[0]) + 0.02, y0 - drop, y0 + 0.1, min(a[1], b[1]) - 0.05, max(a[1], b[1]) + 0.05, 'thatch', bevel=0.05, tint_c=jitter(tone, 0.12), name='tuft')
-        t += w * rnd.uniform(0.7, 0.95)
+        w = rnd.uniform(0.16, 0.34)
+        k0, k1 = t / L, min(1, (t + w) / L)
+        a = (p0[0] + (p1[0] - p0[0]) * k0, p0[2] + (p1[2] - p0[2]) * k0)
+        b = (p0[0] + (p1[0] - p0[0]) * k1, p0[2] + (p1[2] - p0[2]) * k1)
+        drop = rnd.uniform(0.06, 0.2)
+        box(min(a[0], b[0]) - 0.02, max(a[0], b[0]) + 0.02, EY - drop, EY + TH * 0.6, min(a[1], b[1]) - 0.05, max(a[1], b[1]) + 0.05, 'thatch', bevel=0.04, tint_c=jitter((0.9, 0.88, 0.84), 0.12), name='tuft')
+        t += w * rnd.uniform(0.75, 0.95)
+pole((rx0 - 0.45, RY + TH + 0.08, rzr), (rx1 + 0.45, RY + TH + 0.08, rzr), 0.2, 'thatch', seg=10, tint_c=(0.62, 0.55, 0.47), name='ridge')
+for x in (rx0 - 0.4, rx1 + 0.4):
+    pole((x - 0.3, RY + TH - 0.1, rzr), (x + 0.3, RY + TH + 0.7, rzr), 0.045, 'timber', name='ridge-horn')
+    pole((x + 0.3, RY + TH - 0.1, rzr), (x - 0.3, RY + TH + 0.7, rzr), 0.045, 'timber', name='ridge-horn')
 
+# ================================================================ the dirty kitchen annex
+AX0, AX1 = R['x0'], KX0 - 0.05
+for x in (AX0, (AX0 + AX1) / 2, AX1):
+    for z in (R['z0'], R['z1']):
+        pole((x, 0.0, z), (x, 3.0 if z == R['z1'] else 3.9, z), 0.08, 'bamboo', seg=8, tint_c=bamboo_tone(), name='annex-post')
+# solid north and west walls (to the checks), woven panels with a bamboo rail
+box(AX0, AX1, 0.0, 3.0, R['z0'] - 0.05, R['z0'] + 0.05, 'sawali', bevel=0.0, tint_c=(0.92, 0.9, 0.86), name='annex-n')
+box(AX0 - 0.05, AX0 + 0.05, 0.0, 3.0, R['z0'], R['z1'], 'sawali', bevel=0.0, tint_c=(0.92, 0.9, 0.86), name='annex-w')
+for y in (0.9, 2.0):
+    pole((AX0 - 0.08, y, R['z0']), (AX0 - 0.08, y, R['z1']), 0.035, 'bamboo', name='annex-rail')
+# low nipa lean-to roof: 3.0 m at the yard edge rising to 3.9 m at the back; west overhang
+az0, az1 = R['z0'] - 0.7, R['z1'] + 0.1
+ax0, ax1 = AX0 - 0.7, AX1
+solid([[(ax0, 2.95, az1), (ax1, 2.95, az1), (ax1, 3.85, az0), (ax0, 3.85, az0)], [(ax0, 3.25, az1), (ax1, 3.25, az1), (ax1, 4.15, az0), (ax0, 4.15, az0)]], 'thatch', tint_c=(0.95, 0.93, 0.88), name='annex-roof')
+for k, f in enumerate((0.25, 0.5, 0.75)):
+    zz = az1 + (az0 - az1) * f
+    yy = 3.25 + (4.15 - 3.25) * f
+    box(ax0 - 0.03, ax1, yy - 0.02, yy + 0.07, zz - 0.06, zz + 0.06, 'thatch', bevel=0.03, tint_c=(0.72, 0.68, 0.62), name='annex-course')
+t = ax0
+while t < ax1:
+    w = rnd.uniform(0.16, 0.32)
+    box(t, min(t + w, ax1), 2.95 - rnd.uniform(0.05, 0.16), 3.15, az1 - 0.06, az1 + 0.06, 'thatch', bevel=0.04, tint_c=jitter((0.9, 0.88, 0.84), 0.12), name='tuft')
+    t += w * 0.85
+# kitchen: a clay stove on a raised hearth, two palayok pots, firewood, a water jar, a shelf of plates
+box(-4.7, -3.0, 0.0, 0.8, -6.85, -6.0, 'clay', bevel=0.06, tint_c=(0.9, 0.85, 0.8), name='hearth')
+for x in (-4.25, -3.45):
+    box(x - 0.28, x + 0.28, 0.8, 0.98, -6.7, -6.15, 'char', bevel=0.05, name='stove')
+    pole((x, 0.98, -6.42), (x, 1.22, -6.42), 0.22, 'char', seg=12, r2=0.17, name='palayok')
+for k in range(7):
+    y = 0.08 + (k % 3) * 0.14
+    z = -4.2 + (k // 3) * 0.02
+    pole((-4.75, y, z - 0.6), (-4.75, y, z + 0.6), 0.065, 'timber', seg=6, tint_c=jitter((1.1, 1.0, 0.9), 0.1), name='firewood')
+pole((-1.5, 0.0, -6.4), (-1.5, 0.7, -6.4), 0.3, 'clay', seg=12, r2=0.2, name='banga')
+box(-2.8, -1.2, 1.5, 1.56, -6.95, -6.65, 'timber', bevel=0.01, name='shelf')
+for k in range(5):
+    x = -2.65 + k * 0.3
+    pole((x, 1.56, -6.8), (x, 1.82, -6.82), 0.12, 'trim', seg=10, name='plate')
+for x in (-2.2, -1.9):
+    pole((x, 3.0, -4.5), (x, 2.2, -4.5), 0.008, 'char', seg=4, name='cord')
+    box(x - 0.08, x + 0.08, 2.0, 2.25, -4.58, -4.42, 'trim', bevel=0.06, tint_c=(1.0, 0.95, 0.85), name='garlic')
 
-# three courses, each lifted and drawn in, so the roof shows the stepped layers of nipa thatch
-for k, (inset, lift, tone) in enumerate(((0.0, 0.0, (0.9, 0.88, 0.84)), (0.42, 0.55, (1.0, 0.98, 0.96)), (0.84, 1.1, (1.06, 1.04, 1.0)))):
-    a0, a1, b0, b1, y0 = hip_layer(inset, lift, TH, tone, f'thatch-{k}')
-    for (p0, p1) in (((a0, b1), (a1, b1)), ((a1, b1), (a1, b0)), ((a1, b0), (a0, b0)), ((a0, b0), (a0, b1))):
-        fringe(p0, p1, y0, tone)
-pole((rx0 - 0.35, RY + TH + 0.05, rz), (rx1 + 0.35, RY + TH + 0.05, rz), 0.2, 'timber', seg=10, tint_c=(0.8, 0.75, 0.7), name='ridge')
-for x in (rx0 - 0.3, rx1 + 0.3):
-    pole((x - 0.25, RY + TH - 0.1, rz), (x + 0.25, RY + TH + 0.55, rz), 0.05, 'timber', name='ridge-horn')
-# rafters showing under the eave on the courtyard side
-x = ex0 + 0.4
-while x < ex1 - 0.3:
-    pole((x, EY - 0.02, ez1 - 0.05), (x * 0.6, RY - 0.4, rz), 0.035, 'bamboo', seg=6, name='rafter')
-    x += 0.8
-
-# ---------------------------------------------------------------- inside: the reading corner
-sx, _, sz = LAY['seat']
-box(sx - 1.3, sx + 1.2, FLOOR, FLOOR + 0.012, sz - 1.4, sz + 0.3, 'banig', bevel=0.0, name='banig')
-box(sx - 0.35, sx + 0.35, FLOOR + 0.01, FLOOR + 0.16, sz - 1.05, sz - 0.6, 'red', bevel=0.06, name='pillow')
-box(sx + 0.55, sx + 1.15, FLOOR, FLOOR + 0.32, sz - 0.9, sz - 0.3, 'timber', bevel=0.02, name='dulang')
-for i in range(4):
-    h = 0.04 + i * 0.0
-    box(sx + 0.65 + rnd.uniform(-0.03, 0.03), sx + 0.95, FLOOR + 0.32 + i * 0.045, FLOOR + 0.36 + i * 0.045, sz - 0.75, sz - 0.5, 'book', bevel=0.004, tint_c=rnd.choice([(0.85, 0.3, 0.25), (0.25, 0.45, 0.6), (0.9, 0.8, 0.5), (0.3, 0.5, 0.35)]), name='book')
-# baul chest and a clay jar at the back
-box(R['x0'] + 0.3, R['x0'] + 1.4, FLOOR, FLOOR + 0.55, R['z0'] + 0.25, R['z0'] + 0.85, 'timber', bevel=0.03, tint_c=(1.1, 1.0, 0.9), name='baul')
-pole((R['x1'] - 0.6, FLOOR, R['z0'] + 0.6), (R['x1'] - 0.6, FLOOR + 0.55, R['z0'] + 0.6), 0.22, 'clay', seg=12, name='banga')
-# a hanging capiz lamp
-pole((0.0, R['h'], -5.0), (0.0, 2.45, -5.0), 0.01, 'steel', seg=4, name='lamp-cord')
-box(-0.22, 0.22, 2.1, 2.45, -5.22, -4.78, 'capiz', bevel=0.08, name='lamp')
-
-# ---------------------------------------------------------------- bamboo fence, 1.0 m
+# ================================================================ bamboo fence, 1.0 m
 for key in ('east garden wall', 'south garden wall', 'west garden wall'):
     b = BOX[key]
     x0, x1 = b['c'][0] - b['h'][0], b['c'][0] + b['h'][0]
     z0, z1 = b['c'][2] - b['h'][2], b['c'][2] + b['h'][2]
     along_x = (x1 - x0) > (z1 - z0)
-    L0, L1 = (x0, x1) if along_x else (z0, z1)
     mid = (z0 + z1) / 2 if along_x else (x0 + x1) / 2
+    L0, L1 = (x0, x1) if along_x else (z0, z1)
     t = L0 + 0.05
     i = 0
     while t < L1 - 0.02:
-        top = FENCE_H - (0.06 if i % 2 else 0.0)
+        top = FENCE_H - (0.07 if i % 3 == 1 else 0.0 if i % 3 == 0 else 0.03)
         p0 = (t, 0.0, mid) if along_x else (mid, 0.0, t)
         p1 = (t, top, mid) if along_x else (mid, top, t)
         pole(p0, p1, 0.048, 'bamboo', seg=7, tint_c=bamboo_tone(), name='fence-pole')
         t += 0.1
         i += 1
-    for y in (0.3, 0.78):
-        off = 0.08
-        p0 = (L0, y, mid + off) if along_x else (mid - off if key == 'west garden wall' else mid + off, y, L0)
-        p1 = (L1, y, mid + off) if along_x else (mid - off if key == 'west garden wall' else mid + off, y, L1)
+    out = 0.08 if key != 'west garden wall' else -0.08
+    for y in (0.3, 0.75):
+        p0 = (L0, y, mid + out) if along_x else (mid + out, y, L0)
+        p1 = (L1, y, mid + out) if along_x else (mid + out, y, L1)
         pole(p0, p1, 0.035, 'timber', seg=6, name='fence-rail')
 
-# ---------------------------------------------------------------- the neighbour's house, Manila
+# ================================================================ the neighbour's house, Manila
 nh = BOX['neighbour house']
 nx0, nx1 = nh['c'][0] - nh['h'][0], nh['c'][0] + nh['h'][0]
 nz0, nz1 = nh['c'][2] - nh['h'][2], nh['c'][2] + nh['h'][2]
 ny1 = nh['c'][1] + nh['h'][1]
-box(nx0, nx1, 0.0, 2.45, nz0, nz1, 'mint', bevel=0.06, name='n-ground')
-box(nx0 - 0.04, nx1 + 0.04, 2.45, 2.6, nz0 - 0.04, nz1 + 0.04, 'cream', bevel=0.02, name='n-band')
-box(nx0, nx1, 2.6, ny1, nz0, nz1, 'cream', bevel=0.06, name='n-upper')
-box(nx0 - 0.06, nx1 + 0.06, ny1 - 0.1, ny1 + 0.05, nz0 - 0.06, nz1 + 0.06, 'mint', bevel=0.02, name='n-parapet')
+GF = 2.5
+box(nx0, nx1, 0.0, GF, nz0, nz1, 'teal', bevel=0.05, name='n-ground')
+box(nx0 - 0.05, nx1 + 0.05, GF, GF + 0.14, nz0 - 0.05, nz1 + 0.05, 'trim', bevel=0.02, name='n-band')
+box(nx0, nx1, GF + 0.14, ny1 - 0.32, nz0, nz1, 'coral', bevel=0.05, name='n-upper')
+# corrugated shed roof inside the box: 4.6 m at the west, 4.3 m at the east, with fascia
+solid([[(nx0 - 0.25, ny1 - 0.32, nz1 + 0.3), (nx1 + 0.2, ny1 - 0.62, nz1 + 0.3), (nx1 + 0.2, ny1 - 0.62, nz0 - 0.3), (nx0 - 0.25, ny1 - 0.32, nz0 - 0.3)],
+       [(nx0 - 0.25, ny1 - 0.26, nz1 + 0.3), (nx1 + 0.2, ny1 - 0.56, nz1 + 0.3), (nx1 + 0.2, ny1 - 0.56, nz0 - 0.3), (nx0 - 0.25, ny1 - 0.26, nz0 - 0.3)]], 'gi', name='n-roof')
+box(nx0 - 0.3, nx0 - 0.22, ny1 - 0.45, ny1 - 0.2, nz0 - 0.3, nz1 + 0.3, 'trim', bevel=0.01, name='n-fascia')
+# west face: the watching window, a jalousie, the balcony with a decorative grille
 wy, wz = N['window'][1], N['window'][2]
-# the watching window on the west face: timber frame, dark opening (the game adds the warm glow)
-for (a, b, c, d) in ((wy - 0.66, wy - 0.6, wz - 0.76, wz + 0.76), (wy + 0.6, wy + 0.66, wz - 0.76, wz + 0.76), (wy - 0.66, wy + 0.66, wz - 0.76, wz - 0.7), (wy - 0.66, wy + 0.66, wz + 0.7, wz + 0.76)):
-    box(nx0 - 0.06, nx0 + 0.02, a, b, c, d, 'timber', bevel=0.005, name='n-win-frame')
-# balcony: slab, steel grille, a blue corrugated canopy, potted plants
-box(nx0 - 0.85, nx0, 2.45, 2.6, wz - 1.1, wz + 1.1, 'cream', bevel=0.02, name='n-balcony')
-for zz in [wz - 1.05 + k * 0.15 for k in range(15)]:
-    pole((nx0 - 0.82, 2.6, zz), (nx0 - 0.82, 3.35, zz), 0.015, 'steel', seg=4, name='grille')
-pole((nx0 - 0.82, 3.35, wz - 1.1), (nx0 - 0.82, 3.35, wz + 1.1), 0.03, 'steel', seg=6, name='grille-top')
-for (z_a, z_b) in ((wz - 1.1, wz - 1.1), (wz + 1.1, wz + 1.1)):
-    pole((nx0 - 0.82, 2.6, z_a), (nx0, 3.35, z_b), 0.0, 'steel', seg=3, name='nop') if False else None
-box(nx0 - 1.0, nx0 + 0.02, 4.32, 4.4, wz - 1.25, wz + 1.25, 'gi', bevel=0.0, name='n-canopy')
-for zz in (wz - 0.8, wz + 0.85):
-    pole((nx0 - 0.6, 2.6, zz), (nx0 - 0.6, 2.85, zz), 0.13, 'clay', seg=10, name='pot')
-    pole((nx0 - 0.6, 2.85, zz), (nx0 - 0.6, 3.15, zz), 0.2, 'leaf', seg=8, name='pot-plant')
-# ground floor: sari-sari store window on the south face, a door on the west
-box(nx0 + 0.6, nx0 + 2.4, 0.9, 2.0, nz1 - 0.02, nz1 + 0.06, 'steel', bevel=0.0, name='n-store-grille')
-box(nx0 + 0.5, nx0 + 2.5, 0.85, 0.95, nz1, nz1 + 0.3, 'timber', bevel=0.01, name='n-store-counter')
-box(nx0 + 0.4, nx0 + 2.6, 2.05, 2.15, nz1, nz1 + 0.5, 'red', bevel=0.01, name='n-store-sign')
-box(nx0 - 0.04, nx0 + 0.01, 0.0, 2.15, nz0 + 1.2, nz0 + 2.2, 'timber', bevel=0.01, name='n-door')
-box(nx0 - 0.04, nx0 + 0.01, 0.9, 1.9, nz0 + 2.8, nz0 + 3.9, 'capiz', bevel=0.0, name='n-win2')
-# a water tank on the roof, at the far east side
-pole((nx1 - 0.8, ny1, nz0 + 0.8), (nx1 - 0.8, ny1 + 0.9, nz0 + 0.8), 0.45, 'steel', seg=14, tint_c=(2.2, 2.2, 2.3), name='tank')
+box(nx0 - 0.06, nx0 + 0.02, wy - 0.62, wy + 0.62, wz - 0.72, wz + 0.72, 'char', bevel=0.0, name='n-win-dark')
+for k in range(7):
+    y = wy - 0.5 + k * 0.17
+    obox((nx0 - 0.08, y, wz - 0.38), (0.02, 0.13, 0.62), (0, 0, 35), 'glass', name='jalousie')
+box(nx0 - 0.1, nx0 + 0.02, wy - 0.7, wy + 0.7, wz - 0.8, wz - 0.72, 'trim', bevel=0.005, name='n-win-frame')
+box(nx0 - 0.1, nx0 + 0.02, wy - 0.7, wy + 0.7, wz + 0.72, wz + 0.8, 'trim', bevel=0.005, name='n-win-frame')
+box(nx0 - 0.1, nx0 + 0.02, wy + 0.62, wy + 0.7, wz - 0.8, wz + 0.8, 'trim', bevel=0.005, name='n-win-frame')
+box(nx0 - 0.85, nx0, GF - 0.05, GF + 0.12, wz - 1.15, wz + 1.15, 'trim', bevel=0.02, name='n-balcony')
+for k in range(16):
+    zz = wz - 1.1 + k * 0.147
+    pole((nx0 - 0.82, GF + 0.12, zz), (nx0 - 0.82, GF + 0.95, zz), 0.016, 'steel', seg=4, name='grille')
+for y in (GF + 0.45, GF + 0.95):
+    pole((nx0 - 0.82, y, wz - 1.15), (nx0 - 0.82, y, wz + 1.15), 0.025, 'steel', seg=6, name='grille-rail')
+for k in range(5):  # a row of grille hoops: the decorative band
+    zz = wz - 0.88 + k * 0.44
+    pole((nx0 - 0.82, GF + 0.62, zz - 0.18), (nx0 - 0.82, GF + 0.8, zz), 0.012, 'steel', seg=4, name='grille-loop')
+    pole((nx0 - 0.82, GF + 0.8, zz), (nx0 - 0.82, GF + 0.62, zz + 0.18), 0.012, 'steel', seg=4, name='grille-loop')
+for zz in (wz - 0.85, wz + 0.9):
+    pole((nx0 - 0.55, GF + 0.12, zz), (nx0 - 0.55, GF + 0.36, zz), 0.13, 'clay', seg=10, r2=0.1, name='pot')
+    box(nx0 - 0.78, nx0 - 0.32, GF + 0.32, GF + 0.62, zz - 0.22, zz + 0.22, 'leaf', bevel=0.12, name='pot-plant')
+# laundry on the balcony rail
+for k, c in enumerate(((0.9, 0.3, 0.3), (0.3, 0.55, 0.85), (0.95, 0.85, 0.35))):
+    zz = wz - 0.6 + k * 0.5
+    box(nx0 - 0.86, nx0 - 0.8, GF + 0.55, GF + 0.95, zz - 0.18, zz + 0.18, 'cloth', bevel=0.0, tint_c=c, name='laundry')
+# south face (toward the player): the sari-sari store with grille, counter, goods, striped awning, sign
+sx0, sx1 = nx0 + 0.5, nx0 + 2.6
+box(sx0, sx1, 0.8, 2.0, nz1 - 0.04, nz1 + 0.02, 'char', bevel=0.0, name='store-dark')
+for k in range(8):
+    y = 0.95 + (k % 2) * 0.5
+    for j in range(7):
+        x = sx0 + 0.15 + j * 0.28
+        box(x - 0.07, x + 0.07, y, y + rnd.uniform(0.14, 0.28), nz1 - 0.2, nz1 - 0.06, 'cloth', bevel=0.01, tint_c=rnd.choice([(0.9, 0.3, 0.25), (0.2, 0.5, 0.8), (0.95, 0.8, 0.2), (0.3, 0.7, 0.4), (0.95, 0.95, 0.95)]), name='goods')
+    if k > 1:
+        break
+for k in range(15):
+    x = sx0 + k * (sx1 - sx0) / 14
+    pole((x, 0.8, nz1 + 0.05), (x, 2.0, nz1 + 0.05), 0.012, 'steel', seg=4, name='store-grille')
+box(sx0 - 0.1, sx1 + 0.1, 0.78, 0.86, nz1, nz1 + 0.35, 'timber', bevel=0.01, name='counter')
+obox(((sx0 + sx1) / 2, 2.22, nz1 + 0.45), (sx1 - sx0 + 0.5, 0.04, 1.0), (24, 0, 0), 'awning', name='store-awning')
+box(sx0, sx1, 2.38, 2.55, nz1 + 0.02, nz1 + 0.08, 'sign', bevel=0.01, name='store-sign')
+for k in range(9):  # painted letters suggested by dark blocks
+    x = sx0 + 0.15 + k * 0.22
+    box(x, x + 0.13, 2.41, 2.52, nz1 + 0.08, nz1 + 0.09, 'red', bevel=0.0, name='sign-letter')
+box(sx1 + 0.4, sx1 + 1.3, 0.0, 2.1, nz1 - 0.03, nz1 + 0.03, 'timber', bevel=0.01, name='n-door')
+# upper windows on the south: jalousies with trim
+for x in (nx0 + 1.1, nx0 + 3.0):
+    box(x - 0.5, x + 0.5, 3.0, 3.9, nz1 - 0.02, nz1 + 0.03, 'char', bevel=0.0, name='n-upwin')
+    for k in range(5):
+        obox((x, 3.1 + k * 0.18, nz1 + 0.05), (0.95, 0.13, 0.02), (35, 0, 0), 'glass', name='jalousie')
+    box(x - 0.58, x + 0.58, 2.92, 3.0, nz1, nz1 + 0.1, 'trim', bevel=0.01, name='n-upsill')
+# east face: an aircon box under a window
+box(nx1 - 0.02, nx1 + 0.04, 3.1, 3.9, -1.2, -0.2, 'char', bevel=0.0, name='n-ewin')
+box(nx1, nx1 + 0.45, 2.75, 3.0, -1.1, -0.3, 'trim', bevel=0.03, name='aircon')
+# roof top: a blue water tank on a stand and a TV antenna (both small, at the east side)
+for (dx, dz) in ((-0.3, -0.3), (0.3, -0.3), (-0.3, 0.3), (0.3, 0.3)):
+    pole((nx1 - 0.9 + dx, ny1 - 0.55, nz0 + 1.0 + dz), (nx1 - 0.9 + dx, ny1 - 0.15, nz0 + 1.0 + dz), 0.03, 'steel', seg=4, name='tank-stand')
+pole((nx1 - 0.9, ny1 - 0.15, nz0 + 1.0), (nx1 - 0.9, ny1 + 0.75, nz0 + 1.0), 0.42, 'tank', seg=14, name='tank')
+pole((nx1 - 0.4, ny1 - 0.6, nz1 - 0.6), (nx1 - 0.4, ny1 + 1.2, nz1 - 0.6), 0.02, 'steel', seg=4, name='antenna')
+for k in range(4):
+    y = ny1 + 0.6 + k * 0.17
+    pole((nx1 - 0.4, y, nz1 - 0.95 + k * 0.05), (nx1 - 0.4, y, nz1 - 0.25 - k * 0.05), 0.012, 'steel', seg=4, name='antenna-bar')
 
-# ---------------------------------------------------------------- stepping stones on the lawn
-for (x, zz) in ((6.2, 2.2), (6.9, 3.0), (7.4, 3.9), (5.6, 1.4)):
-    box(x - 0.32, x + 0.32, -0.02, 0.03, zz - 0.24, zz + 0.24, 'stone', bevel=0.02, tint_c=jitter((1, 1, 1), 0.06), name='step')
+# ================================================================ around the yard: life
+def banana(x, z, h=2.6, seed=0):
+    k = random.Random(seed)
+    pole((x, 0.0, z), (x, h * 0.65, z), 0.16, 'trunk', seg=9, r2=0.11, name='banana-trunk')
+    for i in range(7):
+        a = i / 7 * 360 + k.uniform(-20, 20)
+        tilt = k.uniform(25, 55)
+        L = k.uniform(1.0, 1.4)
+        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        cxl = x + ca * L * 0.45 * math.cos(math.radians(tilt))
+        czl = z + sa * L * 0.45 * math.cos(math.radians(tilt))
+        cy = h * 0.65 + L * 0.45 * math.sin(math.radians(tilt)) * 0.6
+        obox((cxl, cy, czl), (L, 0.025, 0.38), (0, -a, tilt * 0.6), 'banana', tint_c=jitter((1, 1, 1), 0.12), name='banana-leaf', taper=0.55)
+    obox((x + 0.15, h * 0.55, z), (0.18, 0.3, 0.18), (0, 0, 0), 'banana', tint_c=(0.9, 1.1, 0.6), bevel=0.06, name='banana-bunch')
+    pole((x + 0.15, h * 0.45, z), (x + 0.15, h * 0.32, z), 0.08, 'red', seg=8, r2=0.03, tint_c=(0.6, 0.2, 0.35), name='banana-heart')
+
+
+def papaya(x, z, h=3.2, seed=0):
+    k = random.Random(seed)
+    pole((x, 0.0, z), (x, h, z), 0.1, 'trunk', seg=8, r2=0.07, tint_c=(1.1, 1.0, 0.85), name='papaya-trunk')
+    for i in range(8):
+        a = i / 8 * 360 + k.uniform(-15, 15)
+        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        obox((x + ca * 0.55, h + 0.05, z + sa * 0.55), (0.9, 0.03, 0.5), (0, -a, -18), 'leaf', tint_c=jitter((1.05, 1.1, 0.95), 0.1), name='papaya-leaf', taper=1.2)
+    for i in range(5):
+        a = i / 5 * math.tau
+        fx, fz = x + math.cos(a) * 0.14, z + math.sin(a) * 0.14
+        fy = h - 0.25 - (i % 2) * 0.15
+        box(fx - 0.08, fx + 0.08, fy - 0.13, fy + 0.13, fz - 0.08, fz + 0.08, 'banana', bevel=0.07, tint_c=(1.2, 0.9, 0.35) if i % 2 else (0.85, 1.05, 0.55), name='papaya-fruit')
+
+
+def carabao(x, z, yaw=0):
+    # a resting water buffalo: body, belly, head, swept horns, legs, tail
+    def part(c, s, rot=(0, 0, 0), mat='carabao', b=0.08):
+        ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+        px, pz = c[0] * ca - c[2] * sa, c[0] * sa + c[2] * ca
+        obox((x + px, c[1], z + pz), s, (rot[0], rot[1] - yaw, rot[2]), mat, bevel=b, name='carabao')
+    part((0, 0.95, 0), (1.9, 0.75, 0.85))
+    part((0.05, 0.62, 0), (1.5, 0.3, 0.7))
+    part((1.15, 0.95, 0), (0.55, 0.45, 0.42), (0, 0, -18))
+    part((1.42, 0.82, 0), (0.25, 0.25, 0.32), (0, 0, -18), b=0.06)
+    for s in (-1, 1):
+        part((1.05, 1.25, s * 0.38), (0.6, 0.09, 0.09), (s * -25, s * 30, 18), 'horn', 0.03)
+    for (dx, dz) in ((0.7, -0.27), (0.7, 0.27), (-0.7, -0.27), (-0.7, 0.27)):
+        part((dx, 0.3, dz), (0.17, 0.62, 0.17), b=0.04)
+    part((-1.0, 0.75, 0), (0.06, 0.55, 0.06), (0, 0, 12), 'horn', 0.02)
+
+
+def hen(x, z, yaw=0, white=False):
+    tc = (1.6, 1.6, 1.6) if white else (1, 1, 1)
+    obox((x, 0.18, z), (0.3, 0.2, 0.18), (0, -yaw, 0), 'hen', tint_c=tc, bevel=0.07, name='hen')
+    ca, sa = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    obox((x + ca * 0.17, 0.33, z + sa * 0.17), (0.11, 0.12, 0.1), (0, -yaw, 0), 'hen', tint_c=tc, bevel=0.04, name='hen-head')
+    obox((x + ca * 0.18, 0.41, z + sa * 0.18), (0.08, 0.05, 0.03), (0, -yaw, 0), 'red', name='hen-comb')
+    obox((x - ca * 0.16, 0.3, z - sa * 0.16), (0.08, 0.2, 0.14), (0, -yaw, -25), 'hen', tint_c=(0.5, 0.35, 0.25) if not white else tc, bevel=0.03, name='hen-tail')
+
+
+# tall plants only where their shadows cannot reach the yard in the levels' hours: behind the house
+# (north), or far out at the island's sides
+banana(6.8, -7.6, seed=1)
+banana(7.8, -8.2, 2.3, seed=2)
+banana(-6.6, -6.2, 2.4, seed=3)
+papaya(3.6, -8.3, seed=4)
+papaya(-2.8, -8.4, 3.0, seed=5)
+carabao(-7.4, -3.8, yaw=-70)
+for (x, z, yaw, w) in ((-6.2, 0.6, 30, False), (-6.7, 1.3, 160, True), (6.4, 3.5, 250, False), (-5.9, 1.8, 90, True)):
+    hen(x, z, yaw, w)
+# a laundry line on the west lawn
+for z in (0.4, 3.0):
+    pole((-7.8, 0.0, z), (-7.8, 1.75, z), 0.04, 'bamboo', name='line-pole')
+pole((-7.8, 1.7, 0.4), (-7.8, 1.7, 3.0), 0.008, 'char', seg=4, name='line')
+for k, c in enumerate(((0.95, 0.35, 0.3), (0.95, 0.95, 0.95), (0.3, 0.55, 0.9), (0.98, 0.8, 0.25), (0.45, 0.75, 0.45))):
+    zz = 0.7 + k * 0.48
+    box(-7.83, -7.77, 1.15 + (k % 2) * 0.12, 1.7, zz - 0.18, zz + 0.18, 'cloth', bevel=0.0, tint_c=c, name='laundry')
+# gumamela hedge along the front of the fence, outside, low
+for (x, z, r) in ((-4.0, 4.7, 0.42), (-3.3, 4.95, 0.28), (-0.6, 4.75, 0.34), (2.4, 4.8, 0.44), (3.1, 5.0, 0.26)):
+    shrub(x, z, r, flowers=r > 0.3)
 
 # ---------------------------------------------------------------- join, unwrap, bake
 # The lawn and the roof stay out of the baked mesh: the game draws the lawn with a tiled texture
