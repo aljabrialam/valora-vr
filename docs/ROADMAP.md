@@ -27,14 +27,14 @@ Freeze the submitted build on the evening of 18 November (Singapore time).
 **8 November.**
 - Country houses modelled in Blender: bahay kubo (Manila), ruen thai by the canal (Bangkok), joglo (Jakarta), black-and-white bungalow (Singapore), each with a local neighbour.
 - Smooth storybook look on every island: round moss-capped rocks, a soft grass lip, gradient colours, smooth shading, new palms ([ART](ART.md)).
-- Trailer and showcase video pipeline ([VIDEO](VIDEO.md)).
+- Trailer and showcase re-shot on the new art ([VIDEO](VIDEO.md)); nine social graphics ([SOCIAL](SOCIAL.md)).
 - Docs brought up to date.
 
 ## Next
 
 1. **Performance:** compress models (meshopt or Draco, KTX2), fewer island triangles, merged scenery ([PERFORMANCE](PERFORMANCE.md)).
 2. **Quest test (about 12 November):** the [checklist](QUEST-TEST-CHECKLIST.md); fix what it finds.
-3. **Video:** re-shoot with the new art and the new Bangkok house; assemble the trailer and the showcase.
+3. **Video:** add a real Quest clip once the headset test is done.
 4. **Submission:** final text ([SUBMISSION](SUBMISSION.md)), screenshots, the eligibility questions in [COMPETITION](COMPETITION.md).
 
 ## Open decisions

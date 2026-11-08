@@ -1,0 +1,112 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-08T12:12:12Z"
+ },
+ "title": "VaLora social media graphics",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1080,
+   "h": 1080,
+   "title": "Square post"
+  },
+  "Landscape.dc.html": {
+   "x": 1160,
+   "y": 0,
+   "w": 1200,
+   "h": 675,
+   "title": "Landscape post (LinkedIn, X)"
+  },
+  "Islands.dc.html": {
+   "x": 0,
+   "y": 1440,
+   "w": 1080,
+   "h": 1350,
+   "title": "Portrait post: four islands"
+  },
+  "HowItPlays.dc.html": {
+   "x": 1160,
+   "y": 1440,
+   "w": 1080,
+   "h": 1350,
+   "title": "Carousel: how it plays"
+  },
+  "Story.dc.html": {
+   "x": 2320,
+   "y": 1440,
+   "w": 1080,
+   "h": 1920,
+   "title": "Story 9:16"
+  },
+  "Country-ph.dc.html": {
+   "x": 0,
+   "y": 3720,
+   "w": 1080,
+   "h": 1350,
+   "title": "Carousel 01: Manila"
+  },
+  "Country-th.dc.html": {
+   "x": 1160,
+   "y": 3720,
+   "w": 1080,
+   "h": 1350,
+   "title": "Carousel 02: Bangkok"
+  },
+  "Country-id.dc.html": {
+   "x": 2320,
+   "y": 3720,
+   "w": 1080,
+   "h": 1350,
+   "title": "Carousel 03: Jakarta"
+  },
+  "Country-sg.dc.html": {
+   "x": 3480,
+   "y": 3720,
+   "w": 1080,
+   "h": 1350,
+   "title": "Carousel 04: Singapore"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Landscape.dc.html",
+  "Islands.dc.html",
+  "HowItPlays.dc.html",
+  "Story.dc.html",
+  "Country-ph.dc.html",
+  "Country-th.dc.html",
+  "Country-id.dc.html",
+  "Country-sg.dc.html"
+ ],
+ "notes": {
+  "row1": {
+   "x": 0,
+   "y": -260,
+   "text": "Launch posts",
+   "kind": "title1",
+   "maxW": 2360
+  },
+  "row2": {
+   "x": 0,
+   "y": 1180,
+   "text": "Four islands, how it plays, story",
+   "kind": "title1",
+   "maxW": 3400
+  },
+  "row3": {
+   "x": 0,
+   "y": 3460,
+   "text": "Carousel: one slide per country",
+   "kind": "title1",
+   "maxW": 4560
+  }
+ },
+ "designSystems": []
+}

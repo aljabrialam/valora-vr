@@ -13,6 +13,7 @@
 | [ART.md](ART.md) | The storybook diorama look, each country's island, the Blender pipeline, the rule that art never contradicts the checks |
 | [BRAND.md](BRAND.md) | Name, story, type, colour, sound |
 | [VIDEO.md](VIDEO.md) | Trailer and showcase: shot list and the frame-exact capture pipeline |
+| [SOCIAL.md](SOCIAL.md) | Ready-to-post social graphics and how they are made |
 | [SUBMISSION.md](SUBMISSION.md) | Draft Devpost answers |
 | [ROADMAP.md](ROADMAP.md) | Milestones to the deadline |
 | [PRIVACY.md](PRIVACY.md) | What is stored, and where |

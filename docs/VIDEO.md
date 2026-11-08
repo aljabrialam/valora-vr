@@ -7,7 +7,7 @@ Two cuts, each in 16:9 (YouTube, the submission) and 9:16 (Reels, TikTok, Shorts
 | Trailer | about 26 s | `video/valora-trailer-16x9.mp4`, `video/valora-trailer-9x16.mp4` |
 | Showcase: the trailer, then the features | about 61 s | `video/valora-showcase-16x9.mp4`, `video/valora-showcase-9x16.mp4` |
 
-All footage is the real game, rendered frame by frame. Headset footage comes from Meta's IWER emulator and is labelled "Emulator" on screen; nothing is presented as recorded on a Quest until it is. `video/` is not committed (large files); the scripts that make it are.
+All footage is the real game, rendered frame by frame. Headset footage comes from Meta's IWER emulator and is labelled "Emulator" on screen; nothing is presented as recorded on a Quest until it is. `video/` is ignored by git (frames and cuts are large); the scripts that make it are committed. Share the finished cuts as files or attach them to a GitHub release.
 
 > **8 November:** every shot re-captured on the smooth-art islands and the new Bangkok house; trailer shots hide the tutorial arrow (`VR.chrome(false)`); feature captions sit above Tiki's card (`hi=1` in `make-titles.sh`). Integrated loudness −13.3 LUFS.
 

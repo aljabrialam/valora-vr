@@ -115,7 +115,7 @@ VALORA_COUNTRY=th blender-python art/blender/island2.py                      # i
 blender-python art/blender/trees.py                                          # palms and shrubs
 ```
 
-Use `ph`, `th`, `id` or `sg`. The showcase video is rendered frame by frame from the game: `scripts/video/run-all.sh`, `scripts/video/make-titles.sh`, `python3 scripts/video/music.py video/music.wav`, `python3 scripts/video/edit.py` ([VIDEO](docs/VIDEO.md)).
+Use `ph`, `th`, `id` or `sg`. Social graphics: [SOCIAL](docs/SOCIAL.md). The showcase video is rendered frame by frame from the game: `scripts/video/run-all.sh`, `scripts/video/make-titles.sh`, `python3 scripts/video/music.py video/music.wav`, `python3 scripts/video/edit.py` ([VIDEO](docs/VIDEO.md)).
 
 ## Documentation
 
@@ -132,6 +132,7 @@ Use `ph`, `th`, `id` or `sg`. The showcase video is rendered frame by frame from
 | [ART](docs/ART.md) | The storybook diorama look, each country's island, the Blender pipeline, the rule that art never contradicts the checks |
 | [BRAND](docs/BRAND.md) | Name, the VaLora story, type, colour, sound |
 | [VIDEO](docs/VIDEO.md) | Trailer and showcase: shot list and the frame-exact capture pipeline |
+| [SOCIAL](docs/SOCIAL.md) | Nine ready-to-post graphics (square, 4:5 carousel, story, landscape) and how they are made |
 | [SUBMISSION](docs/SUBMISSION.md) | Draft answers for the Devpost form |
 | [ROADMAP](docs/ROADMAP.md) | Milestones to the deadline |
 | [PRIVACY](docs/PRIVACY.md) | What the app stores (progress in the browser only) |
