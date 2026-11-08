@@ -32,11 +32,22 @@ The submission is for a VR competition, so after the 22-second trailer everythin
 
 Headset shots: `node scripts/video/vrshots.mjs <shot>` (`TEST=1` for a quick quarter-size check). The emulated hand is placed by its pointing ray through the emulator's remote control (the same calls as `iwsdk xr`), held under programmatic control each frame; the head stays still while the hand works, because the emulated hand moves with the head. The hand model comes from the webxr-input-profiles package served locally (`PROFILES_DIR`), since the capture sandbox cannot reach its CDN. The player leans in 14 cm (`VR.lean`) so pieces read at video size.
 
+### Voice-over
+
+A narrator states the objective in the trailer ("Your goal: let the sun in, and keep the watchers out") and then talks through each control as the hand performs it: pinch Tiki, carry a screen from the raft, turn it, drag the sun, press play, then one twist per city. The words match the on-screen captions, so the cut also works muted. The script and its timings are in `scripts/video/vo.py`. Each line starts at a fixed second, and the script fails if a line would run into the next one.
+
+- **Voice:** Kokoro v1.0 (open weights, Apache-2.0), voice `af_heart`, run locally. No account or online service is used. Change it with `VO_VOICE`, for example `bf_emma` or `am_michael`.
+- **Mix:** the music ducks under the voice by sidechain compression, and the whole mix is normalised to −14 LUFS. The voice sits about 15 dB above the music, and at least 9 dB in the loudest moments. `MUSIC_LEVEL` sets the music bed (default 0.36).
+- **Music only:** the previous cut without the voice is kept as `video/valora-demo-novo-*.mp4`.
+
+The voice is synthetic. If the entry form asks about AI-generated content, declare it there. To use a human voice, record the same lines at the same start times and pass that file as `VO`.
+
 ```bash
 bash scripts/video/make-demo-titles.sh
 MUSIC_DUR=99.95 python3 scripts/video/music.py video/music-demo.wav
 for s in v_ph v_look v_sun v_day v_th v_id v_sg; do node scripts/video/vrshots.mjs $s; done
-CUT=demo MUSIC=video/music-demo.wav python3 scripts/video/edit.py
+KOKORO_DIR=/path/to/kokoro python3 scripts/video/vo.py        # -> video/vo-demo.wav
+CUT=demo MUSIC=video/music-demo.wav VO=video/vo-demo.wav python3 scripts/video/edit.py
 ```
 
 ## Shot list (trailer and showcase)

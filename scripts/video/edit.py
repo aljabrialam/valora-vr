@@ -106,7 +106,20 @@ run(['ffmpeg', '-y', '-hide_banner', '-f', 'concat', '-safe', '0', '-i', f'{V}/s
 total = sum(s[1] for s in SEG)
 MUSIC = os.environ.get('MUSIC', f'{V}/music.wav')
 master = f'{V}/valora-{NAME}-16x9.mp4'
-run(['ffmpeg', '-y', '-hide_banner', '-i', f'{V}/seg/picture.mp4', '-i', MUSIC, '-filter_complex', f'[1:a]atrim=0:{total:.2f},afade=t=out:st={total - 2.5:.2f}:d=2.5,loudnorm=I=-14:TP=-1:LRA=11[a]', '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-t', f'{total:.2f}', '-movflags', '+faststart', master])
+# VO=path adds a voice-over (scripts/video/vo.py): the music ducks under the voice, then the mix is normalised
+VO = os.environ.get('VO')
+fade = f'afade=t=out:st={total - 2.5:.2f}:d=2.5,loudnorm=I=-14:TP=-1:LRA=11'
+if VO:
+    duck = float(os.environ.get('MUSIC_LEVEL', '0.36'))
+    graph = (f'[1:a]atrim=0:{total:.2f},aresample=48000,volume={duck}[m];'
+             f'[2:a]aresample=48000,highpass=f=80,acompressor=threshold=0.1:ratio=3:attack=5:release=120,asplit=2[v1][v2];'
+             f'[m][v1]sidechaincompress=threshold=0.015:ratio=14:attack=25:release=450[md];'
+             f'[md][v2]amix=inputs=2:normalize=0,{fade}[a]')
+    ins = ['-i', MUSIC, '-i', VO]
+else:
+    graph = f'[1:a]atrim=0:{total:.2f},{fade}[a]'
+    ins = ['-i', MUSIC]
+run(['ffmpeg', '-y', '-hide_banner', '-i', f'{V}/seg/picture.mp4', *ins, '-filter_complex', graph, '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-t', f'{total:.2f}', '-movflags', '+faststart', master])
 print('master', master, total, 's')
 
 # ---------------- 9:16 social cut: blurred fill, the 16:9 picture centred, a header and a footer
