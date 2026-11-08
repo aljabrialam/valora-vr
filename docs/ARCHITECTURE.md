@@ -4,78 +4,112 @@
 
 ```mermaid
 flowchart TB
-  subgraph Pure["src/sim: pure TypeScript, no three.js"]
-    SUN[sun.ts] --> W[world.ts]
-    G[geom.ts] --> W
-    W --> L[levels.ts]
+  subgraph Pure["src/sim: pure TypeScript, no three.js, runs in the headset and in Node"]
+    SUN[sun.ts<br/>sun position] --> PL[play.ts<br/>pieces, sockets, boxes, evaluate, stars]
+    GEO[geom.ts<br/>segment vs box] --> PL
+    WLD[world.ts<br/>layout, fixed boxes] --> PL
+    CTY[countries.ts<br/>places, watchers, levels] --> PL
   end
-  L --> P[scripts/prove.ts]
-  L --> APP[src/index.ts]
-  APP --> M[src/model.ts]
-  APP --> F[src/feedback.ts]
-  APP --> C[src/panel.ts]
-  APP --> S[src/sound.ts]
-  APP --> IW[IWSDK World<br/>renderer, XR session, input, grabbing]
+  PL --> PROVE[scripts/prove2.ts<br/>npm run prove]
+  PL --> APP[src/index.ts<br/>IWSDK world, hands, raft, sun, day]
+  APP --> MODEL[model.ts<br/>desk, site group, pieces' sockets]
+  APP --> LOOK[look/assets.ts<br/>houses, islands, trees, plant]
+  APP --> PCS[pieces.ts]
+  APP --> WAT[watchers.ts<br/>sea, boats, tower, wind, rain]
+  APP --> FB[feedback.ts<br/>beams and labels]
+  APP --> UI[hud.ts, globe.ts<br/>page overlay, country picker]
+  APP --> TIKI[mascot.ts, tutorial.ts]
+  APP --> AMB[clouds.ts, motes.ts, sound.ts]
 ```
 
-The game is a static WebXR page. IWSDK (`@iwsdk/core`) owns the renderer, the XR session, hand and controller input and grabbing. Everything that decides whether a rule passes lives in `src/sim`, which imports nothing from three.js or the browser, so the identical code runs in the headset and in Node for the solvability proof.
+The game is a static WebXR page. IWSDK (`@iwsdk/core`, the Immersive Web SDK) owns the renderer, the XR session (the immersive VR mode), hand input and the emulator hookup. Everything that decides whether a rule passes lives in `src/sim`, which imports nothing from three.js or the browser, so the same code runs in the headset and in Node for the solvability proof.
 
 ## 2. Coordinates and scale
 
-- **Site space** (`src/sim`): real metres. +x east, −z north, +y up, matching the VaLora website's `spec.js`. The courtyard spans x −5..5, z −3..4; the living room is north of it (z −7..−3) with glass on its south face.
-- **Desk space** (`src/model.ts`): the site is scaled 1:25 and centred on a desk at 0.74 m height, 0.52 m in front of the player. *Planned:* larger scale (about 1:16) so detents are further apart for real hands.
-- **World space**: IWSDK's XR origin. Seated players are placed by the `local-floor` reference space.
+| Space | Units and axes | Where |
+|---|---|---|
+| **Site** | Real metres. +x east, −z north, +y up. Courtyard x −5..5, z −3..4; the room north of it, z −7..−3; the neighbour's house east, x 8.1..12.3 | `src/sim`, Blender scripts, all art |
+| **Desk** | The site group scaled 1:18 on a desk top at y 0.75 m; site origin at about world (−0.18, 0.75, −0.48) | `src/model.ts` (`SCALE`, `DESK`) |
+| **World** | IWSDK's origin. In VR the player rig is moved once so the seated head is at the desk (see 5.4) | `src/index.ts` |
+
+`siteToWorld(p)` converts site points to world points through the site group's matrix. Blender's own axes are z up, so the scripts convert with `P(x, y, z) → (x, −z, y)`.
 
 ## 3. The check engine
 
-`geom.ts` tests a straight segment against an oriented box (a box rotated about the vertical axis) with the slab method, returning where the segment enters. `world.ts` builds the boxes from the current `Design` (screen angle, overhang depth) plus the fixed walls and roofs, and answers two questions:
+`geom.ts` tests a straight segment against a box (optionally rotated about the vertical) with the slab method and returns where it enters. `play.ts` builds the boxes from the fixed house (`world.ts`: walls, roof plane, garden walls at each country's height, the neighbour's house) plus every placed piece, then answers one question for every rule: *can this watcher reach this target in a straight line?*
 
-```ts
-neighbourSees(target, design)      // segment: neighbour's window → target
-sunSees(target, design, sunAt(h))  // segment: target → 60 m along the sun's direction
-```
+| Watcher | Segment | Countries |
+|---|---|---|
+| Sun | From the target 60 m along the sun's direction at the rule's hour | All |
+| Neighbour's window | From the window to the target | All |
+| Boats | From each passing boat's eye height to the target; blind only if every boat is blocked | Thailand |
+| High-rise | From the tower's balcony to the target | Singapore |
+| Wind | From the target into the typhoon wind's direction, low over the fence | Philippines |
+| Rain | From the target up into the slanting rain | Indonesia |
 
-Each answer carries the first blocker and where along the line it was hit, which drives the beam length and the "blocked by the privacy screen" text. `levels.ts` turns rules (watcher, target, want sees or blind, hour) into pass or fail.
+Targets are the reader's seat, the plant, the pool, the garden table and the deck. A rule wants a watcher to *see* (sun on the plant) or be *blind* (no neighbour on the seat). `evaluateLevel` returns each rule's pass or fail, the first blocker and where it was hit (which sets the beam length), whether the level is solved, and its stars: par or fewer pieces earns 3, one more earns 2, otherwise 1.
 
-```mermaid
-sequenceDiagram
-  participant Hand
-  participant IWSDK as IWSDK grab
-  participant Drag as ScreenDragSystem
-  participant Sim as src/sim
-  participant View as model, beams, card
-  Hand->>IWSDK: pinch on the handle (ray)
-  IWSDK->>Drag: handle entity gains Grabbed, moves with the hand
-  Drag->>Drag: handle position → angle about the hinge → nearest reachable 15° detent
-  Drag->>Sim: evaluateLevel(level, design)
-  Sim-->>View: pass/fail, blockers, hit points
-  View-->>Hand: click, beams, labels, level card
-```
+### Pieces and sockets
+
+| Piece | Blocks | Turns |
+|---|---|---|
+| Screen | Eyes and low sun | 4 |
+| Hedge | Low views only | 2 |
+| Tree | High sun and views from above, not eye level | 1 |
+| Pergola | Midday sun | 1 |
+
+Pieces stand on a grid of sockets over the courtyard (skipping the pool and the plant). Some levels also let the player slide out the roof overhang. The 3D pieces in `pieces.ts` are built from the same footprints and heights the checks use.
 
 ## 4. Sun position
 
-`sun.ts` is a port of the website's `sunAt()`: hour angle, declination (−16.1° for 6 November), latitude 1.35°, solar noon at 12:49. It returns elevation, azimuth and a unit direction. `declination(dayOfYear)` is included for the planned daily challenge.
+`sun.ts` computes elevation, azimuth and a unit direction from hour angle, declination and latitude. `countries.ts` gives each capital its latitude and its clock time of solar noon on 8 November (longitude, time zone and the equation of time), so Manila, Bangkok, Jakarta and Singapore each have their own sun path. The rendered sun light follows the same function.
 
 ## 5. Interaction
 
-The handle is its own entity at world level with `RayInteractable` and `DistanceGrabbable` in `MoveAtSource` mode: the handle moves with the hand. `ScreenDragSystem` reads the handle's position each frame, converts it to an angle about the screen's hinge in site space, and snaps to the nearest angle the screen can physically reach (`screenAngles()`). The screen eases to that angle with a critically damped spring. When released, the handle returns to the screen's free end.
+### 5.1 Hand rays
 
-A ray pinch is used deliberately: it works with Quest hand tracking, with controllers, and with look-and-pinch on Meta VR Glasses.
+Every action is a ray pinch (aim and pinch), which works with Quest hand tracking and with controllers. The game reads the rays from `world.player.raySpaces` (left and right) and moves held things itself: a held piece follows where the hand ray meets the desk plane, keeping the offset from where it was picked up; the sun follows the hour whose point on the arc is nearest the ray. `DistanceGrabbable` is used with `translate: false` only to get pinch events.
+
+### 5.2 Hit boxes
+
+Thin parts (raft slats, a hedge's foliage) are hard to hit with a ray, so every piece, the sun handle, Tiki and the play button carries an invisible box (`HIT_MAT`, colour writes off) that takes the ray. Scenery (houses, islands, trees, clouds, labels) never takes rays, so nothing gets between the hand and a target.
+
+### 5.3 Place, turn, play
+
+- Pinch a piece on the bamboo raft, point at the courtyard, let go: it snaps to the nearest free socket.
+- Pinch a placed piece and let go without moving it more than 2 cm: it turns to its next angle. This is judged on movement only, never time, because the emulator runs far slower than real time.
+- Drag the sun along its arc to try any hour; press play to live the day, every rule checked hour by hour.
+
+### 5.4 Seated recentre
+
+Thirty XR frames after the session starts, the rig is moved so the head sits at `SEAT_HEAD` in front of the desk (read from `world.player.head`). The view switches between flat and headset layouts per frame, from `renderer.xr.isPresenting`, because session events can fire before presenting starts. In the IWER emulator (`window.IWER_DEVICE` present; the emulator reports a Quest user agent, so the agent string is not used) the same path runs.
 
 ## 6. Rendering
 
-- One directional light is the sun, with a 2048 shadow map fitted to the model.
-- The dome and image-based light are IWSDK gradient components set in the scene file.
-- Beams are thin open cylinders; labels and the level card are canvas textures with tone mapping off, so text stays crisp.
-- The static house is authored in Blender by script (`art/blender/house.py`): board-formed concrete, oak and deck boards, stone paving, pool coping, the reading corner (armchair, rug, lamp, bookshelf), garden walls with caps and wall lights, and the neighbour's house. It reads `art/layout.json`, which `npm run export-layout` (scripts/export-layout.ts) writes from `src/sim/world.ts`, so every wall the player sees is the box the watchers test against.
-- Cycles bakes two 2048 atlases: colour (procedural materials flattened, with part of the occlusion folded in so corners stay grounded in direct sun) and ambient occlusion (glTF occlusion texture). The sun is not baked: it moves between levels and the screen and overhang move with the player's hands, so it stays a real-time light with shadows.
-- Code keeps only what moves, glows, is see-through or tiles: lawn, water, glass, the ghost roof, the screen, the overhang, the neighbour's lit window, beams and labels.
-- Rebuild the house: `npm run export-layout && /path/to/blender -b -P art/blender/house.py` (or Python with the `bpy` package). Output: `public/models/valora-house.glb`.
+- One directional light is the sun, with a 2048 shadow map fitted to the island. A hemisphere light gives sky fill and warm bounce. The dome gradient and image-based light are set in `public/scenes/main.iwsdk.scene.json` (ACES tone mapping).
+- Houses, islands and trees are glTF files made by script in Blender ([ART](ART.md)): baked colour and occlusion atlases for houses, vertex colours for islands and trees, smooth normals with crisp edges.
+- A country with its own house hides the code-drawn ghost roof and glass; Thailand also hides the code-drawn balcony because its neighbour's house models one.
+- Code keeps what moves, glows or is see-through: the sea, the pool water, pieces, beams and labels, the sun handle, boats, rain, wind, clouds, dust motes and Tiki.
+- Labels and Tiki's speech are canvas textures with tone mapping off so text stays crisp. On a computer the same words appear in a page overlay (`hud.ts`) at reading size.
 
 ## 7. Build and hosting
 
-Vite with `@iwsdk/vite-plugin-dev` for development (HTTPS, IWER emulator injection). `npm run build` writes a static site to `dist/`, deployed to Vercel. No server code.
+Vite with `@iwsdk/vite-plugin-dev` for development (HTTPS, IWER emulator injection). `npm run build` writes a static site to `dist/`, deployed to Vercel at [valora-vr.vercel.app](https://valora-vr.vercel.app). No server code; best stars are kept in the browser's local storage.
+
+URL parameters: `?country=ph|th|id|sg&level=1..3`.
 
 ## 8. Test hooks
 
-`window.VR` exposes `setDesign`, `setLevel`, `state`, `handleScreen` and `worldToScreen` for scripted screenshots and checks. The app logs `[VR] design … solved …` on every change, which the emulator test reads.
+`window.VR` exposes hooks for scripted tests and video capture:
+
+| Hook | Use |
+|---|---|
+| `state()`, `stats()` | Current design and level; renderer statistics |
+| `setCountry`, `setLevel`, `place`, `setHour`, `live` | Drive the game without input |
+| `tapTiki()` | Continue the tutorial |
+| `pieceWorld`, `socketWorld`, `worldPos`, `worldToScreen`, `pieceScreen`, `socketScreen`, `siteToScreen` | Positions for aiming emulated hands or a mouse |
+| `pieceBox`, `boxOf`, `rayHits` | What a ray hits |
+| `rig`, `recentreNow`, `tilt`, `toRig` | The seated rig, for emulator tests and capture |
+| `cinema`, `chrome` | A fixed camera and hidden overlays for video shots |
+
+The app logs `[VR] design … solved … stars …`, `[VR] step …`, `[VR] view …`, `[VR] recentre …`, `[VR] release`, `[VR] sun grab` and `[VR] day start`, which the emulator test reads. `window.__capture` (set only by the video scripts) turns off emulator-only behaviour for capture.

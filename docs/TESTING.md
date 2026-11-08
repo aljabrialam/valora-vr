@@ -2,20 +2,41 @@
 
 Emulator results and headset results are reported separately. Emulation cannot establish real hand-tracking reliability, seated reach, fatigue, stereo readability, comfort or Quest performance.
 
-## Summary (6 November 2026)
+## Summary (8 November 2026)
 
 | Check | Environment | Result | How to run |
 |---|---|---|---|
-| Every level solvable, none starts solved | Node | 3/3 | `npm run prove` |
+| Every level solvable, none starts solved, par is the fewest pieces | Node | 12/12 (4 countries x 3) | `npm run prove` |
 | Type check | Node | clean | `npm run typecheck` |
 | Production build | Node | builds | `npm run build` |
-| Rules match the picture (start and solved states of Level 2) | Desktop Chrome, software WebGL | match | screenshots in `docs/screens/` |
-| Simulated right hand pinches the handle and swings the screen to a solution | IWER emulator, Meta Quest 3 profile, hand input | pass | `npm run e2e:hand` |
-| Hands-only playthrough: pinch Tiki three times through the tutorial, swing the screen, solve Level 1, Tiki celebrates | IWER emulator, Meta Quest 3 profile, hand input | pass | `npm run e2e:play` |
+| Hands-only playthrough: seated recentre, headset wording, Tiki pinch, carry a raft piece onto a socket by pointing, tutorial moves on by itself, turn the piece, solve Manila level 1, drag the sun, tutorial moves on, play button starts the day, no console errors | IWER emulator, Meta Quest 3 profile, hand input | 11/11 checks pass, re-run after the smooth-art pass | `npm run e2e:play` |
+| Mouse playthrough: Manila level 1 solved with 3 stars, the day completes | Desktop Chrome, software WebGL | pass | browser test |
+| All four islands load with their own house, island and neighbour | Desktop Chrome, software WebGL | pass | screenshots in `docs/screens/*-v3.jpg` |
 | Hand tracking on a real Quest 3 or 3S | Headset | not yet tested | [QUEST-TEST-CHECKLIST](QUEST-TEST-CHECKLIST.md) |
 | Frame rate on Quest 3 | Headset | not yet measured | [PERFORMANCE](PERFORMANCE.md) |
 
+`npm run e2e:play` output on 8 November:
+
+```text
+PASS  Seated recentre on entering VR
+PASS  Words switch to the headset view
+PASS  Pinching Tiki starts the tutorial
+PASS  Hand grab places a raft piece on a socket
+PASS  Placing a piece moves the tutorial on by itself
+PASS  Short pinch turns the placed piece
+PASS  Level ph-1 solved with hands only
+PASS  Sun handle follows the hand ray  hour 10 -> 8.5
+PASS  Moving the sun moves the tutorial on  [VR] step ph-1-done
+PASS  Play button press starts the day
+PASS  No console errors
+ALL PASS (emulator, hands)
+```
+
+The sections below keep the history of earlier test rounds, including bugs the tests found.
+
 ## 1. Solvability proof
+
+*History: this section describes the first prototype's proof. The current proof is `scripts/prove2.ts` (`npm run prove`), which tries every layout of each level's raft pieces over every socket and turn, for all 12 levels, and also checks that par equals the fewest pieces.*
 
 `scripts/prove.ts` enumerates every snap position the player can reach with the tools each level gives them and evaluates the level's rules with the same code the game uses. It fails if a level has no solution or starts solved.
 
@@ -30,7 +51,7 @@ PASS  The Whole Day      3 of  90 snap positions solve it
 
 The proof already earned its place: moving the screen's hinge so it could not swing into the room made every level unsolvable, and the proof failed before any of it reached the headset. The layout was then re-tuned with a search over hinge position, screen length and plant position.
 
-## 2. Emulator hand test
+## 2. Emulator hand test (prototype, 6 November)
 
 `scripts/e2e-hand.sh` drives the IWSDK dev server's managed browser through the `iwsdk` CLI:
 
@@ -70,9 +91,25 @@ Three things the heavier scene exposed, all fixed:
 
 These are emulator and test-script limits. Frame rate on a real Quest 3 still needs the headset test. Desktop budget from `VR.stats()`: 142 draw calls, about 128,000 triangles, 26 textures.
 
-## 5. Not tested yet
+## 5. Hands-only playthrough after the raft and the countries (8 November 2026)
 
-- Real hand tracking: pinch reliability on the handle, drift, jitter at detents.
+The game moved from one swinging screen to pieces carried from a raft, four countries and a draggable sun. The playthrough was rewritten (`scripts/e2e-play.mjs`): it enters the emulated session, reads the seated rig offset from the `[VR] recentre` log, and drives the right hand in rig space through `IWER_DEVICE`.
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Pieces needed a 0.85 m reach | `MoveAtSource` grabbing moved the piece with the hand, not the ray | Held pieces follow where the hand ray meets the desk plane |
+| Rays slipped between raft slats and hedge leaves | Thin geometry | Invisible hit boxes on every piece, the sun, Tiki and the play button |
+| A pinch to turn a piece was read as a move | The emulator runs about 20 times slower than real time, so a time limit failed | A tap is judged on movement only (under 2 cm) |
+| The headset view started looking at the sky | The rig was not placed for a seated player | Recentre 30 frames into the session from `world.player.head` |
+| The page map covered the headset view | The overlay stayed visible | The overlay hides while presenting |
+
+## 6. Art changes and the checks
+
+The houses and islands are scenery: they do not take rays and the checks never read them. After each art change the proof and the playthrough are re-run, and the screenshots are compared against the rules in [ART](ART.md) (no post on the open face where the reader's sun crosses it, eaves stop at z −2.9, tall things only where their shadows cannot reach the yard).
+
+## 7. Not tested yet
+
+- Real hand tracking: pinch reliability on raft pieces and the sun, drift, jitter.
 - Seated reach and arm fatigue at the desk height and distance.
 - Text legibility in stereo at the label and card sizes.
 - Frame rate, draw calls and shadow cost on Quest 3.

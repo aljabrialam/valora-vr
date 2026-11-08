@@ -27,7 +27,7 @@
 | **What** | A short puzzle game played seated, with your hands, in VR (or with a mouse on a computer) |
 | **The watchers** | **The sun** should reach some spots and not others. **A neighbour**, **passing boats** or **a high-rise** must not see the reader. In some places **typhoon wind** or **monsoon rain** must not reach a spot |
 | **The idea** | Sunlight, privacy, wind and rain are one test: *can something reach this spot in a straight line?* The sun is just a watcher very far away |
-| **Where** | Manila (bahay kubo, typhoon wind), Bangkok (canal house, long-tail boats), Jakarta (joglo, monsoon rain), Singapore (black-and-white bungalow, the high-rise next door). The sun follows each capital's own path for 8 November |
+| **Where** | Manila (bahay kubo, typhoon wind), Bangkok (teak ruen thai on a canal, long-tail boats), Jakarta (joglo, monsoon rain), Singapore (black-and-white bungalow, the high-rise next door). The sun follows each capital's own path for 8 November |
 | **How you play** | Choose a place on the globe. Pinch a piece on the raft, point it at the courtyard, let go; pinch it again to turn it. Drag the sun. Press play to live the day; fewer pieces earn more stars |
 | **Guide** | **Tiki**, a gecko who sits on the garden wall. Tiki teaches by doing: the tutorial moves on when you place a piece or move the sun |
 | **Comfort** | Seated, no walking or turning: the view is set up once when VR starts, and the whole board sits within a short point of your hand |
@@ -37,14 +37,16 @@
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screens/ph-manila.png" alt="Manila: bahay kubo island"><br><sub><b>Manila.</b> A bahay kubo on stilts, the dirty kitchen, a carabao and a banca. The red line is the neighbour's view.</sub></td>
-<td width="50%"><img src="docs/screens/id-jakarta.png" alt="Jakarta: joglo in the monsoon rain"><br><sub><b>Jakarta.</b> A joglo with its three-pitch roof, red-brick walls and monsoon rain.</sub></td>
+<td width="50%"><img src="docs/screens/ph-v3.jpg" alt="Manila: bahay kubo island"><br><sub><b>Manila.</b> A bahay kubo on stilts, the dirty kitchen, a carabao and a banca pulled up on the beach. Typhoon wind streaks in over the bamboo fence.</sub></td>
+<td width="50%"><img src="docs/screens/th-v3.jpg" alt="Bangkok: ruen thai by the canal"><br><sub><b>Bangkok.</b> A teak ruen thai on posts with an open terrace, a spirit house, a stone canal wall and a water landing. Long-tail boats pass on the khlong.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/screens/sg-singapore.png" alt="Singapore: black-and-white bungalow"><br><sub><b>Singapore.</b> A black-and-white bungalow, a Peranakan shophouse and the high-rise watching from above.</sub></td>
-<td width="50%"><img src="docs/screens/ph-kubo-close.png" alt="Close view of the kubo yard"><br><sub><b>Close up.</b> The reader sits on a bench in the shade under the kubo.</sub></td>
+<td width="50%"><img src="docs/screens/id-v3.jpg" alt="Jakarta: joglo in the monsoon rain"><br><sub><b>Jakarta.</b> A joglo with its three-pitch roof, red-brick walls and monsoon rain slanting in from the west.</sub></td>
+<td width="50%"><img src="docs/screens/sg-v3.jpg" alt="Singapore: black-and-white bungalow"><br><sub><b>Singapore.</b> A black-and-white bungalow, a Peranakan shophouse, and the high-rise watching the pool from above.</sub></td>
 </tr>
 </table>
+
+Each island is a small storybook diorama: a base of round, moss-capped rocks, a lawn that rolls softly over onto the sand, palms with ringed trunks and broad fronds, and a house modelled after the country's own vernacular. [ART](docs/ART.md) explains how the art is made and why it never disagrees with the checks.
 
 ## How it plays
 
@@ -61,7 +63,7 @@ flowchart LR
 | Country | Twist | Levels |
 |---|---|---|
 | Philippines · Manila | Typhoon wind comes in low over the bamboo fence | Kapitbahay, Umaga, Bagyo |
-| Thailand · Bangkok | Long-tail boats pass the garden | Long-tail Boats, Lunch by the Water, A Day on the Water |
+| Thailand · Bangkok | Long-tail boats pass on the canal | Long-tail Boats, Lunch by the Water, A Day on the Water |
 | Indonesia · Jakarta | Monsoon rain slants in from the west | Hujan, Rain and Shine, Musim Hujan |
 | Singapore | The high-rise next door looks straight down | High-rise, Morning Swim, The Whole Day |
 
@@ -78,7 +80,7 @@ flowchart TB
   APP --> HUD[hud.ts / globe.ts / tutorial.ts]
 ```
 
-Every watcher runs the same test: a straight segment from the watcher (or towards the sun, wind or rain direction) to the target, against boxes for walls, roofs, the neighbour's house and each placed piece. The 3D houses are modelled to stay inside those boxes: tall roofs and upper storeys sit only above the checked roof plane, and courtyard eaves stop where the check's roof stops. Tall plants stand only where their shadows cannot reach the yard.
+Every watcher runs the same test: a straight segment from the watcher (or towards the sun, wind or rain direction) to the target, against boxes for walls, roofs, the neighbour's house and each placed piece. The 3D houses are modelled to stay inside those boxes, so what you see is what is checked: tall roofs and upper storeys sit only above the checked roof plane, courtyard eaves stop where the check's roof stops, no post stands where the reader's sun or the neighbour's line of sight crosses the open face of the house, and tall plants or poles stand only where their shadows cannot reach the yard. Details in [ARCHITECTURE](docs/ARCHITECTURE.md) and [ART](docs/ART.md).
 
 ## For judges: try it in two minutes
 
@@ -90,7 +92,7 @@ Open **[valora-vr.vercel.app](https://valora-vr.vercel.app)** in Quest Browser o
 |---|---|---|
 | Every level solvable, none solved at the start, par equals the minimum pieces | 12/12 | `npm run prove` |
 | Type check | clean | `npm run typecheck` |
-| Hands-only playthrough in the IWER emulator: seated recentre, Tiki pinch, carry a raft piece by pointing, turn it, solve Manila level 1, drag the sun, press play | 11/11 checks pass | `npm run e2e:play` |
+| Hands-only playthrough in the IWER emulator: seated recentre, Tiki pinch, carry a raft piece by pointing, turn it, solve Manila level 1, drag the sun, press play, no console errors | 11/11 checks pass (re-run 8 Nov on the new art) | `npm run e2e:play` |
 | Mouse playthrough on a computer: Manila level 1 solved with 3 stars, day completes | pass | browser test |
 | Real Quest 3 hand tracking, comfort, readability, frame rate | **not yet tested** | [QUEST-TEST-CHECKLIST](docs/QUEST-TEST-CHECKLIST.md) |
 
@@ -105,7 +107,15 @@ npm run prove        # prove every level is solvable
 npm run build        # static build in dist/
 ```
 
-Art is generated in Blender from code: `python3 art/blender/stitch.py ph && blender-python art/blender/house_ph.py`, and `VALORA_COUNTRY=ph blender-python art/blender/island2.py`. The showcase video is rendered frame by frame from the game: `scripts/video/run-all.sh`, `scripts/video/make-titles.sh`, `python3 scripts/video/music.py video/music.wav`, `python3 scripts/video/edit.py`.
+Art is generated in Blender from code (no hand-made model files). With `blender-python` being Blender's Python or Python with the `bpy` package:
+
+```bash
+python3 art/blender/stitch.py th && blender-python art/blender/house_th.py    # house + baked textures
+VALORA_COUNTRY=th blender-python art/blender/island2.py                      # island, rocks, lip, foam
+blender-python art/blender/trees.py                                          # palms and shrubs
+```
+
+Use `ph`, `th`, `id` or `sg`. The showcase video is rendered frame by frame from the game: `scripts/video/run-all.sh`, `scripts/video/make-titles.sh`, `python3 scripts/video/music.py video/music.wav`, `python3 scripts/video/edit.py` ([VIDEO](docs/VIDEO.md)).
 
 ## Documentation
 
@@ -119,8 +129,9 @@ Art is generated in Blender from code: `python3 art/blender/stitch.py ph && blen
 | [ACCESSIBILITY](docs/ACCESSIBILITY.md) | Seated, one-handed, not colour alone, comfort |
 | [CONTROLS](docs/CONTROLS.md) | Every hand interaction, and the emulator equivalents |
 | [COMPETITION](docs/COMPETITION.md) | Rules, judging, division and project history, eligibility questions |
-| [BRAND](docs/BRAND.md) | Name, the VaLora story, art direction, type, colour, sound |
-| [VIDEO](docs/VIDEO.md) | Demo video plan and recording method |
+| [ART](docs/ART.md) | The storybook diorama look, each country's island, the Blender pipeline, the rule that art never contradicts the checks |
+| [BRAND](docs/BRAND.md) | Name, the VaLora story, type, colour, sound |
+| [VIDEO](docs/VIDEO.md) | Trailer and showcase: shot list and the frame-exact capture pipeline |
 | [SUBMISSION](docs/SUBMISSION.md) | Draft answers for the Devpost form |
 | [ROADMAP](docs/ROADMAP.md) | Milestones to the deadline |
 | [PRIVACY](docs/PRIVACY.md) | What the app stores (progress in the browser only) |

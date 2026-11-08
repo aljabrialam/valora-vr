@@ -4,15 +4,13 @@
 VaLora carries one name inside it: **Lora**, the designer's wife. Her initial, the capital L, is the shape of the house: an L of rooms around a garden open to the sky. The logo is a hairline square plot holding that L, with a bronze pool square in the courtyard corner. Logo files are in `docs/brand/` and come from the VaLora website.
 
 ## Game title
-**VaLora: Two Watchers.** Tagline: *Let the sun in. Keep the neighbour out.*
+**VaLora: Two Watchers.** Tagline: *Same sun, different skies. Let the sun in, keep the watchers out.*
 
-## Art direction: the VaLora house as a living diorama
-- The same materials as the VaLora website (procedural, no image files): board-formed concrete, teak battens, timber deck, stone paving, a reflecting pool, palms and tropical planting, on a dark stone plinth on a walnut desk.
-- One warm late-afternoon sun, crisp shadows, visible sunbeams and dust in the light (*planned*).
-- A calm studio around the desk instead of an empty void (*planned*).
+## Art direction
+A bright storybook diorama: one small island per country, round moss-capped rocks, soft shapes, warm daylight and each country's own house. Full detail, and the rule that the art never contradicts the checks, in [ART](ART.md).
 
 ## Tiki
-An original house gecko: warm sand skin, a paler belly, soft brown spots, big round eyes with a highlight, a little blush. Built from simple shapes so it reads at arm's length and stays cheap to render.
+An original house gecko, a glazed ceramic figure: leaf-green skin, a yellow belly, orange spots and big dark eyes. Built in code from turned forms so it reads at arm's length and stays cheap to render. Tiki sits on the garden wall.
 
 ## Colour
 | Role | Colour |
@@ -28,4 +26,4 @@ An original house gecko: warm sand skin, a paler belly, soft brown spots, big ro
 Cormorant Garamond for titles, Inter for everything else, matching the VaLora website. No emojis; all symbols are drawn as vector paths.
 
 ## Sound
-A quiet Singapore courtyard (birds, distant cicadas, pool water), a wooden tick per detent, a chime per rule, a short warm phrase on solving a level. All synthesised or original (*planned* beyond the tick).
+A wooden click when a piece snaps, a chime per rule, a short warm phrase on solving a level. All synthesised in code. The video's music is synthesised too ([VIDEO](VIDEO.md)).

@@ -2,85 +2,106 @@
 
 ## 1. The idea in one line
 
-> Two watchers look at your house: the Sun and the Neighbour. Let one see in. Keep the other out.
+> Same sun, different skies. Let the sun in, keep the watchers out.
 
-A spot is in direct sun when the sun can see it. A seat is private when the neighbour cannot see it. Both are the same question, *can this watcher see that target?*, so the whole game runs on one rule. The player learns it with their own hand in the first 30 seconds and then applies it to architecture.
+A spot is in direct sun when the sun can see it. A chair is private when the neighbour cannot see it. A table stays dry when the rain cannot reach it. All of these are the same question, *can this watcher reach this spot in a straight line?*, so the whole game runs on one rule. The sun is just a watcher very far away.
 
 ## 2. Pillars
 
-1. **Hands are the controller.** Every action is a pinch on a large handle, a drag or a look. Nothing needs fine finger poses, throwing or speed.
-2. **Cause and effect you can see.** Each rule has a beam along the watcher's line of sight and a label in words and a symbol. Moving anything updates them immediately.
-3. **Consequences from both sides.** You can look through the neighbour's eyes and through the sun's, and at the end you sit in the chair yourself.
-4. **Short and complete.** About five minutes from link to seat view, with pause and resume at any point.
+1. **Hands are the controller.** Every action is a ray pinch: aim, pinch, move, let go. Nothing needs fine finger poses, throwing or speed.
+2. **Cause and effect you can see.** Every rule has a beam along the watcher's line and a label in words and a symbol. Moving anything updates them at once.
+3. **One house, four skies.** The same courtyard puzzle plays out in four South-east Asian capitals, each with its own house, its own sun path and its own twist.
+4. **Short and complete.** A level takes a minute or two; a country takes about five.
 
 ## 3. The session
 
-| Beat | Time | What happens |
-|---|---|---|
-| Arrival | 0:00 | The desk, the model in late-afternoon light, soft courtyard ambience |
-| Tutorial: your hand is the first shade | 0:15 | A sunbeam falls on the reading chair. "Hold your hand in the light." Your hand blocks the beam, the label turns to SHADED. "The house has to do this for you." |
-| Lift the roof | 0:45 | Pinch the roof and lift it off to see the reading chair, the plant and the neighbour's window. Put it back or leave it ghosted |
-| Level 1 · The Neighbour | 1:00 | Swing the screen to block the neighbour's view |
-| Level 2 · Morning Garden | 2:00 | Keep the seat private and give the plant its 8:30 a.m. sun. Swing too far and you steal its light |
-| Level 3 · The Whole Day | 3:00 | Add the overhang: privacy, morning sun on the plant, and shade on the chair at 3:30 p.m. |
-| Results | 4:15 | The floor shows a sun-hours map; stars for a neat solution |
-| The seat view | 4:30 | Fade into the reading chair at full size. Sunlight falls through your screen and overhang; the neighbour's window is hidden. Ten quiet seconds, then back to the model |
+```mermaid
+flowchart LR
+  G[Globe<br/>choose a place] --> H[Tiki says hello<br/>pinch to start]
+  H --> P[Place a piece<br/>from the raft]
+  P --> W[The country's twist]
+  W --> S[Drag the sun]
+  S --> L[Solve the level]
+  L --> D[Live the day<br/>press play]
+  D --> N[Next level or<br/>next country]
+```
 
-## 4. Tiki, the guide
+| Beat | What happens |
+|---|---|
+| Globe | A small Earth turns to the place you pick; ASEAN members are tinted, the four playable capitals carry a marker |
+| Hello | Tiki the gecko sits on the garden wall. Pinch Tiki to start |
+| Place | An arrow points at the bamboo raft moored by the island. Pinch a piece, point at the courtyard, let go. The tutorial moves on by itself when a piece lands |
+| Twist | Tiki introduces the place: the house, and what watches it here (the neighbour, boats, the high-rise, the typhoon, the rain) |
+| Sun | Pinch the sun and drag it across the sky; the shadows move. The tutorial moves on when the sun moves |
+| Goal | One short brief per level. Every rule shows pass or fail live |
+| Solved | Tiki celebrates; stars for using few pieces. Press the bronze play button to live the day: the sun crosses the sky and every rule is checked hour by hour |
 
-Tiki is an original house gecko (the name comes from *butiki*, Filipino for gecko). Geckos live on courtyard walls in Singapore and the Philippines and spend their day moving between sun and shade, so Tiki knows where every shadow falls. Tiki sits on the front left of the desk, inside the narrow Meta VR Glasses view, and:
+## 4. Countries and levels
 
-- speaks one short line at a time on a card above its head, never a wall of text;
-- turns to look at whatever it is talking about (the neighbour's window, the chair, the plant, the handle);
-- blinks, breathes, sways its tail and waves a foot when you solve a level;
-- is pinched to continue, so the tutorial itself teaches the pinch.
+Defined in [`src/sim/countries.ts`](../src/sim/countries.ts) and proven by [`scripts/prove2.ts`](../scripts/prove2.ts) (`npm run prove`): every level is solvable, none starts solved, and par is the fewest pieces that solve it.
 
-The script is in [`src/tutorial.ts`](../src/tutorial.ts): hello, meet the neighbour, the red line, swing the screen (ends when solved), then one or two lines per later level. Tiki is built from simple shapes in code, with no imported art.
+| Country | Twist | Level | Brief | Par |
+|---|---|---|---|---|
+| Philippines · Manila | Typhoon wind over a 1.0 m bamboo fence | Kapitbahay | Block the neighbour's view of your reading chair | 1 |
+| | | Umaga | Stay private; the plant needs the 8:30 sun from the east | 1 |
+| | | Bagyo | Shelter the deck from the typhoon; keep the plant's morning sun | 1 |
+| Thailand · Bangkok | Long-tail boats pass on the canal; the wall is only 0.9 m | Long-tail Boats | Keep the garden table out of the boats' sight | 1 |
+| | | Lunch by the Water | Lunch in the shade, out of sight of the boats | 2 |
+| | | A Day on the Water | A sunny swim the boats cannot see, a private chair, a shaded afternoon | 1 |
+| Indonesia · Jakarta | Monsoon rain slants in from the west | Hujan | Keep the garden table dry in the 3:00 rain | 1 |
+| | | Rain and Shine | A dry table in the rain; the plant still gets its morning sun | 1 |
+| | | Musim Hujan | A dry deck, a private chair, shade in the afternoon | 1 |
+| Singapore | The high-rise next door looks straight down | High-rise | Hide the pool from above | 1 |
+| | | Morning Swim | Hidden from the block, but the pool still needs the 11:00 sun | 1 |
+| | | The Whole Day | Morning plant, private swim, shaded lunch, an afternoon read | 3 |
 
-## 5. Levels
+Each country teaches a different piece: screens against a neighbour at eye level, hedges against boats looking over a low wall, a pergola against rain, a tree's canopy against a view from above.
 
-Defined in [`src/sim/levels.ts`](../src/sim/levels.ts) and proven by [`scripts/prove.ts`](../scripts/prove.ts).
+**Stars.** Par or fewer pieces: 3 stars. One more: 2. Any other solution: 1. Best stars are kept in the browser.
 
-| Level | Rules | Start | Solutions |
-|---|---|---|---|
-| The Neighbour | Neighbour cannot see the seat | Screen at −90° (open to the south) | 30°, 45°, 60° |
-| Morning Garden | + Sun reaches the plant at 8:30 a.m. | Screen at 60° (private, but shading the plant) | 30° only |
-| The Whole Day | + Seat in shade at 3:30 p.m. | Screen at 60°, no overhang | 30° with a 0.6, 1.2 or 1.8 m overhang |
+## 5. Tiki, the guide
 
-The screen cannot swing through the courtyard glass or the garden wall, so some angles are physically unreachable (0° and ±15°, 75° to 105°). That is intentional: it makes the screen behave like a real object.
+Tiki is an original house gecko (the name comes from *butiki*, Filipino for gecko). Geckos spend their day on courtyard walls moving between sun and shade, so Tiki knows where every shadow falls. Tiki sits on the garden wall, a glazed ceramic figure built in code, and:
 
-**Tuning note.** The levels were tuned with a layout search: the hinge, screen length and plant position were chosen so that Level 2 has a single solution and its starting position already looks right (the seat is private) while failing the plant. That "looks right but isn't" opening is the puzzle.
+- speaks one short line at a time on a card above its head;
+- turns to look at what it is talking about, and an orange arrow points there too;
+- blinks, breathes, sways its tail and hops when a level is solved;
+- is pinched to start and to go to the next level, so the tutorial teaches the pinch.
+
+The script is in [`src/tutorial.ts`](../src/tutorial.ts). It moves on when you act (a piece placed, the sun moved, the level solved), not only when you pinch Tiki.
 
 ## 6. Interactions
 
 | Action | Gesture | Notes |
 |---|---|---|
-| Swing the screen | Pinch the bronze handle and drag around the hinge | Snaps every 15°, a click per detent, the screen follows on a spring |
-| Slide the overhang | Pinch the second bronze handle and pull it towards you | Snaps every 0.6 m, Level 3 only |
-| Move the sun | Pinch the sun and drag it along its arc | Snaps to the hours each rule names, free in between (*planned*) |
-| Look through a watcher's eyes | Pinch the neighbour's window or the sun and hold | Fixed viewpoint, fade in and out (*planned*) |
-| Lift the roof | Pinch and lift | (*planned*) |
-| Continue the tutorial, next level | Pinch Tiki | |
-| Undo, reset, pause | Palm-up wrist menu | (*planned*) |
+| Place a piece | Pinch a piece on the raft, point at the courtyard, let go | Snaps to the nearest free socket; a ghost ring shows where it will land |
+| Move a placed piece | Pinch it and point somewhere else | |
+| Turn a placed piece | Pinch it and let go without moving | Screens have 4 angles, hedges 2 |
+| Put a piece back | Let go away from the courtyard | It floats back to the raft |
+| Slide the overhang | Pinch its handle and pull | Only in levels that offer it |
+| Move the sun | Pinch the sun and drag along its arc | Any hour of the day |
+| Live the day | Pinch the bronze play button | Sun crosses the sky; every rule is checked hour by hour |
+| Continue, next level | Pinch Tiki | |
+| Choose a country | Pinch a place on the globe | |
 
-All grab targets accept a ray pinch (aim and pinch), so the same build works with Quest hand tracking and with look-and-pinch on Meta VR Glasses.
+All targets take a ray pinch, so the same build works with Quest hand tracking and with controllers. Details in [CONTROLS](CONTROLS.md).
 
 ## 7. Feedback
 
-- **Neighbour beam:** a rust-red rod from the neighbour's window. It ends in a stop marker on whatever blocks it, or runs all the way to the seat.
-- **Sun beam:** a warm gold rod from the sun's direction to each sun target, stopped the same way.
-- **Labels** over each target: SEEN / PRIVATE with an eye or crossed-out eye; IN SUN / SHADED with a sun or half-shaded disc. The outline colour helps but is never the only cue.
-- **Level card:** one line per rule with a check or cross symbol and DONE / NOT YET, plus the line "Illustrative sunlight and visibility checks."
+- **Beams:** a line from each watcher to its target, stopping with a marker on whatever blocks it. The neighbour's and the boats' beams are rust red; the sun's is warm gold.
+- **Labels** over each target: SEEN or PRIVATE with an eye symbol; SUN or SHADE with the hour and a sun symbol; DRY or WET; SHELTERED or WINDY. Colour helps but is never the only cue.
+- **Level card:** one line per rule with a check or a cross, the pieces used against par, and the line "Illustrative sunlight and visibility checks."
+- **Sound:** a tick when a piece snaps, a chime per rule passed, a short phrase when the level is solved.
 
 ## 8. Simulation boundaries
 
-The checks are explicit geometry: an unobstructed segment from the watcher to the target. For the sun, the segment points along the sun's direction at the hour the rule names, for Singapore (latitude 1.35°) on 6 November. They are separate from the rendered lighting. We describe them only as *illustrative sunlight and visibility checks*: not certified daylight analysis, thermal comfort, legal privacy compliance or structural validation, and direct sun alone does not determine a plant's health or a room's comfort.
+The checks are explicit geometry: an unobstructed straight segment from the watcher to the target, against boxes. For the sun, the segment points along the sun's direction for that capital on 8 November at the hour the rule names. The checks are separate from the rendered lighting, and the art is built never to contradict them ([ART](ART.md)). We describe them only as *illustrative sunlight and visibility checks*: not certified daylight analysis, thermal comfort, wind or rain engineering, legal privacy compliance or structural validation.
 
 ## 9. Out of scope
 
-General CAD editing, floor-plan generation, BIM import, multiplayer, AI assistants, accounts, payments, a backend, continuous locomotion, physics, weather simulation, and passthrough as decoration.
+General CAD editing, floor-plan generation, multiplayer, AI assistants, accounts, payments, a backend, continuous locomotion, complex physics, real weather simulation, and passthrough as decoration.
 
-## 10. Stretch goals (only if the core is finished and smooth by 15 November)
+## 10. If time allows
 
-- **Daily sun:** a daily challenge using that day's real Singapore sun path. `sunAt()` already takes the declination, so the puzzle changes with the date.
-- **Dusk level:** the house as a lantern; the neighbour now sees *lit* rooms.
+- **Daily sun:** a challenge using the real sun path for today's date. `sunAt()` already takes the declination.
+- **More of ASEAN:** the globe already shows all ten members; Vietnam and Malaysia are the next houses.
