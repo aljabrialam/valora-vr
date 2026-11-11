@@ -1,0 +1,119 @@
+1
+00:00:00,400 --> 00:00:04,050
+Six homes across Southeast Asia, all under the same sun.
+
+2
+00:00:04,900 --> 00:00:08,540
+Manila. Bangkok. Hanoi. Kuala Lumpur. Jakarta. Singapore.
+
+3
+00:00:19,100 --> 00:00:21,070
+But someone is always watching.
+
+4
+00:00:21,100 --> 00:00:24,130
+Your goal: let the sun in, and keep the watchers out.
+
+5
+00:00:24,100 --> 00:00:26,190
+This is VaLora: Two Watchers.
+
+6
+00:00:27,100 --> 00:00:30,780
+Our entry for the Meta VR Start Developer Competition.
+
+7
+00:00:31,400 --> 00:00:36,080
+It's a single-player puzzle. The two watchers are the sun, and whoever looks in.
+
+8
+00:00:36,100 --> 00:00:39,310
+Start on the globe. Pick a country, then enter VR.
+
+9
+00:00:40,000 --> 00:00:43,940
+Each one has its own house, its own sun path, and its own watchers.
+
+10
+00:00:45,300 --> 00:00:48,930
+In the headset, stay seated. Use hands or controllers.
+
+11
+00:00:49,000 --> 00:00:51,730
+Point at Tiki the gecko, and pinch to start.
+
+12
+00:00:52,400 --> 00:00:56,510
+Pinch a screen on the bamboo raft. Point it at the courtyard, and let go.
+
+13
+00:00:58,100 --> 00:01:00,060
+Now the neighbour can't see your chair.
+
+14
+00:01:00,000 --> 00:01:01,820
+A short pinch turns a piece.
+
+15
+00:01:03,800 --> 00:01:09,500
+Look around. Every watcher has a line of sight: the neighbour, the boats on the canal, and the sun.
+
+16
+00:01:11,200 --> 00:01:16,600
+Pinch the sun and drag it across the sky. The shadows follow each city's own sun path.
+
+17
+00:01:16,900 --> 00:01:21,100
+A spot is sunny when the sun can see it, and private when no one else can.
+
+18
+00:01:21,300 --> 00:01:25,920
+Here's how you score. Each level has a few rules, and they start as not yet.
+
+19
+00:01:26,200 --> 00:01:30,700
+This one has two watchers at once: the neighbour, and the riders in the lane.
+
+20
+00:01:31,000 --> 00:01:34,390
+A screen blocks the neighbour. A hedge blocks the riders.
+
+21
+00:01:35,400 --> 00:01:39,620
+Every rule is done. Use the fewest pieces, and you earn three stars.
+
+22
+00:01:40,900 --> 00:01:44,110
+Then press play to live the day. Every hour is checked.
+
+23
+00:01:47,900 --> 00:01:54,350
+Prefer controllers? Point, and pull the trigger. In Hanoi, a hedge hides the table from the motorbikes.
+
+24
+00:01:55,800 --> 00:01:59,640
+In Bangkok, a hedge hides the table from the long-tail boats.
+
+25
+00:02:03,700 --> 00:02:08,590
+In Kuala Lumpur, condo towers look down. A tree's canopy hides the table.
+
+26
+00:02:11,600 --> 00:02:15,820
+In Jakarta, a pergola keeps the table dry in the monsoon rain.
+
+27
+00:02:19,500 --> 00:02:23,940
+In Singapore, a tree's canopy hides the pool from the high-rise next door.
+
+28
+00:02:27,250 --> 00:02:30,700
+Eighteen levels, six capitals, all proven solvable.
+
+29
+00:02:31,000 --> 00:02:33,640
+Made by Aljabri Alam, in Singapore.
+
+30
+00:02:35,800 --> 00:02:38,810
+VaLora. Let the sun in. Keep the watchers out.
