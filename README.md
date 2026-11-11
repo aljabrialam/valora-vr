@@ -22,7 +22,7 @@
 **VaLora: Two Watchers is a seated, single-player VR puzzle about sun, shade and privacy, played with your hands (Touch controllers work too).** The two watchers are the sun and whoever looks in; it is not a two-player game. A small island diorama floats in front of you: a house, its courtyard and the neighbours. Pick a country on the globe, then point and pinch pieces from a bamboo raft (screens, hedges, trees, a pergola) onto the courtyard, drag the sun across the sky and live the day, until the sun reaches what it should and no watcher sees what it should not.
 
 <p align="center">
-<a href="https://youtu.be/BQlZkN5x4PU"><img src="docs/submission/youtube-thumbnail-1280x720.jpg" alt="Watch the VaLora: Two Watchers demo on YouTube (2:40)" width="720"></a><br>
+<a href="https://youtu.be/BQlZkN5x4PU"><img src="docs/social/valora-entry-1600x900.png" alt="VaLora: Two Watchers, our entry for the Meta VR Start Developer Competition 2026. Let the sun in, keep the watchers out: six islands, Manila (typhoon wind), Bangkok (long-tail boats), Hanoi (motorbikes in the lane), Kuala Lumpur (condo towers), Jakarta (monsoon rain), Singapore (the high-rise)" width="100%"></a><br>
 <sub><b><a href="https://youtu.be/BQlZkN5x4PU">Watch the demo on YouTube</a></b> (2:40): the trailer, choosing a place, how to play with hands and Touch controllers, how to score, and all six capitals.</sub>
 </p>
 
