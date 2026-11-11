@@ -86,7 +86,7 @@ Upload in this order; the first is the cover.
 ## Demonstration video
 
 ```
-[YouTube link]
+https://youtu.be/BQlZkN5x4PU
 ```
 
 2:40, under the 3-minute limit. Upload `video/valora-demo-16x9.mp4`.

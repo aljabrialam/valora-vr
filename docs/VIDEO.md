@@ -4,7 +4,7 @@ Three cuts, each in 16:9 and 9:16 (Reels, TikTok, Shorts):
 
 | Cut | Length | File |
 |---|---|---|
-| **Demo for the submission:** the trailer, the entry and the goal, choosing a place, then the game in the headset view with hands and with Touch controllers, how to score, all six capitals, the maker | 2:40 | `video/valora-demo-16x9.mp4`, `video/valora-demo-9x16.mp4` |
+| **Demo for the submission** ([YouTube](https://youtu.be/BQlZkN5x4PU)): the trailer, the entry and the goal, choosing a place, then the game in the headset view with hands and with Touch controllers, how to score, all six capitals, the maker | 2:40 | `video/valora-demo-16x9.mp4`, `video/valora-demo-9x16.mp4` |
 | Trailer | about 26 s | `video/valora-trailer-16x9.mp4`, `video/valora-trailer-9x16.mp4` |
 | Showcase: the trailer, then the features | about 61 s | `video/valora-showcase-16x9.mp4`, `video/valora-showcase-9x16.mp4` |
 

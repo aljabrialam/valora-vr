@@ -12,11 +12,21 @@
 <img src="https://img.shields.io/badge/license-MIT-2B47C9?style=flat-square" alt="MIT">
 </p>
 
+<p align="center">
+<a href="https://youtu.be/BQlZkN5x4PU"><img src="https://img.shields.io/badge/watch%20the%20demo-2%3A40-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch the 2:40 demo on YouTube"></a>
+<a href="https://valora-vr.vercel.app"><img src="https://img.shields.io/badge/play%20in%20Quest%20Browser-valora--vr.vercel.app-0866FF?style=for-the-badge&logo=meta&logoColor=white" alt="Play at valora-vr.vercel.app"></a>
+</p>
+
 <h3 align="center">Same sun, different skies.<br>Let the sun in, keep the watchers out, across South-east Asia.</h3>
 
 **VaLora: Two Watchers is a seated, single-player VR puzzle about sun, shade and privacy, played with your hands (Touch controllers work too).** The two watchers are the sun and whoever looks in; it is not a two-player game. A small island diorama floats in front of you: a house, its courtyard and the neighbours. Pick a country on the globe, then point and pinch pieces from a bamboo raft (screens, hedges, trees, a pergola) onto the courtyard, drag the sun across the sky and live the day, until the sun reaches what it should and no watcher sees what it should not.
 
-> **Status (8 Nov 2026): playable, live at [valora-vr.vercel.app](https://valora-vr.vercel.app).** Six countries with their own houses and twists, 18 levels, Tiki the gecko guide, hands in the headset and mouse on a computer. Hand and controller play verified in Meta's IWER emulator; **not yet tested on a real Quest** (planned for 12 Nov).
+<p align="center">
+<a href="https://youtu.be/BQlZkN5x4PU"><img src="docs/submission/youtube-thumbnail-1280x720.jpg" alt="Watch the VaLora: Two Watchers demo on YouTube (2:40)" width="720"></a><br>
+<sub><b><a href="https://youtu.be/BQlZkN5x4PU">Watch the demo on YouTube</a></b> (2:40): the trailer, choosing a place, how to play with hands and Touch controllers, how to score, and all six capitals.</sub>
+</p>
+
+> **Status (11 Nov 2026): playable, live at [valora-vr.vercel.app](https://valora-vr.vercel.app).** Six countries with their own houses and twists, 18 levels, Tiki the gecko guide, hands in the headset and mouse on a computer. Hand and controller play verified in Meta's IWER emulator; **not yet tested on a real Quest** (planned for 12 Nov).
 
 ---
 
@@ -128,7 +138,7 @@ Use `ph`, `th`, `vn`, `my`, `id` or `sg`. Social graphics: [SOCIAL](docs/SOCIAL.
 
 ## Demo video
 
-The submission demo is 2:40, narrated, inside the 3-minute limit: a trailer, our entry card, the goal, choosing a place on the globe, then the game in the headset view (Meta's IWER emulator, labelled on every shot) with hands and with Touch controllers, how scoring works, one twist per capital, the proof and the maker. It is rendered frame by frame from the game; the narration is a synthetic voice made locally with Kokoro (open weights). Shot list, timeline and commands: [VIDEO](docs/VIDEO.md).
+**[Watch it on YouTube](https://youtu.be/BQlZkN5x4PU)**. The submission demo is 2:40, narrated, inside the 3-minute limit: a trailer, our entry card, the goal, choosing a place on the globe, then the game in the headset view (Meta's IWER emulator, labelled on every shot) with hands and with Touch controllers, how scoring works, one twist per capital, the proof and the maker. It is rendered frame by frame from the game; the narration is a synthetic voice made locally with Kokoro (open weights). Shot list, timeline and commands: [VIDEO](docs/VIDEO.md).
 
 ## Documentation
 
