@@ -45,6 +45,10 @@
 | **Comfort** | Seated, no walking or turning: the view is set up once when VR starts, and the whole board sits within a short point of your hand |
 | **Honest scope** | Illustrative sunlight and visibility checks, not certified daylight, comfort, structural or privacy analysis |
 
+## Inspiration
+
+The game grew out of **[VaLora](https://valora-seven-beryl.vercel.app/)**, a concept courtyard house in Singapore, presented there as a live 3D model with floor plans, materials and a sun study of the courtyard. Designing that house meant working out where the sun reaches the courtyard through the day and what the neighbours can see. Those turned out to be the same question: a spot is in sun when the sun can see it, and a chair is private when the neighbour cannot. The sun is just a watcher very far away. VaLora: Two Watchers turns that question into a puzzle, then takes it around Southeast Asia, where every city has its own sun, its own houses and its own watchers.
+
 ## See it
 
 <table>
