@@ -163,8 +163,10 @@ model.site.add(local.group);
 
 const hud = new Hud();
 const card = new LevelCard(0.42);
-card.mesh.position.set(-0.18, 0.5, -0.45); // headset: a little above eye height, beyond the board
-const BUBBLE_AT = new Vector3(-0.18, DESK.y + 0.22, -0.25); // headset: Tiki's words, just below eye height
+card.mesh.position.set(-0.18, 0.56, -0.45); // headset: a little above eye height, beyond the board
+// headset: Tiki's words sit beside the level card, at the back of the desk and above the rooflines, so
+// they never stand between the eye and the courtyard (desk-local, like the card)
+const BUBBLE_AT = new Vector3(0.27, 0.49, -0.44);
 card.mesh.rotation.x = -10 * D;
 model.desk.add(card.mesh);
 const motes = new Motes(60);
@@ -1001,9 +1003,9 @@ function setFlatView(flatView: boolean) {
   hud.visible = flatView;
   card.mesh.visible = !flatView;
   tiki.bubbleShown = !flatView;
-  // headset: Tiki's words sit straight ahead just under the level card, where the eye already is
+  // headset: Tiki's words sit to the right of the level card, clear of the island
   if (flatView) tiki.anchorBubble(null);
-  else tiki.anchorBubble(world.scene, BUBBLE_AT, 0.34);
+  else tiki.anchorBubble(model.desk, BUBBLE_AT, 0.36);
   console.info('[VR] view', flatView ? 'flat' : 'headset');
 }
 hud.onPlay = () => startDay(lastTime);

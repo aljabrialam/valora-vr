@@ -24,7 +24,7 @@ const HEAD = {pitch: -27, yaw: 0};
 const LOOK_RAFT = HEAD; // the emulated hand moves with the head: keep the head still while the hand works
 // leaning in to read the level card at the back of the desk
 const CARD_LEAN = JSON.parse(process.env.CARD_LEAN ?? '[0, 0.16, -0.86]');
-const CARD_HEAD = JSON.parse(process.env.CARD_HEAD ?? '{"pitch": 4, "yaw": 0}');
+const CARD_HEAD = JSON.parse(process.env.CARD_HEAD ?? '{"pitch": 8, "yaw": 0}');
 
 /**
  * Plays segments [{d: seconds, to: worldPoint, pinch: 0|1, head?: {pitch, yaw}, hold?: true}];
@@ -225,6 +225,12 @@ const shots = {
     await browser.close();
   },
 
+  // a quick check of where Tiki's words sit in the default seated view (TEST=1)
+  async v_bubble() {
+    const {browser, page, rig, A} = await setup('?country=ph&level=1');
+    await play(page, rig, [{d: 0.6, to: A.tiki}, {d: 0.4, to: A.tiki, pinch: 1}, {d: 1.2, to: A.tiki}, {d: 1.0, to: A.tiki, head: {pitch: -8, yaw: 10}}, {d: 1.1, to: A.tiki}]);
+    await browser.close();
+  },
   // a quick check of the lean-in framing for the level card (TEST=1)
   async v_cardprobe() {
     const {browser, page, rig, A} = await setup('?country=vn&level=2');
