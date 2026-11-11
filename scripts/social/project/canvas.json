@@ -2,7 +2,7 @@
  "v": 3,
  "createdOnFiles": {
   "v": 1,
-  "at": "2026-11-08T12:12:12Z"
+  "at": "2026-11-08T10:23:51Z"
  },
  "title": "VaLora social media graphics",
  "launch": {
@@ -23,6 +23,13 @@
    "w": 1200,
    "h": 675,
    "title": "Landscape post (LinkedIn, X)"
+  },
+  "Entry.dc.html": {
+   "x": 2440,
+   "y": 0,
+   "w": 1600,
+   "h": 900,
+   "title": "Competition entry (landscape)"
   },
   "Islands.dc.html": {
    "x": 0,
@@ -77,6 +84,7 @@
  "order": [
   "Main.dc.html",
   "Landscape.dc.html",
+  "Entry.dc.html",
   "Islands.dc.html",
   "HowItPlays.dc.html",
   "Story.dc.html",
@@ -89,9 +97,9 @@
   "row1": {
    "x": 0,
    "y": -260,
-   "text": "Launch posts",
+   "text": "Launch posts and the competition entry",
    "kind": "title1",
-   "maxW": 2360
+   "maxW": 4040
   },
   "row2": {
    "x": 0,

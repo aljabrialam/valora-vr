@@ -159,7 +159,7 @@ Use `ph`, `th`, `vn`, `my`, `id` or `sg`. Social graphics: [SOCIAL](docs/SOCIAL.
 | [ART](docs/ART.md) | The storybook diorama look, each country's island, the Blender pipeline, the rule that art never contradicts the checks |
 | [BRAND](docs/BRAND.md) | Name, the VaLora story, type, colour, sound |
 | [VIDEO](docs/VIDEO.md) | The 2:40 demo, trailer and showcase: shot lists, voice-over, the frame-exact capture pipeline |
-| [SOCIAL](docs/SOCIAL.md) | Nine ready-to-post graphics (square, 4:5 carousel, story, landscape) and how they are made |
+| [SOCIAL](docs/SOCIAL.md) | Ten ready-to-post graphics (square, 4:5 carousel, story, landscape, the competition entry) and how they are made |
 | [SUBMISSION](docs/SUBMISSION.md) | Draft answers for the Devpost form |
 | [ROADMAP](docs/ROADMAP.md) | Milestones to the deadline |
 | [PRIVACY](docs/PRIVACY.md) | What the app stores (progress in the browser only) |

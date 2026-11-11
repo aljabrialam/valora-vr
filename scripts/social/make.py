@@ -138,7 +138,7 @@ boards['Landscape.dc.html'] = (1200, 675, 'Landscape post (LinkedIn, X)', page('
 <div style="display: flex; flex-direction: column; gap: 18px">
 {kicker('Seated VR puzzle', 17)}
 <h1 style="margin: 0; font-family: {SERIF}; font-weight: 600; font-size: 72px; line-height: 0.98">Same sun.<br>Different skies.</h1>
-<p style="margin: 0; font-size: 21px; line-height: 1.45; color: {MUTED}">Sun, shade and privacy in Manila, Bangkok, Jakarta and Singapore. Each capital with its own house, its own sun path and its own watcher. Hands only.</p>
+<p style="margin: 0; font-size: 21px; line-height: 1.45; color: {MUTED}">Sun, shade and privacy in Manila, Bangkok, Hanoi, Kuala Lumpur, Jakarta and Singapore. Each capital with its own house, its own sun path and its own watchers. Hands or Touch controllers.</p>
 </div>
 <div style="display: flex; flex-direction: column; gap: 14px">
 {logo(36)}
@@ -192,12 +192,45 @@ boards['HowItPlays.dc.html'] = (1080, 1350, 'Carousel: how it plays', page('How 
 {footer()}
 </div>'''))
 
+# 10. Competition entry, landscape (X, LinkedIn, YouTube community, Devpost): the six islands as a mosaic
+DEMO = 'youtu.be/BQlZkN5x4PU'
+TILES = [('ph', 'Manila', 'typhoon wind'), ('th', 'Bangkok', 'long-tail boats'), ('vn', 'Hanoi', 'motorbikes in the lane'),
+         ('my', 'Kuala Lumpur', 'condo towers'), ('id', 'Jakarta', 'monsoon rain'), ('sg', 'Singapore', 'the high-rise')]
+tiles = ''.join(f'''<div style="position: relative; border-radius: 20px; overflow: hidden; background: #e9e2d4">
+{photo('hero_' + c, f'The {city} island', 'position: absolute; left: 0; top: 0; width: 100%; height: 100%')}
+<div style="position: absolute; left: 14px; bottom: 14px; display: flex; align-items: baseline; gap: 8px; padding: 9px 16px; border-radius: 999px; background: {PAPER}; font-size: 17px; line-height: 1"><span style="font-weight: 600">{city}</span><span style="color: {MUTED}">{twist}</span></div>
+</div>''' for c, city, twist in TILES)
+pill = lambda t: f'<div style="padding: 9px 16px; border: 1px solid #cfc7b8; border-radius: 999px; font-size: 17px; font-weight: 500; white-space: nowrap">{t}</div>'
+ico_play = f'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{BRONZE}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10,8 16,12 10,16"></polygon></svg>'
+ico_link = f'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{BRONZE}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg>'
+boards['Entry.dc.html'] = (1600, 900, 'Competition entry (landscape)', page('Competition entry', 1600, 900, f'''
+<div style="position: absolute; left: 0; top: 0; width: 620px; height: 900px; box-sizing: border-box; padding: 60px 52px 56px 64px; display: flex; flex-direction: column; justify-content: space-between">
+<div style="display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+{kicker('Our entry', 16)}
+<div style="font-size: 21px; font-weight: 600">Meta VR Start Developer Competition 2026</div>
+</div>
+<div style="display: flex">{logo(46)}</div>
+<h1 style="margin: 0; font-family: {SERIF}; font-weight: 600; font-size: 74px; line-height: 0.96">Let the sun in.<br>Keep the<br>watchers out.</h1>
+<p style="margin: 0; font-size: 20px; line-height: 1.5; color: {MUTED}">A seated VR puzzle for Meta Quest across six Southeast Asian capitals, each with its own house, its own sun path and its own watchers. One player. The two watchers are the sun, and whoever looks in.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 10px">{pill('18 levels')}{pill('6 capitals')}{pill('Hands or Touch controllers')}{pill('WebXR · Quest Browser')}</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 14px; padding-top: 22px; border-top: 1px solid #ddd5c6">
+<div style="display: flex; align-items: center; gap: 12px">{ico_link}<span style="font-size: 15px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: {BRONZE}; width: 72px">Play</span><span style="font-size: 21px; font-weight: 500; font-feature-settings: 'calt' 0, 'liga' 0, 'cv05' 1">{URL}</span></div>
+<div style="display: flex; align-items: center; gap: 12px">{ico_play}<span style="font-size: 15px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: {BRONZE}; width: 72px">Demo</span><span style="font-size: 21px; font-weight: 500; font-feature-settings: 'calt' 0, 'liga' 0, 'cv05' 1">{DEMO}</span></div>
+</div>
+</div>
+<div style="position: absolute; left: 620px; top: 28px; width: 952px; height: 844px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 16px">
+{tiles}
+</div>'''))
+
 for path, (w, h, title, html) in boards.items():
     open(os.path.join(P, path), 'w').write(html)
 
+
 # canvas.json: social sizes grouped in rows
 layout = [
-    ['Main.dc.html', 'Landscape.dc.html'],
+    ['Main.dc.html', 'Landscape.dc.html', 'Entry.dc.html'],
     ['Islands.dc.html', 'HowItPlays.dc.html', 'Story.dc.html'],
     ['Country-ph.dc.html', 'Country-th.dc.html', 'Country-id.dc.html', 'Country-sg.dc.html'],
 ]
@@ -214,14 +247,14 @@ for row in layout:
     y += rh + 360
 canvas = {
     'v': 3,
-    'createdOnFiles': {'v': 1, 'at': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')},
+    'createdOnFiles': {'v': 1, 'at': '2026-11-08T10:23:51Z'},  # when the canvas was first made
     'title': 'VaLora social media graphics',
     'launch': {'view': 'canvas'},
     'pages': [],
     'boards': bx,
     'order': [p for row in layout for p in row],
     'notes': {
-        'row1': {'x': 0, 'y': -260, 'text': 'Launch posts', 'kind': 'title1', 'maxW': 2360},
+        'row1': {'x': 0, 'y': -260, 'text': 'Launch posts and the competition entry', 'kind': 'title1', 'maxW': 4040},
         'row2': {'x': 0, 'y': bx['Islands.dc.html']['y'] - 260, 'text': 'Four islands, how it plays, story', 'kind': 'title1', 'maxW': 3400},
         'row3': {'x': 0, 'y': bx['Country-ph.dc.html']['y'] - 260, 'text': 'Carousel: one slide per country', 'kind': 'title1', 'maxW': 4560},
     },

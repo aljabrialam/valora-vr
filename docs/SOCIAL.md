@@ -1,6 +1,6 @@
 # Social media graphics
 
-Nine ready-to-post images in [`docs/social/`](social/), made from real renders of the game. Editable versions live on the "VaLora social media graphics" design canvas in Claude, where any wording can be retyped.
+Ten ready-to-post images in [`docs/social/`](social/), made from real renders of the game. Editable versions live on the "VaLora social media graphics" design canvas in Claude, where any wording can be retyped.
 
 | File | Size | Use |
 |---|---|---|
@@ -9,7 +9,8 @@ Nine ready-to-post images in [`docs/social/`](social/), made from real renders o
 | `valora-howitplays-1080x1350.png` | 1080×1350 | Choose a place, place pieces, drag the sun, live the day |
 | `valora-country-ph/th/id/sg-1080x1350.png` | 1080×1350 | Carousel: one slide per country with its house, watcher and levels |
 | `valora-story-1080x1920.png` | 1080×1920 | Story or Reel cover with the link |
-| `valora-landscape-1200x675.png` | 1200×675 | LinkedIn and X |
+| `valora-landscape-1200x675.png` | 1200×675 | LinkedIn and X: Manila, six capitals |
+| `valora-entry-1600x900.png` | 1600×900 | The competition entry: "Let the sun in. Keep the watchers out.", the six islands as a mosaic with each watcher, 18 levels, hands or Touch controllers, the play link and the YouTube demo. For X, LinkedIn, YouTube community posts and the Devpost gallery |
 
 | Instagram carousel order | |
 |---|---|
