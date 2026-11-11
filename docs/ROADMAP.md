@@ -7,6 +7,7 @@ gantt
   section Build
   Prototype: one screen, one neighbour, one sun        :done, p, 2026-11-06, 1d
   Raft pieces, four countries, globe, Tiki, sun drag   :done, c, 2026-11-07, 1d
+  Hanoi, Kuala Lumpur, controllers, 2:40 demo         :done, c2, 2026-11-09, 3d
   Country houses and islands, smooth-art pass          :done, a, 2026-11-07, 2d
   Compress models, cut draw calls                      :active, perf, 2026-11-09, 2d
   section Validate
@@ -21,6 +22,8 @@ Freeze the submitted build on the evening of 18 November (Singapore time).
 ## Done
 
 **6 November.** Prototype: the courtyard house, a swinging screen, the neighbour and the sun; Tiki the gecko; solvability proof; hands-only playthrough in the emulator; live at valora-vr.vercel.app.
+
+**11 November.** Tiki's words moved beside the level card in the headset, clear of the courtyard; the demo's headset shots re-recorded; docs brought up to six countries.
 
 **9 November.** Vietnam (Hanoi: motorbikes in the lane) and Malaysia (Kuala Lumpur: condo towers) with their own houses, islands and three levels each, 18 levels proven solvable; stars and pieces against par on the level card in the headset; the 2:40 demo with voice-over, Touch controller footage, the competition entry card and the maker card.
 

@@ -13,13 +13,13 @@ npm run dev
 
 Plain Vite without the managed browser: `npm run dev:runtime`.
 
-Open a specific country and level: `https://localhost:8081/?country=th&level=2` (`ph`, `th`, `id`, `sg`; levels 1 to 3).
+Open a specific country and level: `https://localhost:8081/?country=th&level=2` (`ph`, `th`, `vn`, `my`, `id`, `sg`; levels 1 to 3).
 
 ## Checks
 ```bash
 npm run typecheck   # TypeScript
-npm run prove       # all 12 levels solvable, none starts solved, par is the minimum
-npm run e2e:play    # hands-only playthrough in the emulator (needs npm run dev running)
+npm run prove       # all 18 levels solvable, none starts solved, par is the minimum
+npm run e2e:play    # hands playthrough in the emulator (needs npm run dev running)
 ```
 
 ## On a Quest

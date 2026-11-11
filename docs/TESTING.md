@@ -11,7 +11,7 @@ Emulator results and headset results are reported separately. Emulation cannot e
 | Production build | Node | builds | `npm run build` |
 | Hands-only playthrough: seated recentre, headset wording, Tiki pinch, carry a raft piece onto a socket by pointing, tutorial moves on by itself, turn the piece, solve Manila level 1, drag the sun, tutorial moves on, play button starts the day, no console errors | IWER emulator, Meta Quest 3 profile, hand input | 11/11 checks pass, re-run after the smooth-art pass | `npm run e2e:play` |
 | Mouse playthrough: Manila level 1 solved with 3 stars, the day completes | Desktop Chrome, software WebGL | pass | browser test |
-| All four islands load with their own house, island and neighbour | Desktop Chrome, software WebGL | pass | screenshots in `docs/screens/*-v3.jpg` |
+| All six islands load with their own house, island and neighbour | Desktop Chrome, software WebGL | pass | screenshots in `docs/screens/*-v3.jpg` |
 | Hand tracking on a real Quest 3 or 3S | Headset | not yet tested | [QUEST-TEST-CHECKLIST](QUEST-TEST-CHECKLIST.md) |
 | Frame rate on Quest 3 | Headset | not yet measured | [PERFORMANCE](PERFORMANCE.md) |
 
@@ -103,15 +103,31 @@ The game moved from one swinging screen to pieces carried from a raft, four coun
 | The headset view started looking at the sky | The rig was not placed for a seated player | Recentre 30 frames into the session from `world.player.head` |
 | The page map covered the headset view | The overlay stayed visible | The overlay hides while presenting |
 
-## 6. Art changes and the checks
+## 6. Vietnam, Malaysia, controllers and Tiki's words (9 to 11 November 2026)
+
+| Check | Result |
+| --- | --- |
+| `npm run prove`: 18 levels, each solvable, none solved at the start, par equals the fewest pieces | 18/18 |
+| `npm run e2e:play` (hands, Manila level 1) after moving Tiki's words beside the level card | 11/11 |
+| Touch controllers in the emulator (`INPUT=controller`): Hanoi level 1 carried and solved with the trigger | pass |
+| Scoring in the headset view: Hanoi level 2, both rules from NOT YET to DONE, three stars, "2 pieces · par 2" on the card | pass |
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Tiki's speech bubble covered the house and courtyard in the headset | It floated at eye height over the middle of the desk | It now sits beside the level card at the back of the desk; both were raised above every roofline |
+| The level card did not show the score in the headset | Stars were only in the page overlay | The card draws three stars and "pieces · par" |
+| The Kuala Lumpur towers stood in the sea | They sat west of the island | The island is wider on the west, with a paved plaza under the towers |
+
+## 7. Art changes and the checks
 
 The houses and islands are scenery: they do not take rays and the checks never read them. After each art change the proof and the playthrough are re-run, and the screenshots are compared against the rules in [ART](ART.md) (no post on the open face where the reader's sun crosses it, eaves stop at z −2.9, tall things only where their shadows cannot reach the yard).
 
-## 7. Not tested yet
+## 8. Not tested yet
 
 - Real hand tracking: pinch reliability on raft pieces and the sun, drift, jitter.
 - Seated reach and arm fatigue at the desk height and distance.
-- Text legibility in stereo at the label and card sizes.
+- Text legibility in stereo at the label and card sizes, including Tiki's words beside the card.
+- Touch controllers on a real Quest (only the emulator so far).
 - Frame rate, draw calls and shadow cost on Quest 3.
 - Audio balance in the headset.
 

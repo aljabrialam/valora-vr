@@ -11,4 +11,8 @@
 | Poly Haven HDRIs via `@pmndrs/assets` 1.7.0 (`sunset`, `park`, `studio`) | Image-based lighting (`public/textures/`) | CC0 ([licence](public/textures/LICENSE-pmndrs-assets-CC0.txt)) |
 | VaLora (`aljabrialam/valora`) | House concept, sun model, procedural textures (`src/look/textures.ts`), planting technique, logo and brand | Same author |
 
-Fonts: Cormorant Garamond and Inter, both SIL Open Font License.
+| [Kokoro](https://github.com/hexgrad/kokoro) v1.0 via [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) | The demo video's narration (voice `af_heart`), generated locally | Apache-2.0 |
+| [WebXR Input Profiles](https://github.com/immersive-web/webxr-input-profiles) (`@webxr-input-profiles/assets`) | Hand and Touch controller models in the emulator capture | MIT |
+| [FFmpeg](https://ffmpeg.org) | Video assembly, sound mix and loudness | LGPL/GPL (tool only, not shipped) |
+
+Fonts: Cormorant Garamond and Inter, both SIL Open Font License. The music and sound effects are synthesised in code (`scripts/video/music.py`).

@@ -11,7 +11,7 @@
 | Textures | < 20 | 15 |
 | Shadow-casting lights | 1 | 1, 2048² map fitted to the island |
 | Post-processing in XR | none | none |
-| Download per country (house + island) | < 4 MB | 5 to 7 MB uncompressed |
+| Download per country (house + island) | < 4 MB | 4 to 7 MB uncompressed (Hanoi and Kuala Lumpur about 4 MB) |
 | JS (gzip) | < 1.5 MB | about 1.4 MB, most of it IWSDK and three.js |
 
 ## Plan before the Quest test

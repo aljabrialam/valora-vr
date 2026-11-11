@@ -15,7 +15,7 @@ flowchart TB
   APP --> MODEL[model.ts<br/>desk, site group, pieces' sockets]
   APP --> LOOK[look/assets.ts<br/>houses, islands, trees, plant]
   APP --> PCS[pieces.ts]
-  APP --> WAT[watchers.ts<br/>sea, boats, tower, wind, rain]
+  APP --> WAT[watchers.ts<br/>sea, boats, motorbikes, towers, wind, rain]
   APP --> FB[feedback.ts<br/>beams and labels]
   APP --> UI[hud.ts, globe.ts<br/>page overlay, country picker]
   APP --> TIKI[mascot.ts, tutorial.ts]
@@ -43,7 +43,8 @@ The game is a static WebXR page. IWSDK (`@iwsdk/core`, the Immersive Web SDK) ow
 | Sun | From the target 60 m along the sun's direction at the rule's hour | All |
 | Neighbour's window | From the window to the target | All |
 | Boats | From each passing boat's eye height to the target; blind only if every boat is blocked | Thailand |
-| High-rise | From the tower's balcony to the target | Singapore |
+| Motorbikes | From each passing rider's eye height (1.65 m) on the lane to the target; blind only if every rider is blocked | Vietnam |
+| High-rise | From the tower's balcony to the target | Singapore, Malaysia (condo towers) |
 | Wind | From the target into the typhoon wind's direction, low over the fence | Philippines |
 | Rain | From the target up into the slanting rain | Indonesia |
 
@@ -62,7 +63,7 @@ Pieces stand on a grid of sockets over the courtyard (skipping the pool and the 
 
 ## 4. Sun position
 
-`sun.ts` computes elevation, azimuth and a unit direction from hour angle, declination and latitude. `countries.ts` gives each capital its latitude and its clock time of solar noon on 8 November (longitude, time zone and the equation of time), so Manila, Bangkok, Jakarta and Singapore each have their own sun path. The rendered sun light follows the same function.
+`sun.ts` computes elevation, azimuth and a unit direction from hour angle, declination and latitude. `countries.ts` gives each capital its latitude and its clock time of solar noon on 8 November (longitude, time zone and the equation of time), so Manila, Bangkok, Hanoi, Kuala Lumpur, Jakarta and Singapore each have their own sun path. The rendered sun light follows the same function.
 
 ## 5. Interaction
 
@@ -88,15 +89,15 @@ Thirty XR frames after the session starts, the rig is moved so the head sits at 
 
 - One directional light is the sun, with a 2048 shadow map fitted to the island. A hemisphere light gives sky fill and warm bounce. The dome gradient and image-based light are set in `public/scenes/main.iwsdk.scene.json` (ACES tone mapping).
 - Houses, islands and trees are glTF files made by script in Blender ([ART](ART.md)): baked colour and occlusion atlases for houses, vertex colours for islands and trees, smooth normals with crisp edges.
-- A country with its own house hides the code-drawn ghost roof and glass; Thailand also hides the code-drawn balcony because its neighbour's house models one.
-- Code keeps what moves, glows or is see-through: the sea, the pool water, pieces, beams and labels, the sun handle, boats, rain, wind, clouds, dust motes and Tiki.
-- Labels and Tiki's speech are canvas textures with tone mapping off so text stays crisp. On a computer the same words appear in a page overlay (`hud.ts`) at reading size.
+- A country with its own house hides the code-drawn ghost roof and glass; Thailand, Vietnam and Malaysia also hide the code-drawn balcony because their neighbour's house models the ledge where the figure stands.
+- Code keeps what moves, glows or is see-through: the sea, the pool water, pieces, beams and labels, the sun handle, boats, motorbikes, the towers, rain, wind, clouds, dust motes and Tiki.
+- Labels and Tiki's speech are canvas textures with tone mapping off so text stays crisp. In the headset the level card and Tiki's words sit side by side at the back of the desk, above every roofline, so they never stand between the eye and the courtyard; the card shows each rule, three stars and the pieces used against par. On a computer the same words appear in a page overlay (`hud.ts`) at reading size.
 
 ## 7. Build and hosting
 
 Vite with `@iwsdk/vite-plugin-dev` for development (HTTPS, IWER emulator injection). `npm run build` writes a static site to `dist/`, deployed to Vercel at [valora-vr.vercel.app](https://valora-vr.vercel.app). No server code; best stars are kept in the browser's local storage.
 
-URL parameters: `?country=ph|th|id|sg&level=1..3`.
+URL parameters: `?country=ph|th|vn|my|id|sg&level=1..3`.
 
 ## 8. Test hooks
 

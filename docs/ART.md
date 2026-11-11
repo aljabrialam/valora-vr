@@ -1,6 +1,6 @@
 # Art
 
-![The four islands](screens/islands-v3.jpg)
+![The six islands: Manila, Bangkok, Hanoi; Kuala Lumpur, Jakarta, Singapore](screens/islands-v4.jpg)
 
 ## 1. Direction: a bright storybook diorama
 
@@ -24,7 +24,7 @@ The watchers do not look at the 3D models. They test straight lines against boxe
 | A roof plane at 3 m covers the room | Tall roofs, upper storeys and raised floors sit where the sun's rays to the reader cannot reach them. In Manila and Bangkok the November noon sun is about 60° high, so every ray to the reader crosses the open face below 2.0 m and a floor at 2.0 m shades nothing the checks let through |
 | Courtyard eaves stop where the check's roof stops | Gables and eaves on the courtyard side end at z −2.9 |
 | The reader's sun and the neighbour's line of sight cross the open face between x 0 and 3.3 | No post stands on the open face there |
-| Garden walls have each country's height (Manila 1.0 m, Bangkok 0.9 m, Jakarta and Singapore 2.2 m) | Walls and fences are built to that height; anything near a wall stays inside its shadow |
+| Garden walls have each country's height (Manila 1.0 m, Bangkok 0.9 m, Hanoi 1.1 m, Kuala Lumpur 1.0 m, Jakarta and Singapore 2.2 m) | Walls and fences are built to that height; anything near a wall stays inside its shadow |
 | The neighbour's house fits its box below 4.6 m | Every neighbour is modelled inside the box, with a balcony where the watching figure stands |
 | Tall things outside the yard | Placed only where their shadow can never reach a target: in November the sun is always south of east–west, so anything north of the targets is safe. The Bangkok spirit house and power pole stand outside the north-east corner; plumerias and bananas stand west and north |
 

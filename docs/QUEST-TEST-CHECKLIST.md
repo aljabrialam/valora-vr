@@ -24,7 +24,7 @@ Use a Quest 3 or 3S with hand tracking on and controllers put away. Sit at a nor
 
 ## Readability
 - [ ] Labels SEEN / PRIVATE / SUN / SHADE / DRY / WET / SHELTERED / WINDY readable at arm's length
-- [ ] Tiki's speech card readable without leaning in
+- [ ] Tiki's speech card readable without leaning in, beside the level card, and never covering the courtyard
 - [ ] Level card readable without leaning in
 - [ ] Meaning is clear without relying on colour
 
@@ -32,10 +32,12 @@ Use a Quest 3 or 3S with hand tracking on and controllers put away. Sit at a nor
 - [ ] Stable frame rate (target 72 fps or higher; judging minimum 60)
 - [ ] No hitches when beams update or labels redraw, or while the day plays
 - [ ] Load time from link to Enter VR: ___ s; time to change country on the globe: ___ s
-- [ ] Draw calls and frame time per country (Manila, Bangkok, Jakarta, Singapore): ___
+- [ ] Draw calls and frame time per country (Manila, Bangkok, Hanoi, Kuala Lumpur, Jakarta, Singapore): ___
 
 ## Full run
 - [ ] Tutorial and all three levels of one country with hands only, in under 10 minutes
+- [ ] One level with Touch controllers: the trigger carries, turns and drags like the pinch
+- [ ] Kuala Lumpur: the condo towers fit in view from the seat without turning the head far
 - [ ] Change country on the globe in the headset; each island loads with its house
 - [ ] Pause and resume (take the headset off and on) restores the game
 - [ ] No console errors (connect over USB and check, or use `metavr log`)

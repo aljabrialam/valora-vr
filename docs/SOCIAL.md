@@ -5,7 +5,7 @@ Nine ready-to-post images in [`docs/social/`](social/), made from real renders o
 | File | Size | Use |
 |---|---|---|
 | `valora-main-1080x1080.png` | 1080×1080 | Square launch post: the Bangkok island, "Same sun. Different skies." |
-| `valora-islands-1080x1350.png` | 1080×1350 | The four islands and each country's watcher |
+| `valora-islands-1080x1350.png` | 1080×1350 | Four of the islands and each country's watcher (made before Hanoi and Kuala Lumpur) |
 | `valora-howitplays-1080x1350.png` | 1080×1350 | Choose a place, place pieces, drag the sun, live the day |
 | `valora-country-ph/th/id/sg-1080x1350.png` | 1080×1350 | Carousel: one slide per country with its house, watcher and levels |
 | `valora-story-1080x1920.png` | 1080×1920 | Story or Reel cover with the link |

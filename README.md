@@ -28,8 +28,10 @@
 | **The watchers** | **The sun** should reach some spots and not others. **A neighbour**, **passing boats**, **motorbikes in the lane**, **condo towers** or **a high-rise** must not see the reader. In some places **typhoon wind** or **monsoon rain** must not reach a spot |
 | **The idea** | Sunlight, privacy, wind and rain are one test: *can something reach this spot in a straight line?* The sun is just a watcher very far away |
 | **Where** | Manila (bahay kubo, typhoon wind), Bangkok (teak ruen thai on a canal, long-tail boats), Hanoi (northern village house on a lakeside lane, motorbikes), Kuala Lumpur (Malay kampung house on stilts, condo towers), Jakarta (joglo, monsoon rain), Singapore (black-and-white bungalow, the high-rise next door). The sun follows each capital's own path for 8 November |
-| **How you play** | Choose a place on the globe. Pinch a piece on the raft, point it at the courtyard, let go; pinch it again to turn it. Drag the sun. Press play to live the day; fewer pieces earn more stars |
-| **Guide** | **Tiki**, a gecko who sits on the garden wall. Tiki teaches by doing: the tutorial moves on when you place a piece or move the sun |
+| **How you play** | Choose a place on the globe. Pinch a piece on the raft, point it at the courtyard, let go; pinch it again to turn it (with Touch controllers, the trigger does the pinch). Drag the sun. Press play to live the day |
+| **How you score** | Each level has a few rules on the level card, each NOT YET until it holds. When every rule is DONE the level is solved; par or fewer pieces earns three stars, shown on the card as stars and "pieces · par" |
+| **Players** | One. The two watchers are the sun and whoever looks in |
+| **Guide** | **Tiki**, a gecko who sits on the garden wall. Tiki teaches by doing: the tutorial moves on when you place a piece or move the sun. In the headset Tiki's words sit beside the level card at the back of the desk, so they never cover the courtyard |
 | **Comfort** | Seated, no walking or turning: the view is set up once when VR starts, and the whole board sits within a short point of your hand |
 | **Honest scope** | Illustrative sunlight and visibility checks, not certified daylight, comfort, structural or privacy analysis |
 
@@ -39,6 +41,10 @@
 <tr>
 <td width="50%"><img src="docs/screens/ph-v3.jpg" alt="Manila: bahay kubo island"><br><sub><b>Manila.</b> A bahay kubo on stilts, the dirty kitchen, a carabao and a banca pulled up on the beach. Typhoon wind streaks in over the bamboo fence.</sub></td>
 <td width="50%"><img src="docs/screens/th-v3.jpg" alt="Bangkok: ruen thai by the canal"><br><sub><b>Bangkok.</b> A teak ruen thai on posts with an open terrace, a spirit house, a stone canal wall and a water landing. Long-tail boats pass on the khlong.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screens/vn-v3.jpg" alt="Hanoi: northern village house on a lakeside lane"><br><sub><b>Hanoi.</b> A northern village house with laterite walls, lim-wood columns and a curved fish-scale tile roof, an ancestral altar, a lotus pond and chum rain jars. Motorbikes stream down the lane outside, past a flower seller's bicycle and a tangle of power lines.</sub></td>
+<td width="50%"><img src="docs/screens/my-v3.jpg" alt="Kuala Lumpur: kampung house under the condo towers"><br><sub><b>Kuala Lumpur.</b> A Malay kampung house on stilts with mint plank walls, a red zinc roof and a sunburst gable, hibiscus in the yard. Condo towers rise next door and look straight down.</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="docs/screens/id-v3.jpg" alt="Jakarta: joglo in the monsoon rain"><br><sub><b>Jakarta.</b> A joglo with its three-pitch roof, red-brick walls and monsoon rain slanting in from the west.</sub></td>
@@ -64,6 +70,8 @@ flowchart LR
 |---|---|---|
 | Philippines · Manila | Typhoon wind comes in low over the bamboo fence | Kapitbahay, Umaga, Bagyo |
 | Thailand · Bangkok | Long-tail boats pass on the canal | Long-tail Boats, Lunch by the Water, A Day on the Water |
+| Vietnam · Hanoi | Motorbikes stream down the lane, riders glancing over a low wall | Xe Máy, Hàng Xóm, Một Ngày Hà Nội |
+| Malaysia · Kuala Lumpur | Condo towers rise over the kampung and look straight down | Kampung Baru, Teh Tarik, Sehari Suntuk |
 | Indonesia · Jakarta | Monsoon rain slants in from the west | Hujan, Rain and Shine, Musim Hujan |
 | Singapore | The high-rise next door looks straight down | High-rise, Morning Swim, The Whole Day |
 
@@ -92,7 +100,8 @@ Open **[valora-vr.vercel.app](https://valora-vr.vercel.app)** in Quest Browser o
 |---|---|---|
 | Every level solvable, none solved at the start, par equals the minimum pieces | 18/18 | `npm run prove` |
 | Type check | clean | `npm run typecheck` |
-| Hands-only playthrough in the IWER emulator: seated recentre, Tiki pinch, carry a raft piece by pointing, turn it, solve Manila level 1, drag the sun, press play, no console errors | 11/11 checks pass (re-run 8 Nov on the new art) | `npm run e2e:play` |
+| Hands playthrough in the IWER emulator: seated recentre, Tiki pinch, carry a raft piece by pointing, turn it, solve Manila level 1, drag the sun, press play, no console errors | 11/11 checks pass (re-run 11 Nov after moving Tiki's words) | `npm run e2e:play` |
+| Touch controller play in the IWER emulator: Hanoi level 1 solved with the trigger | pass (filmed for the demo) | `INPUT=controller node scripts/video/vrshots.mjs v_vn` |
 | Mouse playthrough on a computer: Manila level 1 solved with 3 stars, day completes | pass | browser test |
 | Real Quest 3 hand tracking, comfort, readability, frame rate | **not yet tested** | [QUEST-TEST-CHECKLIST](docs/QUEST-TEST-CHECKLIST.md) |
 
@@ -115,7 +124,11 @@ VALORA_COUNTRY=th blender-python art/blender/island2.py                      # i
 blender-python art/blender/trees.py                                          # palms and shrubs
 ```
 
-Use `ph`, `th`, `id` or `sg`. Social graphics: [SOCIAL](docs/SOCIAL.md). The showcase video is rendered frame by frame from the game: `scripts/video/run-all.sh`, `scripts/video/make-titles.sh`, `python3 scripts/video/music.py video/music.wav`, `python3 scripts/video/edit.py` ([VIDEO](docs/VIDEO.md)).
+Use `ph`, `th`, `vn`, `my`, `id` or `sg`. Social graphics: [SOCIAL](docs/SOCIAL.md).
+
+## Demo video
+
+The submission demo is 2:40, narrated, inside the 3-minute limit: a trailer, our entry card, the goal, choosing a place on the globe, then the game in the headset view (Meta's IWER emulator, labelled on every shot) with hands and with Touch controllers, how scoring works, one twist per capital, the proof and the maker. It is rendered frame by frame from the game; the narration is a synthetic voice made locally with Kokoro (open weights). Shot list, timeline and commands: [VIDEO](docs/VIDEO.md).
 
 ## Documentation
 
@@ -131,7 +144,7 @@ Use `ph`, `th`, `id` or `sg`. Social graphics: [SOCIAL](docs/SOCIAL.md). The sho
 | [COMPETITION](docs/COMPETITION.md) | Rules, judging, division and project history, eligibility questions |
 | [ART](docs/ART.md) | The storybook diorama look, each country's island, the Blender pipeline, the rule that art never contradicts the checks |
 | [BRAND](docs/BRAND.md) | Name, the VaLora story, type, colour, sound |
-| [VIDEO](docs/VIDEO.md) | Trailer and showcase: shot list and the frame-exact capture pipeline |
+| [VIDEO](docs/VIDEO.md) | The 2:40 demo, trailer and showcase: shot lists, voice-over, the frame-exact capture pipeline |
 | [SOCIAL](docs/SOCIAL.md) | Nine ready-to-post graphics (square, 4:5 carousel, story, landscape) and how they are made |
 | [SUBMISSION](docs/SUBMISSION.md) | Draft answers for the Devpost form |
 | [ROADMAP](docs/ROADMAP.md) | Milestones to the deadline |

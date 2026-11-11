@@ -64,8 +64,8 @@ CUT=demo MUSIC=video/music-demo.wav VO=video/vo-demo.wav python3 scripts/video/e
 |---|---|---|
 | Trailer | `titles/same` | "Same sun." |
 | | `t_ph` | Manila: a slow push across the kubo island, place name over it |
-| | `titles/skies` | "Different skies." Manila · Bangkok · Jakarta · Singapore |
-| | `t_th`, `t_id`, `t_sg` | Bangkok, Jakarta, Singapore |
+| | `titles/skies` | "Different skies." Manila · Bangkok · Hanoi · Kuala Lumpur · Jakarta · Singapore |
+| | `t_th`, `t_vn`, `t_my`, `t_id`, `t_sg` | Bangkok, Hanoi, Kuala Lumpur, Jakarta, Singapore |
 | | `titles/watch` | "Someone is always watching." |
 | | `t_watch` | Over the neighbour's shoulder: the red line of sight lands on the reading chair |
 | | `titles/logo` | VaLora: Two Watchers. A seated VR puzzle about sun, shade and privacy |
@@ -76,7 +76,7 @@ CUT=demo MUSIC=video/music-demo.wav VO=video/vo-demo.wav python3 scripts/video/e
 | | `w_day` | Live the day |
 | | `w_ph3`, `w_th1`, `w_id1`, `w_sg1` | Each country's twist: typhoon, boats, rain, high-rise |
 | | `w_vr` | The headset view in the emulator with a hand placing a piece (labelled Emulator) |
-| | `titles/end` | "Play it now", the link, 12 levels · 4 countries, seated and hands only, "Illustrative sunlight and visibility checks." |
+| | `titles/end` | "Play it now", the link, 18 levels · 6 countries, seated, point and pinch or pull the trigger, "Illustrative sunlight and visibility checks." |
 
 ## How it is made
 

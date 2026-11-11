@@ -31,7 +31,7 @@ flowchart LR
 | Globe | A small Earth turns to the place you pick; ASEAN members are tinted, the six playable capitals carry a marker |
 | Hello | Tiki the gecko sits on the garden wall. Pinch Tiki to start |
 | Place | An arrow points at the bamboo raft moored by the island. Pinch a piece, point at the courtyard, let go. The tutorial moves on by itself when a piece lands |
-| Twist | Tiki introduces the place: the house, and what watches it here (the neighbour, boats, the high-rise, the typhoon, the rain) |
+| Twist | Tiki introduces the place: the house, and what watches it here (the neighbour, boats, motorbikes, condo towers, the high-rise, the typhoon, the rain) |
 | Sun | Pinch the sun and drag it across the sky; the shadows move. The tutorial moves on when the sun moves |
 | Goal | One short brief per level. Every rule shows pass or fail live |
 | Solved | Tiki celebrates; stars for using few pieces. Press the bronze play button to live the day: the sun crosses the sky and every rule is checked hour by hour |
@@ -71,7 +71,7 @@ Each country teaches a different piece: screens against a neighbour at eye level
 
 Tiki is an original house gecko (the name comes from *butiki*, Filipino for gecko). Geckos spend their day on courtyard walls moving between sun and shade, so Tiki knows where every shadow falls. Tiki sits on the garden wall, a glazed ceramic figure built in code, and:
 
-- speaks one short line at a time on a card above its head;
+- speaks one short line at a time: in the headset on a card beside the level card at the back of the desk (so the words never cover the courtyard), on a computer in the page overlay;
 - turns to look at what it is talking about, and an orange arrow points there too;
 - blinks, breathes, sways its tail and hops when a level is solved;
 - is pinched to start and to go to the next level, so the tutorial teaches the pinch.
