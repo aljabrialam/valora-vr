@@ -5,9 +5,9 @@ gantt
   dateFormat YYYY-MM-DD
   axisFormat %d %b
   section Build
-  Prototype: one screen, one neighbour, one sun        :done, p, 2026-11-06, 1d
+  Prototype, one screen, one neighbour, one sun        :done, p, 2026-11-06, 1d
   Raft pieces, four countries, globe, Tiki, sun drag   :done, c, 2026-11-07, 1d
-  Hanoi, Kuala Lumpur, controllers, 2:40 demo         :done, c2, 2026-11-09, 3d
+  Hanoi, Kuala Lumpur, controllers, demo video        :done, c2, 2026-11-09, 3d
   Country houses and islands, smooth-art pass          :done, a, 2026-11-07, 2d
   Compress models, cut draw calls                      :active, perf, 2026-11-09, 2d
   section Validate
